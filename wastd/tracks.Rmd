@@ -1,0 +1,110 @@
+---
+title: "Tracks"
+author: "Florian Mayer"
+date: "12/02/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+# https://cran.r-project.org/web/packages/tidyjson/vignettes/introduction-to-tidyjson.html
+
+library(httr)
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(tidyjson)
+library(DT)
+library(leaflet)
+library(ggplot2)
+if (file.exists("config/setup.R")) source("config/setup.R")
+# url = "https://strandings.dpaw.wa.gov.au/api/1/animal-encounters/"
+url = "https://strandings.dpaw.wa.gov.au/api/1/turtle-nest-encounters/?where=17" # THV
+# url = "http://localhost:8220/api/1/turtle-nest-encounters/?where=17&limit=10000" # THV dev
+hdr = c(Authorization = Sys.getenv("APITOKEN"))
+res = httr::GET(paste0(url, "&format=json"), add_headers(.headers = hdr))
+res_json <- res %>% content("text") %>% as.tbl_json()
+data_json <- attr(res_json, "JSON")[[1]]$results
+
+flatten_track_observations <- function(li){
+  date <- li$when
+  lon <- li$where$longitude
+  lat <- li$where$latitude
+  species <- li$species
+  nest_age <- li$nest_age
+  nest_type <- li$nest_type
+  out <- c(date, lon, lat, species, nest_age, nest_type)
+  out
+}
+
+tz <- "UTC"
+ord <- c("YmdHMSz")
+
+d <- ldply(data_json, flatten_track_observations) %>% tbl_df()
+colnames(d) <- c("date", "longitude", "latitude", "species", "nest_age", "nest_type")
+d <- mutate(d,
+            date= with_tz(parse_date_time(date, orders=c("YmdHMSz"), tz="UTC"), tzone="GMT+08"),
+            longitude=as.numeric(longitude),
+            latitude=as.numeric(latitude)
+            ) %>%
+  mutate(observation_date=as_date(date))
+glimpse(d)
+# dates are in UTC now
+DT::datatable(head(d))
+
+save(d, file="data/tracks.Rda")
+load("data/tracks.Rda")
+
+# Metadata on data currency
+data_retrieved_on <- with_tz(parse_date_time(res$headers$date, orders=c("adbYHMS"), tz=utc), gmt08)
+no_observations <- nrow(d)
+latest_observation <- with_tz(max(d$observation_start_time), gmt08)
+
+
+leaflet(d) %>%
+  addProviderTiles("Esri.WorldImagery") %>%
+  setView(lng=115.0, lat=-21.45, zoom=12) %>%
+  addAwesomeMarkers(~longitude, ~latitude, label=~species,
+                    popup=~paste(nest_age, species, nest_type, observation_date))
+
+# Tally all tracks
+tally_data <- d %>%
+  group_by(observation_date, species, nest_age) %>% tally(sort=F) %>% ungroup()
+
+# Tally only "fresh" tracks
+tally_fresh <- d %>% filter(nest_age=="fresh") %>%
+  group_by(observation_date, species, nest_type) %>% tally(sort=F) %>% ungroup()
+
+
+ggplot(tally_fresh, aes(x=observation_date, y=n, colour=nest_type)) +
+  geom_point() + facet_wrap("species", ncol=1)
+```
+
+**`r no_observations` observations were retrieved on `r data_retrieved_on` GMT+08.**
+
+**The latest retrieved observation happened on `r latest_observation` GMT+08.**
+
+This workbook is compiled and published manually after each batch of data has been
+uploaded from the field data collection devices.
+
+Results are shown first; the analysis is explained below.
+
+**Note** Track and nest counts within the tagging sector (Jetty to Chevron) 
+from the night of 20/11/2016 to 21/11/2016 were not recorded
+in the ODK Collect app the morning after, as wind and foot traffic during the night
+rendered the tracks unreadable. The tracks and nests were recorded on paper data
+sheets and will turn up in the tagging database WAMTRAM2.
+
+November 20-22 were windy, and tracks on the south side of the western end were
+likely blown over. This will result in false absence of tracks on 20/11/2016-22/11/2016.
+Wind conditions after 22/11/2016 are unknown and may also decrease the number of 
+detected tracks.
