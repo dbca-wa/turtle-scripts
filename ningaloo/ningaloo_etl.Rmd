@@ -28,6 +28,7 @@ the owner's write permissions: `ckanr::ckanr_setup(url=CKAN, key=APIKEY)`.
 Create your own `setup.R` from the template `setup_template.R`.
 Then, load required libraries and source `setup.R`.
 ```{r, warning=FALSE, message=FALSE}
+setwd("~/projects/turtle-scripts/ningaloo")
 library(Hmisc)
 library(htmlTable)
 library(tidyr)
@@ -477,3 +478,8 @@ Next:
 * s2 = `all_surveyed`==F, All but the above
 
 Nest and crawl tallies for s1 per day and division, per section (are they moving?)
+
+
+```{r}
+setwd("~/projects/turtle-scripts")
+```

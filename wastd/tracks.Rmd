@@ -6,6 +6,7 @@ output: html_document
 ---
 
 ```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+setwd("~/projects/turtle-scripts/wastd")
 knitr::opts_chunk$set(echo = TRUE)
 # https://cran.r-project.org/web/packages/tidyjson/vignettes/introduction-to-tidyjson.html
 # install.packages("tidyjson")
@@ -49,8 +50,8 @@ d <- mutate(d,
             ) %>%
   mutate(date=as_date(datetime))
 # glimpse(d)
-save(d, file="../data/tracks.Rda")
-load("../data/tracks.Rda")
+save(d, file="data/tracks.Rda")
+load("data/tracks.Rda")
 
 # Metadata on data currency
 data_retrieved_on <- with_tz(parse_date_time(res$headers$date, orders=ord, tz=utc), tzone=gmt08)
@@ -107,3 +108,15 @@ Durign the field trip in Feb 2017 (exact dates to be confirmed), a cyclone
 prevented track counts on some days and may have blown away many tracks on other 
 days, resulting in days without track counts as well as days with falsely low 
 track counts.
+
+
+# Insight
+
+* spatial distribution of species within location per location
+* temporal distribution: beginning, peak, end of nesting season per species at location
+* spatial and temporal patterns of species abundance (daily species tallies) (PCNM)
+
+
+```{r, echo=FALSE}
+setwd("~/projects/turtle-scripts")
+```
