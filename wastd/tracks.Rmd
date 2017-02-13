@@ -66,6 +66,25 @@ tally_data <- d %>%
 # Tally only "fresh" tracks
 tally_fresh <- d %>% filter(nest_age=="fresh") %>%
   group_by(date, species, nest_type) %>% tally(sort=F) %>% ungroup()
+
+# Tally all fresh tracks with nest
+tally_all <- d %>% 
+    filter(nest_age=='fresh') %>%
+    group_by(date, species) %>% tally(sort=F) %>% ungroup()
+colnames(tally_all) <- c('date', 'species', 'all')
+
+# Tally fresh tracks with nest
+tally_nesting <- d %>% 
+    filter(nest_age=='fresh', nest_type=='successful-crawl') %>%
+    group_by(date, species) %>% tally(sort=F) %>% ungroup()
+colnames(tally_nesting) <- c('date', 'species', 'nesting')
+
+
+# Join successful nesting crawls with all nesting crawls
+nesting <- left_join(tally_all, tally_nesting, by=c('date','species')) 
+nesting[is.na(nesting)] <- 0
+nesting_success <- mutate(nesting, nesting_success=nesting/all)
+
 ```
 **`r no_observations` observations 
 spanning from `r earliest_observation` to `r latest_observation` GMT+08 
@@ -112,10 +131,34 @@ track counts.
 
 # Insight
 
-* spatial distribution of species within location per location
-* temporal distribution: beginning, peak, end of nesting season per species at location
-* spatial and temporal patterns of species abundance (daily species tallies) (PCNM)
+## Nesting effort
+```{r}
+ggplot(nesting_success, aes(x=date, colour=species)) +
+    geom_point(aes(y=all, shape="all")) + 
+    geom_point(aes(y=nesting, shape="successful")) + 
+    ggtitle("Nesting effort at Thevenard Is") +
+    labs(x="Date", y="Number of nesting emergences") +
+    facet_wrap("species", ncol=1)
+```
 
+## Nesting success
+```{r}
+ggplot(nesting_success, aes(x=date, y=all, colour=species)) +
+    geom_point() + ggtitle("Nesting success at Thevenard Is") +
+    labs(x="Date", y="Success rate of nesting emergences") +
+    facet_wrap("species", ncol=1)
+```
+
+
+## Modelling the nesting seasons
+Beginning, peak, end of nesting season per species at location
+
+TODO
+
+## Spatial and temporal patterns of abundance
+Spatial and temporal patterns of species abundance (daily species tallies) (PCNM)
+
+TODO
 
 ```{r, echo=FALSE}
 setwd("~/projects/turtle-scripts")
