@@ -22,32 +22,34 @@ source("install.R")
 
 # Setup
 Configure `ckanr` for use with our data catalogue.
-The file `setup_ckanr.R` contains the confidential CKAN API key, which gives
+The file `setup.R` contains the confidential CKAN API key, which gives
 the owner's write permissions: `ckanr::ckanr_setup(url=CKAN, key=APIKEY)`.
 
-Create your own `setup_ckanr.R` from the template `setup_ckanr_template.R`.
-Then, load required libraries and source `setup_ckanr.R`.
+Create your own `setup.R` from the template `setup_template.R`.
+Then, load required libraries and source `setup.R`.
 ```{r, warning=FALSE, message=FALSE}
-require(Hmisc)
-require(htmlTable)
+library(Hmisc)
+library(htmlTable)
 library(tidyr)
-require(dplyr)
-require(lubridate)
-require(ckanr)
-require(DT)
-require(rgdal)
-require(mapview)
-source("setup.R")
-refresh_data <- FALSE # download fresh database snapshot or use local copy
+library(dplyr)
+library(lubridate)
+library(ckanr)
+library(DT)
+library(rgdal)
+library(mapview)
+library(leaflet)
+if (file.exists("../config/setup.R")) source("../config/setup.R")
+refresh_data <- TRUE # download fresh database snapshot or use local copy
 ```
 
 # Extract data
 Download, unzip and open the Access mdb file from the data catalogue.
 ```{r, echo=T, message=FALSE}
 if (refresh_data) {
-  tmp <- tempfile(tmpdir="data")
+  tmp <- tempfile()
   download.file(resource_show(MDB_RID)$url, tmp)
-  dbfile <- unzip(tmp, "ningaloov4.mdb")
+  dbfile <- unzip(tmp, "ningaloov4.mdb", exdir="data")
+  unlink(tmp)
 } else {
   dbfile <- "data/ningaloov4.mdb"
 }
@@ -437,16 +439,6 @@ Upload outputs to CKAN.
 # ckanr::resource_update(FALSE_CRAWL_RID, "data/summary_crawls.csv")
 ```
 
-# Cleanup
-Close the temporary file if we're using a freshly downloaded copy.
-```{r}
-if (refresh_data) {
-  unlink(tmp)
-  file.remove(dbfile)
-}
-```
-
-
 # Selecting data
 Data are only of interest for further analysis if the survey effort has been
 comprehesive enough.
@@ -456,7 +448,7 @@ In particular, the only relevant surveys are those from comprehensively surveyed
 For each survey day, we want to know which sections to exclude.
 from surveys: date, section, tally of subsections
 vs
-frmo sites: section, tally of subsections in section
+frim sites: section, tally of subsections in section
 
 
 ```{r}
@@ -480,7 +472,8 @@ DT::datatable(survey_completeness)
 Next:
 
 * join `summary_nests` with `survey_completeness`
-* s1 = `all_surveyed`==T, Only surveys of sections which had all of their subsections surveyed on one day
+* s1 = `all_surveyed`==T, Only surveys of sections which had all of their 
+  subsections surveyed on one day
 * s2 = `all_surveyed`==F, All but the above
 
-nest and crawl tallies for s1 per day and division, per section (are they moving?)
+Nest and crawl tallies for s1 per day and division, per section (are they moving?)
