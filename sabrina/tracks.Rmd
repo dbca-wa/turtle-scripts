@@ -1,0 +1,178 @@
+---
+title: "Turtle tracks"
+author: "Florian Mayer, Dept Parks & Wildlife WA"
+date: "12/02/2017"
+output: html_document
+---
+
+```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+setwd("~/projects/turtle-scripts/sabrina")
+knitr::opts_chunk$set(echo = TRUE)
+# https://cran.r-project.org/web/packages/tidyjson/vignettes/introduction-to-tidyjson.html
+# install.packages("tidyjson") # a better way to flatten JSON to CSV?
+library(httr)
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(tidyjson)
+library(DT)
+library(leaflet)
+library(ggplot2)
+if (file.exists("../config/setup.R")) source("../config/setup.R")
+api <- "https://strandings.dpaw.wa.gov.au/api/1/"
+thv <- "turtle-nest-encounters/?where=17&limit=10000&format=json"
+hdr <- c(Authorization = APITOKEN)
+res <- httr::GET(paste0(api, thv), add_headers(.headers = hdr))
+res_json <- res %>% content("text") %>% as.tbl_json()
+data_json <- attr(res_json, "JSON")[[1]]$results
+
+flatten_track_observations <- function(li){
+  datetime <- li$when
+  lon <- li$where$longitude
+  lat <- li$where$latitude
+  species <- li$species
+  nest_age <- li$nest_age
+  nest_type <- li$nest_type
+  out <- c(datetime, lon, lat, species, nest_age, nest_type)
+  out
+}
+
+utc <- "UTC"
+gmt08 <- "Australia/Perth"
+ord <- c("YmdHMSz", "adbYHMS")
+
+d <- ldply(data_json, flatten_track_observations) %>% tbl_df()
+colnames(d) <- c("datetime", "longitude", "latitude", "species", "nest_age", "nest_type")
+d <- mutate(d,
+            datetime=with_tz(parse_date_time(datetime, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
+            longitude=as.numeric(longitude),
+            latitude=as.numeric(latitude)
+            ) %>%
+  mutate(date=as_date(datetime))
+# glimpse(d)
+save(d, file="data/tracks.Rda")
+load("data/tracks.Rda")
+
+# Metadata on data currency
+data_retrieved_on <- with_tz(parse_date_time(res$headers$date, orders=ord, tz=utc), tzone=gmt08)
+no_observations <- nrow(d)
+earliest_observation <- with_tz(min(d$datetime), tzone=gmt08)
+latest_observation <- with_tz(max(d$datetime), tzone=gmt08)
+
+# Tally all tracks
+tally_data <- d %>%
+  group_by(date, species, nest_age) %>% tally(sort=F) %>% ungroup()
+
+# Tally only "fresh" tracks
+tally_fresh <- d %>% filter(nest_age=="fresh") %>%
+  group_by(date, species, nest_type) %>% tally(sort=F) %>% ungroup()
+
+# Tally all fresh tracks with nest
+tally_all <- d %>% 
+    filter(nest_age=='fresh') %>%
+    group_by(date, species) %>% tally(sort=F) %>% ungroup()
+colnames(tally_all) <- c('date', 'species', 'all')
+
+# Tally fresh tracks with nest
+tally_nesting <- d %>% 
+    filter(nest_age=='fresh', nest_type=='successful-crawl') %>%
+    group_by(date, species) %>% tally(sort=F) %>% ungroup()
+colnames(tally_nesting) <- c('date', 'species', 'nesting')
+
+
+# Join successful nesting crawls with all nesting crawls
+nesting <- left_join(tally_all, tally_nesting, by=c('date','species')) 
+nesting[is.na(nesting)] <- 0
+nesting_success <- mutate(nesting, nesting_success=nesting/all)
+
+```
+
+# Data
+
+* Data recorded on Android tablets using digital data capture software ODK Collect
+* Forms "TrackCount 0.10" (Nov-Dec 2016) and "Track or Treat 0.26" (Feb 2017)
+* Data warehouse ODK Aggregate at [dpaw-data.appspot.com](https://dpaw-data.appspot.com/)
+* Data exported manually from dpaw-data as JSON and ingested (scripted) into
+  [WAStD](https://strandings.dpaw.wa.gov.au/) after each field trip
+* **`r no_observations` records** retrieved from WAStD API on 
+  `r data_retrieved_on` GMT+08 when compiling this workbook
+* Observations span **`r earliest_observation` - `r latest_observation` GMT+08**
+
+
+## Interactive datatable
+```{r}
+DT::datatable(d)
+```
+
+## Interactive map
+Hover-scroll to zoom, click features to inspect.
+```{r}
+leaflet(d) %>%
+  addProviderTiles("Esri.WorldImagery") %>%
+  setView(lng=115.0, lat=-21.45, zoom=12) %>%
+  addAwesomeMarkers(~longitude, ~latitude, label=~species,
+                    popup=~paste(nest_age, species, nest_type, datetime))
+```
+
+# Nesting effort
+## New tracks by species
+```{r}
+ggplot(tally_fresh, aes(x=date, y=n, colour=nest_type)) +
+  geom_point() + facet_wrap("species", ncol=1)
+```
+
+**Note** Track and nest counts within the tagging sector (Jetty to Chevron) 
+from the night of 20/11/2016 to 21/11/2016 were not recorded
+in the ODK Collect app the morning after, as wind and foot traffic during the night
+rendered the tracks unreadable. The tracks and nests were recorded on paper data
+sheets and will turn up in the tagging database WAMTRAM2.
+
+November 20-22 were windy, and tracks on the south side of the western end were
+likely blown over. This will result in false absence of tracks on 20/11/2016-22/11/2016.
+Wind conditions after 22/11/2016 are unknown and may also decrease the number of 
+detected tracks.
+
+Durign the field trip in Feb 2017 (exact dates to be confirmed), a cyclone 
+prevented track counts on some days and may have blown away many tracks on other 
+days, resulting in days without track counts as well as days with falsely low 
+track counts.
+
+There may be more periods with artificially low track count.
+
+**TODO** identify periods of artificially low track count from field diary
+
+**TODO** enter surveys into WAStD, annotate with observations on weather, methodology,
+any known biases on recorded data.
+
+## Nesting effort
+```{r}
+ggplot(nesting_success, aes(x=date, colour=species)) +
+    geom_point(aes(y=all, shape="all")) + 
+    geom_point(aes(y=nesting, shape="successful")) + 
+    ggtitle("Nesting effort at Thevenard Is") +
+    labs(x="Date", y="Number of nesting emergences") +
+    facet_wrap("species", ncol=1)
+```
+
+## Nesting success
+```{r}
+ggplot(nesting_success, aes(x=date, y=all, colour=species)) +
+    geom_point() + ggtitle("Nesting success at Thevenard Is") +
+    labs(x="Date", y="Success rate of nesting emergences") +
+    facet_wrap("species", ncol=1)
+```
+
+
+## Modelling the nesting seasons
+Beginning, peak, end of nesting season per species at location
+
+**TODO fit model to data per species**
+
+## Spatial and temporal patterns of abundance
+Spatial and temporal patterns of species abundance (daily species tallies) (PCNM)
+
+**TODO PCNM analysis**
+
+```{r, echo=FALSE}
+setwd("~/projects/turtle-scripts")
+```
