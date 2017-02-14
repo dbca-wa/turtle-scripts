@@ -23,6 +23,9 @@ library(ggplot2)
 # library(geojsonio)
 # library(sp)
 library(rgdal)
+# install.packages("../data/packfor_0.0-8.tar.gz", repos = NULL, type = "source")
+library(packfor)
+
 if (file.exists("../config/setup.R")) source("../config/setup.R")
 api <- "https://strandings.dpaw.wa.gov.au/api/1/"
 thv <- "turtle-nest-encounters/?where=17&limit=10000&format=json"
@@ -233,7 +236,7 @@ qplot(Y.in$"Natator.depressus", geom="histogram")
 ```
 The main species look a bit left-skewed and show many absences.
 
-Hellinger transformation will help reduce false similarity through shared absences.
+The Hellinger transformation will help reduce false similarity through shared absences.
 
 ```{r}
 library(vegan)
@@ -261,10 +264,66 @@ Xs.scores <- select(surveys_pcnm, starts_with("PCNM"))
 Xt.pcnm <- pcnm(dist(Xt))
 Xt.scores <- as.data.frame(scores(Xt.pcnm))
 
-install.packages("packfor")
-library(packfor)
 # TODO Moran's I
-# Xs.sel <- forward.sel(Y, Xs.scores)
+Xs.sel <- forward.sel(Y, Xs.scores)
+Xt.sel <- forward.sel(Y, Xt.scores)
+XS <- Xs.scores %>% select(Xs.sel$order)
+XT <- Xt.scores %>% select(Xt.sel$order)
+
+Xs.sel
+Xt.sel
+Y.vp <- varpart(Y, ~as.matrix(XS), ~as.matrix(XT))
+Y.vp
+plot(Y.vp)
+```
+
+Outcome: 
+
+* Spatial patterns explain a total of 4% of the variance.
+* Temporal patterns explain a total of 12% of the variance.
+
+## Spatial patterns
+```{r}
+plot.xs <- function(nr, coords, scores, fs){
+  fig <- ordisurf(coords, scores[,nr], bubble=3,
+           main=paste("Spatial pattern", fs[nr,2]), 
+           sub=paste("explains", round(as.numeric(fs[nr,3]), digits=3)*100, 
+                     "% variance"))
+  pdf(paste0("data/spatial_pattern_", nr, ".pdf"), width=6, height=6)
+  fig
+  dev.off()
+  fig
+}
+
+lapply(seq_len(nrow(Xs.sel)), 
+       plot.xs, 
+       select(sites_pcnm, xmin, ymin), 
+       select(sites_pcnm, starts_with("PCNM")), 
+       Xs.sel)
+```
+
+### Temporal patterns
+```{r}
+
+#' Create a scatterplot of PCNM values against dates.
+#' 
+#' nr: The row number of the forward.sel dataframe
+#' dates: a vector of ymd dates
+#' scores: a data.frame of PCNM scores
+#' fs: an output data.frame of forward.sel
+plot.xt <- function(nr, dates, scores, fs){
+  fig <- plot(x=ymd(dates), y=scores[,nr], type="p",
+     xlab="", ylab=paste("PCNM", fs[nr,2]), 
+     main=paste("Temporal pattern", fs[nr,2]), 
+     sub=paste("explains", round(as.numeric(fs[nr,3]), digits=3)*100, "% variance"))
+  pdf(paste0("data/temporal_pattern_", nr, ".pdf"), width=6, height=6)
+  fig
+  dev.off()
+  fig
+}
+
+# Plot all significant temporal PCNM variables.
+lapply(Xt.sel$order, plot.xt, dd$date, XT, Xt.sel)
 ```
 
 # Questions
