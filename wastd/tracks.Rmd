@@ -6,8 +6,8 @@ output: html_document
 ---
 
 ```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
-setwd("~/projects/turtle-scripts/wastd")
 knitr::opts_chunk$set(echo = TRUE)
+setwd("~/projects/turtle-scripts/wastd")
 # https://cran.r-project.org/web/packages/tidyjson/vignettes/introduction-to-tidyjson.html
 # install.packages("tidyjson") # a better way to flatten JSON to CSV?
 library(httr)
@@ -18,6 +18,11 @@ library(tidyjson)
 library(DT)
 library(leaflet)
 library(ggplot2)
+# if (!require("devtools")) install.packages("devtools")
+# devtools::install_github("ropensci/geojsonio")
+# library(geojsonio)
+# library(sp)
+library(rgdal)
 if (file.exists("../config/setup.R")) source("../config/setup.R")
 api <- "https://strandings.dpaw.wa.gov.au/api/1/"
 thv <- "turtle-nest-encounters/?where=17&limit=10000&format=json"
@@ -171,7 +176,98 @@ Beginning, peak, end of nesting season per species at location
 ## Spatial and temporal patterns of abundance
 Spatial and temporal patterns of species abundance (daily species tallies) (PCNM)
 
-Questions:
+### Species profiles
+Observations have to be binned into spatial (rectangular grid cells) and 
+temporal (days) buckets and pivoted into species profiles.
+
+```{r}
+grd = readOGR("thv_grid.geojson", "OGRGeoJSON")
+head(d)
+library(sp)
+library(maptools)
+library(tidyr)    
+
+# Turn data into SpatialPointsDataFrame (R's "Shapefile"")
+wgs84 = CRS('+proj=longlat +datum=WGS84 +no_defs')
+d.sp <- SpatialPoints(coords=select(d, longitude, latitude), proj4string=wgs84)
+d.spdf <- SpatialPointsDataFrame(d.sp, data=d, proj4string=wgs84)
+
+# Join data to grid polygons
+d.spdf.grd <- spCbind(d.spdf, over(d.spdf, grd))
+
+# Create species profiles for species track abundance per grid cell and date
+dd <- d.spdf.grd@data %>% 
+    filter(!is.na(id)) %>%
+    group_by(date, id, species) %>% 
+    tally(sort=F) %>% 
+    ungroup() %>%
+    spread(species, n, fill=0) %>% left_join(grd, by="id", copy=T)
+colnames(dd) <- make.names(colnames(dd))
+DT::datatable(dd)
+
+X.site.xy <- grd@data %>% select(xmin, ymin) %>% as.data.frame()
+Xs <- dd %>% select(xmin, ymin)
+Xt <- difftime(dd$date, origin)
+Y.in <- dd %>% select(-id, -date, -xmin, -xmax, -ymin, -ymax)
+```
+
+### Correlations between variables
+```{r}
+pairs(Y.in, main="Correlations between species")
+```
+The nesting emergence abundance between Flatbacks and Greens seem to correlate inversely.
+
+### Skewness in variables
+
+* Histograms of Y and X will show the distribution of variable values.
+* Expected: normal or uniform distribution.
+* Right-skewed distributions can be log-transformed.
+* Left-skewed distributions can be sqrt-transformed.
+* Sparse observations should be Hellinger-transformed to reduce false similarity 
+  between sites through shared absence (which might be undersampling rather than 
+  true absence).
+  
+```{r}
+qplot(Y.in$"Chelonia.mydas", geom="histogram") 
+qplot(Y.in$"Natator.depressus", geom="histogram")
+```
+The main species look a bit left-skewed and show many absences.
+
+Hellinger transformation will help reduce false similarity through shared absences.
+
+```{r}
+library(vegan)
+Y.hel <- Y.in %>% decostand("hellinger")
+pairs(Y.hel)
+qplot(Y.hel$"Chelonia.mydas", geom="histogram")
+qplot(Y.hel$"Natator.depressus", geom="histogram")
+```
+
+Remove linear spatial trends, lest they eat up explanatory power.
+
+```{r}
+Y <- residuals(rda(Y.hel, Xs))
+pairs(Y)
+```
+
+
+### PCNM
+party time.
+```{r}
+Xs.site.pcnm <- pcnm(dist(X.site.xy))
+sites_pcnm <- cbind(grd@data, scores(Xs.site.pcnm))
+surveys_pcnm <- left_join(dd, sites_pcnm, by="id")
+Xs.scores <- select(surveys_pcnm, starts_with("PCNM"))
+Xt.pcnm <- pcnm(dist(Xt))
+Xt.scores <- as.data.frame(scores(Xt.pcnm))
+
+install.packages("packfor")
+library(packfor)
+# TODO Moran's I
+# Xs.sel <- forward.sel(Y, Xs.scores)
+```
+
+# Questions
 
 * Are there any hotspots of different species?
 * Does the tagging area cover the main nesting area?
