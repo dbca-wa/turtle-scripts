@@ -326,6 +326,13 @@ plot.xt <- function(nr, dates, scores, fs){
 lapply(Xt.sel$order, plot.xt, dd$date, XT, Xt.sel)
 ```
 
+A spot of modelling!
+```{r}
+XSm <- as.matrix(XS)
+XTm <- as.matrix(XT)
+Y.rda <- rda(Y ~ XSm + XTm)
+ordiplot(Y.rda)
+```
 # Questions
 
 * Are there any hotspots of different species?
