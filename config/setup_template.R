@@ -27,6 +27,4 @@ PW='db-password'
 TAG_CON=paste0('driver={SQL Server};server=', SRV, ';database=', DB,';username=', UN, ';password=', PW)
 
 # turtle-tracks.Rmd
-Sys.setenv(GOOGLE_API_KEY="google-api-key")
-Sys.setenv(TABLE_ID="google-table-id")
-Sys.setenv(APITOKEN="wastd-api-token")
+APITOKEN="Token paste-wastd-api-token"
