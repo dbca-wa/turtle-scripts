@@ -144,7 +144,7 @@ There may be more periods with artificially low track count.
 **TODO** enter surveys into WAStD, annotate with observations on weather, methodology,
 any known biases on recorded data.
 
-## Nesting effort
+## Nesting effort (hello sabrina!)
 ```{r}
 ggplot(nesting_success, aes(x=date, colour=species)) +
     geom_point(aes(y=all, shape="all")) + 
@@ -156,7 +156,7 @@ ggplot(nesting_success, aes(x=date, colour=species)) +
 
 ## Nesting success
 ```{r}
-ggplot(nesting_success, aes(x=date, y=all, colour=species)) +
+ggplot(nesting_success, aes(x=date, y=nesting_success, colour=species)) +
     geom_point() + ggtitle("Nesting success at Thevenard Is") +
     labs(x="Date", y="Success rate of nesting emergences") +
     facet_wrap("species", ncol=1)
@@ -170,6 +170,11 @@ Beginning, peak, end of nesting season per species at location
 
 ## Spatial and temporal patterns of abundance
 Spatial and temporal patterns of species abundance (daily species tallies) (PCNM)
+
+Questions:
+
+* Are there any hotspots of different species?
+* Does the tagging area cover the main nesting area?
 
 **TODO PCNM analysis**
 
