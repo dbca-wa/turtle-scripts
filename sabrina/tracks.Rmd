@@ -59,7 +59,7 @@ no_observations <- nrow(d)
 earliest_observation <- with_tz(min(d$datetime), tzone=gmt08)
 latest_observation <- with_tz(max(d$datetime), tzone=gmt08)
 
-# Tally all tracks
+# Tally all tracks_hello
 tally_data <- d %>%
   group_by(date, species, nest_age) %>% tally(sort=F) %>% ungroup()
 
