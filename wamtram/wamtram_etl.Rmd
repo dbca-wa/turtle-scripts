@@ -61,7 +61,6 @@ atabase prompted a re-development of the process, which is described in this doc
 # dbListTables(con)
 # RODBC:
 con <- odbcConnect("turtle_tagging", uid=UN, pwd=PW)
-con <- odbcDriverConnect(TAG_CON)
 entry_batches <- sqlQuery(con, 'select * from dbo.TRT_ENTRY_BATCHES')
 data_entry <- sqlQuery(con, 'select * from dbo.TRT_DATA_ENTRY')
 data_entry_operators <- sqlQuery(con, 'select * from TRT_DATA_ENTRY_PERSONS')
@@ -246,24 +245,24 @@ sites <- sqlQuery(con, "select * from dbo.TRT_PLACES;") %>%
     is_rookery=ROOKERY,
     beach_approach=BEACH_APPROACH,
     beach_aspect=ASPECT,
-    datum=DATUM_CODE,
-    latitude=LATITUDE,
-    longitude=LONGITUDE,
+    site_datum=DATUM_CODE,
+    site_latitude=LATITUDE,
+    site_longitude=LONGITUDE,
     comments=COMMENTS
   )
 
-sites_with_coordinates <- sites %>% filter(!is.na(latitude))
+sites_with_coordinates <- sites %>% filter(!is.na(site_latitude))
 ico <- makeAwesomeIcon(icon="cog", lib="glyphicon")
 leaflet(sites_with_coordinates) %>%
   addProviderTiles("Esri.WorldImagery") %>%
   setView(lng=120, lat=-20, zoom=5) %>%
-  addAwesomeMarkers(~longitude, ~latitude, label=~label, icon=ico)
+  addAwesomeMarkers(~site_longitude, ~site_latitude, label=~label, icon=ico)
 ```
 
 Some sites are missing coordinates and need to be fixed in `TRT_PLACES`:
 
 ```{r}
-badsites <- sites %>% filter(is.na(latitude) | is.na(longitude))
+badsites <- sites %>% filter(is.na(site_latitude) | is.na(site_longitude))
 DT::datatable(badsites)
 ```
 
@@ -281,8 +280,7 @@ persons <- sqlQuery(con, "select * from dbo.TRT_PERSONS;")
 person_names <- persons %>%
   transmute(
     PERSON_ID=PERSON_ID,
-    name=paste(FIRST_NAME, SURNAME, EMAIL)
-  )
+    name=paste(FIRST_NAME, SURNAME, EMAIL))
 
 activities <- sqlQuery(
     con, "select * from dbo.TRT_ACTIVITIES;") %>%
@@ -342,6 +340,7 @@ recorded_tags <- sqlQuery(
     tag_position=TAG_POSITION,
     comments=COMMENTS
   )
+save(recorded_tags, file="data/tag_observations.Rda")
 
 # 51k inferred turtle identities
 turtles <- sqlQuery(con, "select * from dbo.TRT_TURTLES;")
@@ -390,28 +389,49 @@ utc <- "UTC"
 gmt08 <- "Australia/Perth"
 
 o <- obs %>%
-  mutate(
-    o_date=parse_date_time(CORRECTED_DATE, orders=ord, tz=gmt08),
-    o_time=parse_date_time(OBSERVATION_TIME, orders=ord, tz=gmt08),
-    observation_datetime_gmt08=o_date + hours(hour(o_time)) + minutes(minute(o_time)),
-    observation_datetime_utc=with_tz(observation_datetime_gmt08, tz=utc)
-  ) %>%
-  rename(
-    activity_code=ACTIVITY_CODE
-  ) %>%
-  left_join(activities, by="activity_code") %>%
-  # left_join(sites, by="PLACE_CODE") %>%
-  select(
-    -OBSERVATION_DATE, -OBSERVATION_TIME, -OBSERVATION_DATE_OLD, -CORRECTED_DATE,
-    -DATE_CONVENTION, -o_date, -o_time
-  )
+    mutate(
+        o_date=parse_date_time(CORRECTED_DATE, orders=ord, tz=gmt08),
+        o_time=parse_date_time(OBSERVATION_TIME, orders=ord, tz=gmt08),
+        observation_datetime_gmt08=o_date + hours(hour(o_time)) + minutes(minute(o_time)),
+        observation_datetime_utc=with_tz(observation_datetime_gmt08, tz=utc)
+    ) %>%
+    rename(
+        activity_code=ACTIVITY_CODE
+    ) %>%
+    left_join(activities, by="activity_code") %>%
+    # left_join(sites, by="PLACE_CODE") %>%
+    select(
+        -OBSERVATION_DATE, -OBSERVATION_TIME, -OBSERVATION_DATE_OLD, 
+        -CORRECTED_DATE, -DATE_CONVENTION, -o_date, -o_time
+    ) %>%
+    left_join(person_names, by=c("MEASURER_PERSON_ID" = "PERSON_ID")) %>%
+    rename(measured_by=name) %>%
+    left_join(person_names, by=c("MEASURER_REPORTER_PERSON_ID" = "PERSON_ID")) %>%
+    rename(measurements_reported_by=name) %>%
+    left_join(person_names, by=c("TAGGER_PERSON_ID" = "PERSON_ID")) %>%
+    rename(tagged_by=name) %>%
+    left_join(person_names, by=c("REPORTER_PERSON_ID" = "PERSON_ID")) %>%
+    rename(reported_by=name) %>%
+    left_join(sites, by=c("PLACE_CODE" = "name"))
 
-head(o)
-DT::datatable(head(o))
+save(o, file="data/encounters.Rda")
+# TODO reconstruct empty DD from DMS or UTM or site coords
+enc <- o %>%
+    filter(PLACE_CODE=="THEE" & !is.na(LONGITUDE))
+datatable(enc)
+# write.csv(o, file="data/wamtram_encounters.csv", row.names=F)
+write.csv(enc, file="data/wamtram_encounters.csv", row.names=F)
+ckanr::resource_update(W2_ENC_CSV_RID, "data/wamtram_encounters.csv")
 ```
+
 
 * obs with OTHER_TAGS_IDENTIFICATION_TYPE == "STRAND/SAL" are untagged strandings
 * TRT_IDENTIFICATION_TYPES = TAG_TYPE
+
+```{r}
+datatable(sites)
+
+```
 
 
 # Products
