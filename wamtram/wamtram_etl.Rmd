@@ -5,18 +5,19 @@ date: "18 July 2016"
 output: html_document
 ---
 ```{r, message=F}
-require(Hmisc)
-require(tidyr)
-require(dplyr)
-require(lubridate)
-require(ckanr)
-require(DT)
-require(rgdal)
-require(mapview)
+setwd("~/projects/turtle-scripts/wamtram")
+library(Hmisc)
+library(tidyr)
+library(dplyr)
+library(lubridate)
+library(ckanr)
+library(DT)
+library(rgdal)
+library(mapview)
 library(leaflet)
-require(vegan)
-require(RODBC)
-source("setup.R")
+library(vegan)
+library(RODBC)
+if (file.exists("../config/setup.R")) source("../config/setup.R")
 ```
 
 This document describes and executes the Extraction, Transformation and (up)Loading
@@ -29,8 +30,7 @@ Setup RODBC as per
 [the instructions](http://itsalocke.com/install-sql-server-odbc-drivers-travis-ci/)
 and configure an ODBC data source for the tagging database, e.g.
 
-* in Windows: crying, curling up into a ball and ask an experienced user to
-  configure the ODBC data source in Control Panel > ODBC Data Sources,
+* in Windows: ask IT to configure the ODBC data source in Control Panel > ODBC Data Sources,
 * Apple: going to the Apple store and buying a new MacBook Pro, or
 * Linux: writing three lines to a file `~/.odbc.ini`:
 
@@ -56,11 +56,12 @@ atabase prompted a re-development of the process, which is described in this doc
 # Field data ingestion
 
 ```{r}
-# libary(RSQLServer)
+# library(RSQLServer)
 # con <- RSQLServer::dbConnect(RSQLServer::SQLServer(), SRV, database=DB, properties=list(user=UN, password=PW))
 # dbListTables(con)
 # RODBC:
 con <- odbcConnect("turtle_tagging", uid=UN, pwd=PW)
+con <- odbcDriverConnect(TAG_CON)
 entry_batches <- sqlQuery(con, 'select * from dbo.TRT_ENTRY_BATCHES')
 data_entry <- sqlQuery(con, 'select * from dbo.TRT_DATA_ENTRY')
 data_entry_operators <- sqlQuery(con, 'select * from TRT_DATA_ENTRY_PERSONS')
@@ -439,3 +440,7 @@ plus columns for location and species.
 
 # Upload
 This section uploads the extracted data to the data catalogue.
+
+```{r}
+setwd("~/projects/turtle-scripts/wamtram")
+```
