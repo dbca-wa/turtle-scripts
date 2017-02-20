@@ -49,10 +49,10 @@ Download, unzip and open the Access mdb file from the data catalogue.
 if (refresh_data) {
   tmp <- tempfile()
   download.file(resource_show(MDB_RID)$url, tmp)
-  dbfile <- unzip(tmp, "ningaloov4.mdb", exdir="data")
+  dbfile <- unzip(tmp, "ningaloov6.mdb", exdir="data")
   unlink(tmp)
 } else {
-  dbfile <- "data/ningaloov4.mdb"
+  dbfile <- "data/ningaloov6.mdb"
 }
 con <- mdb.get(dbfile, dateformat='%Y-%m-%d', as.is=T)
 contents(con)
@@ -81,10 +81,10 @@ sites <- con$tblSections %>%
     x_min=as.numeric(SubSect.SW.long))
 row.names(sites) <- sites$id
 
-# Manually fix mising NE corner of Red Bluff
+# Example: fix missing NE corner of Red Bluff
 # Note: this is a temporary measure until the Access db is updated
-sites[which(sites$subsection=="Red Bluff"),]$x_max <- 113.458
-sites[which(sites$subsection=="Red Bluff"),]$y_max <- -24.016
+# sites[which(sites$subsection=="Red Bluff"),]$x_max <- 113.458
+# sites[which(sites$subsection=="Red Bluff"),]$y_max <- -24.016
 
 write.csv(sites, file = "data/sites.csv", row.names=F)
 ```
