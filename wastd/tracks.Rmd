@@ -28,13 +28,17 @@ library(packfor)
 
 if (file.exists("../config/setup.R")) source("../config/setup.R")
 api <- "https://strandings.dpaw.wa.gov.au/api/1/"
-thv <- "turtle-nest-encounters/?where=17&limit=10000&format=json"
+pars <- "?taxon=Cheloniidae&limit=10000&format=json"
 hdr <- c(Authorization = APITOKEN)
-res <- httr::GET(paste0(api, thv), add_headers(.headers = hdr))
-res_json <- res %>% content("text") %>% as.tbl_json()
-data_json <- attr(res_json, "JSON")[[1]]$results
+res_trk <- httr::GET(paste0(api, "turtle-nest-encounters/", pars), 
+                     add_headers(.headers = hdr)) %>% content("text", encoding="utf-8") %>% as.tbl_json()
+data_trk_json <- attr(res_trk, "JSON")[[1]]$results
 
-flatten_track_observations <- function(li){
+res_tag <- httr::GET(paste0(api, "animal-encounters/", pars), 
+                     add_headers(.headers = hdr)) %>% content("text", encoding="utf-8") %>% as.tbl_json()
+data_tag_json <- attr(res_tag, "JSON")[[1]]$results
+
+flatten_trk <- function(li){
   datetime <- li$when
   lon <- li$where$longitude
   lat <- li$where$latitude
@@ -45,21 +49,46 @@ flatten_track_observations <- function(li){
   out
 }
 
+flatten_tag <- function(li){
+  datetime <- li$when
+  lon <- li$where$longitude
+  lat <- li$where$latitude
+  species <- li$species
+  health <- li$health
+  activity <- li$activity
+  out <- c(datetime, lon, lat, species, health, activity)
+  out
+}
+
 utc <- "UTC"
 gmt08 <- "Australia/Perth"
 ord <- c("YmdHMSz", "adbYHMS")
 
-d <- ldply(data_json, flatten_track_observations) %>% tbl_df()
-colnames(d) <- c("datetime", "longitude", "latitude", "species", "nest_age", "nest_type")
-d <- mutate(d,
+tracks <- ldply(data_track_json, flatten_track_observations) %>% tbl_df()
+colnames(tracks) <- c("datetime", "longitude", "latitude", "species", "nest_age", "nest_type")
+tracks <- mutate(tracks,
             datetime=with_tz(parse_date_time(datetime, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
             longitude=as.numeric(longitude),
             latitude=as.numeric(latitude)
             ) %>%
   mutate(date=as_date(datetime))
 # glimpse(d)
-save(d, file="data/tracks.Rda")
+save(tracks, file="data/tracks.Rda")
 load("data/tracks.Rda")
+
+tags <- ldply(data_tag_json, flatten_track_observations) %>% tbl_df()
+colnames(tags) <- c("datetime", "longitude", "latitude", "species", "health", "activity")
+tags <- mutate(tags,
+            datetime=with_tz(parse_date_time(datetime, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
+            longitude=as.numeric(longitude),
+            latitude=as.numeric(latitude)
+            ) %>%
+  mutate(date=as_date(datetime))
+# glimpse(d)
+save(tags, file="data/tags.Rda")
+load("data/tags.Rda")
+
+
 
 # Metadata on data currency
 data_retrieved_on <- with_tz(parse_date_time(res$headers$date, orders=ord, tz=utc), tzone=gmt08)
