@@ -1,0 +1,117 @@
+---
+title: "Strandings"
+author: "Florian Mayer"
+date: "20/02/2017"
+output: html_document
+---
+
+This document illustrates an example workflow of using AnimalEncounter data 
+(strandings, taggings) from the WAStD API.
+
+```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/projects/turtle-scripts/wastd")
+# https://cran.r-project.org/web/packages/tidyjson/vignettes/introduction-to-tidyjson.html
+# install.packages("tidyjson") # a better way to flatten JSON to CSV?
+library(httr)
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(tidyjson)
+library(DT)
+library(leaflet)
+library(ggplot2)
+library(rgdal)
+# install.packages("../data/packfor_0.0-8.tar.gz", repos = NULL, type = "source")
+library(packfor)
+if (file.exists("../config/setup.R")) source("../config/setup.R")
+```
+
+After loading some libraries and configs, the WAStD API is called, and the response
+is read into a JSON dictionary.
+
+```{r call_api}
+api <- "https://strandings.dpaw.wa.gov.au/api/1/"
+parms <- "animal-encounters/?encounter_type=stranding&format=json&limit=5000"
+hdr <- c(Authorization = APITOKEN)
+res <- httr::GET(paste0(api, parms), add_headers(.headers = hdr))
+res_json <- res %>% content("text", encoding="utf-8") %>% as.tbl_json()
+data_json <- attr(res_json, "JSON")[[1]]$results
+```
+
+To flatten the nested JSON structure in to a CSV-like table, we need to define
+an algorithm to pull the individual fields from the depths of the nested objects.
+
+```{r prepare_data}
+flatten_observations <- function(li){
+  datetime <- li$when
+  lon <- li$where$longitude
+  lat <- li$where$latitude
+  taxon <- li$taxon
+  species <- li$species
+  health <- li$health
+  sex <- li$sex
+  encounter_type <- li$encounter_type
+  cause_of_death <- li$cause_of_death
+  out <- c(datetime, lon, lat, taxon, species, health, sex, encounter_type, cause_of_death)
+  out
+}
+
+
+d <- ldply(data_json, flatten_observations) %>% tbl_df()
+colnames(d) <- c("datetime", "longitude", "latitude", "taxon", "species",
+                 "health", "sex", "encounter_type", "cause_of_death")
+```
+
+Finally, the data type of some columns (date, numbers) is set, and the data 
+object is stored as a save point.
+
+```{r}
+utc <- "UTC"
+gmt08 <- "Australia/Perth"
+ord <- c("YmdHMSz", "adbYHMS")
+
+d <- mutate(d,
+            datetime=with_tz(parse_date_time(datetime, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
+            longitude=as.numeric(longitude),
+            latitude=as.numeric(latitude)
+            ) %>%
+  mutate(date=as_date(datetime))
+save(d, file="data/animalencounters.Rda")
+load("data/animalencounters.Rda")
+glimpse(d)
+```
+
+Getting some metadata.
+
+```{r}
+# Metadata on data currency
+data_retrieved_on <- with_tz(parse_date_time(res$headers$date, orders=ord, tz=utc), tzone=gmt08)
+no_observations <- nrow(d)
+earliest_observation <- with_tz(min(d$datetime), tzone=gmt08)
+latest_observation <- with_tz(max(d$datetime), tzone=gmt08)
+```
+
+**`r no_observations` records** retrieved from the WAStD API on 
+  `r data_retrieved_on` GMT+08 when compiling this workbook.
+
+The observations span **`r earliest_observation` - `r latest_observation` GMT+08**.
+
+## Interactive map
+Hover-scroll to zoom, click features to inspect.
+```{r}
+leaflet(d) %>%
+  addProviderTiles("Esri.WorldImagery") %>%
+  setView(lng=120, lat=-25, zoom=5) %>%
+  addAwesomeMarkers(~longitude, ~latitude, label=~species,
+                    popup=~paste(species, health, cause_of_death))
+```
+
+
+## Data summaries
+
+```{r}
+tally_data <- d %>%
+  group_by(species, cause_of_death) %>% tally(sort=F) %>% ungroup()
+DT::datatable(tally_data)
+```
