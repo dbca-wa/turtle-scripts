@@ -9,6 +9,7 @@ setwd("~/projects/turtle-scripts/wamtram")
 library(Hmisc)
 library(tidyr)
 library(dplyr)
+library(stringr)
 library(lubridate)
 library(ckanr)
 library(DT)
@@ -278,9 +279,14 @@ Ancillary lookup tables are sanitised and joined to the observations.
 # Sensitive information!
 persons <- sqlQuery(con, "select * from dbo.TRT_PERSONS;")
 person_names <- persons %>%
-  transmute(
-    PERSON_ID=PERSON_ID,
-    name=paste(FIRST_NAME, SURNAME, EMAIL))
+    transmute(
+        name=paste(FIRST_NAME, SURNAME) %>% str_replace_all("[<>()*=?]", "") %>% str_trim(),
+        email=EMAIL %>% str_replace("NA", "") %>% str_trim())
+person_details <- persons %>%
+    mutate(
+        name=paste(FIRST_NAME, SURNAME) %>% str_replace_all("[<>()*=?]", "") %>% str_trim(),
+        email=EMAIL %>% str_replace("NA", "") %>% str_trim())
+write.csv(person_details, file="data/wamtram_users.csv", row.names=F)
 
 activities <- sqlQuery(
     con, "select * from dbo.TRT_ACTIVITIES;") %>%
@@ -341,6 +347,8 @@ recorded_tags <- sqlQuery(
     comments=COMMENTS
   )
 save(recorded_tags, file="data/tag_observations.Rda")
+load("data/tag_observations.Rda")
+write.csv(enc, file="data/wamtram_tagobservations.csv", row.names=F)
 
 # 51k inferred turtle identities
 turtles <- sqlQuery(con, "select * from dbo.TRT_TURTLES;")
@@ -412,12 +420,16 @@ o <- obs %>%
     rename(tagged_by=name) %>%
     left_join(person_names, by=c("REPORTER_PERSON_ID" = "PERSON_ID")) %>%
     rename(reported_by=name) %>%
-    left_join(sites, by=c("PLACE_CODE" = "name"))
+    left_join(sites, by=c("PLACE_CODE" = "name")) %>%
+    left_join(turtles, by="TURTLE_ID") 
 
 save(o, file="data/encounters.Rda")
+load("data/encounters.Rda")
+
 # TODO reconstruct empty DD from DMS or UTM or site coords
 enc <- o %>%
-    filter(PLACE_CODE=="THEE" & !is.na(LONGITUDE))
+    filter(PLACE_CODE=="THEE" & !is.na(LONGITUDE) & !is.na(observation_datetime_utc))
+
 datatable(enc)
 # write.csv(o, file="data/wamtram_encounters.csv", row.names=F)
 write.csv(enc, file="data/wamtram_encounters.csv", row.names=F)
@@ -455,7 +467,6 @@ For the Gorgon reports, the following products are generated:
 ## Tag history
 For tags (tag IDs = rows), one column per year, value 0 (not encountered) or 1 (encountered),
 plus columns for location and species.
-
 
 
 # Upload
