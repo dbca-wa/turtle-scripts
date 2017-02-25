@@ -100,7 +100,11 @@ The observations span **`r earliest_observation` - `r latest_observation` GMT+08
 ## Interactive map
 Hover-scroll to zoom, click features to inspect.
 ```{r}
-leaflet(d) %>%
+data <- d %>% 
+    filter(taxon=="Cecacea") %>%
+    # filter(cause_of_death=="boat-strike")
+    
+leaflet(data) %>%
   addProviderTiles("Esri.WorldImagery") %>%
   setView(lng=120, lat=-25, zoom=5) %>%
   addAwesomeMarkers(~longitude, ~latitude, label=~species,
