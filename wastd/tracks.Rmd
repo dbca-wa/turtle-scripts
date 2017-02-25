@@ -64,7 +64,7 @@ utc <- "UTC"
 gmt08 <- "Australia/Perth"
 ord <- c("YmdHMSz", "adbYHMS")
 
-tracks <- ldply(data_track_json, flatten_track_observations) %>% tbl_df()
+tracks <- ldply(data_trk_json, flatten_trk) %>% tbl_df()
 colnames(tracks) <- c("datetime", "longitude", "latitude", "species", "nest_age", "nest_type")
 tracks <- mutate(tracks,
             datetime=with_tz(parse_date_time(datetime, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
@@ -76,7 +76,7 @@ tracks <- mutate(tracks,
 save(tracks, file="data/tracks.Rda")
 load("data/tracks.Rda")
 
-tags <- ldply(data_tag_json, flatten_track_observations) %>% tbl_df()
+tags <- ldply(data_tag_json, flatten_tag) %>% tbl_df()
 colnames(tags) <- c("datetime", "longitude", "latitude", "species", "health", "activity")
 tags <- mutate(tags,
             datetime=with_tz(parse_date_time(datetime, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
@@ -91,27 +91,27 @@ load("data/tags.Rda")
 
 
 # Metadata on data currency
-data_retrieved_on <- with_tz(parse_date_time(res$headers$date, orders=ord, tz=utc), tzone=gmt08)
-no_observations <- nrow(d)
-earliest_observation <- with_tz(min(d$datetime), tzone=gmt08)
-latest_observation <- with_tz(max(d$datetime), tzone=gmt08)
+data_retrieved_on <- with_tz(parse_date_time(res_trk$headers$date, orders=ord, tz=utc), tzone=gmt08)
+no_observations <- nrow(res_trk)
+earliest_observation <- with_tz(min(tracks$datetime), tzone=gmt08)
+latest_observation <- with_tz(max(tracks$datetime), tzone=gmt08)
 
 # Tally all tracks
-tally_data <- d %>%
+tally_data <- tracks %>%
   group_by(date, species, nest_age) %>% tally(sort=F) %>% ungroup()
 
 # Tally only "fresh" tracks
-tally_fresh <- d %>% filter(nest_age=="fresh") %>%
+tally_fresh <- tracks %>% filter(nest_age=="fresh") %>%
   group_by(date, species, nest_type) %>% tally(sort=F) %>% ungroup()
 
 # Tally all fresh tracks with nest
-tally_all <- d %>% 
+tally_all <- tracks %>% 
     filter(nest_age=='fresh') %>%
     group_by(date, species) %>% tally(sort=F) %>% ungroup()
 colnames(tally_all) <- c('date', 'species', 'all')
 
 # Tally fresh tracks with nest
-tally_nesting <- d %>% 
+tally_nesting <- tracks %>% 
     filter(nest_age=='fresh', nest_type=='successful-crawl') %>%
     group_by(date, species) %>% tally(sort=F) %>% ungroup()
 colnames(tally_nesting) <- c('date', 'species', 'nesting')
@@ -136,22 +136,36 @@ nesting_success <- mutate(nesting, nesting_success=nesting/all)
 * Observations span **`r earliest_observation` - `r latest_observation` GMT+08**
 
 
-## Interactive datatable
+## Interactive datatable: Tracks
 ```{r}
-DT::datatable(d)
+DT::datatable(tracks)
 ```
+
+## Interactive datatable: Nesting turtles
+```{r}
+DT::datatable(tags)
+```
+
 
 ## Interactive map
 Hover-scroll to zoom, click features to inspect.
 ```{r}
-leaflet(d) %>%
+track <- makeAwesomeIcon(icon="home", markerColor="green")
+tag <- makeAwesomeIcon(icon="tag", markerColor="blue")
+leaflet(tracks) %>%
   addProviderTiles("Esri.WorldImagery") %>%
   setView(lng=115.0, lat=-21.45, zoom=12) %>%
-  addAwesomeMarkers(~longitude, ~latitude, label=~species,
-                    popup=~paste(nest_age, species, nest_type, datetime))
+  addAwesomeMarkers(~longitude, ~latitude,
+                    data=tracks, label=~species,
+                    icon=track,
+                    popup=~paste(nest_age, species, nest_type, datetime)) %>%
+  addAwesomeMarkers(~longitude, ~latitude, data=tags, label=~species,
+                    icon=tag,
+                    popup=~paste(species, activity, datetime))
 ```
 
 # Nesting effort
+TODO: include tagging from here on.
 ## New tracks by species
 ```{r}
 ggplot(tally_fresh, aes(x=date, y=n, colour=nest_type)) +
@@ -214,10 +228,11 @@ temporal (days) buckets and pivoted into species profiles.
 
 ```{r}
 grd = readOGR("thv_grid.geojson", "OGRGeoJSON")
-head(d)
+head(tracks)
 library(sp)
 library(maptools)
 library(tidyr)    
+d <- tracks
 
 # Turn data into SpatialPointsDataFrame (R's "Shapefile"")
 wgs84 = CRS('+proj=longlat +datum=WGS84 +no_defs')
@@ -260,8 +275,8 @@ The nesting emergence abundance between Flatbacks and Greens seem to correlate i
   true absence).
   
 ```{r}
-qplot(Y.in$"Chelonia.mydas", geom="histogram") 
-qplot(Y.in$"Natator.depressus", geom="histogram")
+qplot(Y.in$"chelonia.mydas", geom="histogram") 
+qplot(Y.in$"natator.depressus", geom="histogram")
 ```
 The main species look a bit left-skewed and show many absences.
 
@@ -271,8 +286,8 @@ The Hellinger transformation will help reduce false similarity through shared ab
 library(vegan)
 Y.hel <- Y.in %>% decostand("hellinger")
 pairs(Y.hel)
-qplot(Y.hel$"Chelonia.mydas", geom="histogram")
-qplot(Y.hel$"Natator.depressus", geom="histogram")
+qplot(Y.hel$"chelonia.mydas", geom="histogram")
+qplot(Y.hel$"natator.depressus", geom="histogram")
 ```
 
 Remove linear spatial trends, lest they eat up explanatory power.
@@ -309,7 +324,8 @@ plot(Y.vp)
 Outcome: 
 
 * Spatial patterns explain a total of 4% of the variance.
-* Temporal patterns explain a total of 12% of the variance.
+* Temporal patterns explain a total of 11% of the variance.
+* Another 1% of the variance is co-explained by both spatial and temporal patterns.
 
 ## Spatial patterns
 ```{r}
@@ -366,8 +382,6 @@ ordiplot(Y.rda)
 
 * Are there any hotspots of different species?
 * Does the tagging area cover the main nesting area?
-
-**TODO PCNM analysis**
 
 ```{r, echo=FALSE}
 setwd("~/projects/turtle-scripts")
