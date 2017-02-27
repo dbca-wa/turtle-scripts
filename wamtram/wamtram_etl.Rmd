@@ -33,12 +33,13 @@ and configure an ODBC data source for the tagging database, e.g.
 
 * in Windows: ask IT to configure the ODBC data source in Control Panel > ODBC Data Sources,
 * Apple: going to the Apple store and buying a new MacBook Pro, or
-* Linux: writing three lines to a file `~/.odbc.ini`:
+* Linux: writing four lines to a file `~/.odbc.ini`:
 
 ```{r, eval=F}
 [turtle_tagging]
-Driver = ODBC Driver 13 for SQL Server
-Server = THE_MSSQL_SERVER_DNSNAME
+Driver = FreeTDS
+Server = kensmssql001pro.corporateict.domain
+Port = 1433
 ```
 
 See also the
