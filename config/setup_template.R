@@ -21,12 +21,9 @@ W2_ENC_CSV_RID="f7e30448-de1c-4061-8a85-887632934961"
 
 TRACKS_RID="e5169971-dcc4-4e6a-b69c-cfcbfd0a285e"
 
-# MS SQL Server for tagging db
-SRV='db-server'
-DB='db-name'
+# WAMTRAM db account
 UN='db-username'
 PW='db-password'
-TAG_CON=paste0('driver={SQL Server};server=', SRV, ';database=', DB,';username=', UN, ';password=', PW)
 
 # turtle-tracks.Rmd
 APITOKEN="Token paste-wastd-api-token"

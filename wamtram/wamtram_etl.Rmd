@@ -58,10 +58,6 @@ atabase prompted a re-development of the process, which is described in this doc
 # Field data ingestion
 
 ```{r}
-# library(RSQLServer)
-# con <- RSQLServer::dbConnect(RSQLServer::SQLServer(), SRV, database=DB, properties=list(user=UN, password=PW))
-# dbListTables(con)
-# RODBC:
 con <- odbcConnect("turtle_tagging", uid=UN, pwd=PW)
 entry_batches <- sqlQuery(con, 'select * from dbo.TRT_ENTRY_BATCHES')
 data_entry <- sqlQuery(con, 'select * from dbo.TRT_DATA_ENTRY')
@@ -254,7 +250,7 @@ sites <- sqlQuery(con, "select * from dbo.TRT_PLACES;") %>%
   )
 
 sites_with_coordinates <- sites %>% filter(!is.na(site_latitude))
-ico <- makeAwesomeIcon(icon="cog", lib="glyphicon")
+ico <- makeAwesomeIcon(icon="cog", library="glyphicon")
 leaflet(sites_with_coordinates) %>%
   addProviderTiles("Esri.WorldImagery") %>%
   setView(lng=120, lat=-20, zoom=5) %>%
@@ -279,8 +275,11 @@ Ancillary lookup tables are sanitised and joined to the observations.
 ```{r}
 # Sensitive information!
 persons <- sqlQuery(con, "select * from dbo.TRT_PERSONS;")
+save(persons, file = "data/persons.Rda")
+load("data/persons.Rda")
 person_names <- persons %>%
     transmute(
+        PERSON_ID=PERSON_ID,
         name=paste(FIRST_NAME, SURNAME) %>% str_replace_all("[<>()*=?]", "") %>% str_trim(),
         email=EMAIL %>% str_replace("NA", "") %>% str_trim())
 person_details <- persons %>%
@@ -349,7 +348,7 @@ recorded_tags <- sqlQuery(
   )
 save(recorded_tags, file="data/tag_observations.Rda")
 load("data/tag_observations.Rda")
-write.csv(enc, file="data/wamtram_tagobservations.csv", row.names=F)
+write.csv(recorded_tags, file="data/wamtram_tagobservations.csv", row.names=F)
 
 # 51k inferred turtle identities
 turtles <- sqlQuery(con, "select * from dbo.TRT_TURTLES;")
@@ -390,7 +389,7 @@ damage_codes <- sqlQuery(con, "select * from dbo.TRT_DAMAGE_CODES;")
 damage_causes <- sqlQuery(con, "select * from dbo.TRT_DAMAGE_CAUSE_CODES;")
 damages <- sqlQuery(con, "select * from dbo.TRT_DAMAGE;")
 
-
+# 128k
 obs <- sqlQuery(con, "select * from dbo.TRT_OBSERVATIONS;")
 
 ord <- c("YmdHMS", "Ymd")
@@ -429,7 +428,8 @@ load("data/encounters.Rda")
 
 # TODO reconstruct empty DD from DMS or UTM or site coords
 enc <- o %>%
-    filter(PLACE_CODE=="THEE" & !is.na(LONGITUDE) & !is.na(observation_datetime_utc))
+    filter(!is.na(LONGITUDE) & !is.na(observation_datetime_utc)) %>%
+    filter(PLACE_CODE == "THEE" | PLACE_CODE == "THNB")
 
 datatable(enc)
 # write.csv(o, file="data/wamtram_encounters.csv", row.names=F)
