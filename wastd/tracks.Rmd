@@ -9,7 +9,6 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 setwd("~/projects/turtle-scripts/wastd")
 # https://cran.r-project.org/web/packages/tidyjson/vignettes/introduction-to-tidyjson.html
-# install.packages("tidyjson") # a better way to flatten JSON to CSV?
 library(httr)
 library(plyr)
 library(dplyr)
@@ -18,10 +17,6 @@ library(tidyjson)
 library(DT)
 library(leaflet)
 library(ggplot2)
-# if (!require("devtools")) install.packages("devtools")
-# devtools::install_github("ropensci/geojsonio")
-# library(geojsonio)
-# library(sp)
 library(rgdal)
 # install.packages("../data/packfor_0.0-8.tar.gz", repos = NULL, type = "source")
 library(packfor)
@@ -31,11 +26,13 @@ api <- "https://strandings.dpaw.wa.gov.au/api/1/"
 pars <- "?taxon=Cheloniidae&limit=10000&format=json"
 hdr <- c(Authorization = APITOKEN)
 res_trk <- httr::GET(paste0(api, "turtle-nest-encounters/", pars), 
-                     add_headers(.headers = hdr)) %>% content("text", encoding="utf-8") %>% as.tbl_json()
+                     add_headers(.headers = hdr)) 
+data_trk <- res_trk %>% content("text", encoding="utf-8") %>% as.tbl_json()
 data_trk_json <- attr(res_trk, "JSON")[[1]]$results
 
 res_tag <- httr::GET(paste0(api, "animal-encounters/", pars), 
-                     add_headers(.headers = hdr)) %>% content("text", encoding="utf-8") %>% as.tbl_json()
+                     add_headers(.headers = hdr)) 
+data_tag <- res_tag %>% content("text", encoding="utf-8") %>% as.tbl_json()
 data_tag_json <- attr(res_tag, "JSON")[[1]]$results
 
 flatten_trk <- function(li){
@@ -64,27 +61,53 @@ utc <- "UTC"
 gmt08 <- "Australia/Perth"
 ord <- c("YmdHMSz", "adbYHMS")
 
-tracks <- ldply(data_trk_json, flatten_trk) %>% tbl_df()
-colnames(tracks) <- c("datetime", "longitude", "latitude", "species", "nest_age", "nest_type")
-tracks <- mutate(tracks,
-            datetime=with_tz(parse_date_time(datetime, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
-            longitude=as.numeric(longitude),
-            latitude=as.numeric(latitude)
-            ) %>%
-  mutate(date=as_date(datetime))
-# glimpse(d)
+
+# Very slow, but more expressive:
+# tracks <- data_trk %>%
+#   enter_object("results") %>%
+#   gather_array() %>%
+#   spread_values(
+#     datetime = jstring("when"),
+#     species = jstring("species"),
+#     nest_age = jstring("nest_age"),
+#     nest_type = jstring("nest_type")
+#   ) %>%
+#   enter_object("where") %>% 
+#   gather_array() %>% 
+#   spread_values(
+#     lon = jnumber("longitude"),
+#     lat = jnumber("latitude")
+#   ) %>%
+#   mutate(
+#     datetime=with_tz(parse_date_time(datetime, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
+#     longitude=as.numeric(longitude),
+#     latitude=as.numeric(latitude)
+#   )
+
+# Very fast through vectorisation: flatten nested list into tbl_df
+tr <- ldply(data_trk_json, flatten_trk) %>% tbl_df()
+colnames(tr) <- c("datetime_raw", "longitude", "latitude", "species", "nest_age", "nest_type")
+tracks <- tr %>%
+  mutate(
+    datetime=with_tz(parse_date_time(datetime_raw, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
+    longitude=as.numeric(longitude),
+    latitude=as.numeric(latitude),
+    date=as_date(datetime)
+  )
+# glimpse(tracks)
 save(tracks, file="data/tracks.Rda")
 load("data/tracks.Rda")
 
 tags <- ldply(data_tag_json, flatten_tag) %>% tbl_df()
 colnames(tags) <- c("datetime", "longitude", "latitude", "species", "health", "activity")
-tags <- mutate(tags,
-            datetime=with_tz(parse_date_time(datetime, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
-            longitude=as.numeric(longitude),
-            latitude=as.numeric(latitude)
-            ) %>%
-  mutate(date=as_date(datetime))
-# glimpse(d)
+tags <- tags %>%
+  mutate(
+    datetime=with_tz(parse_date_time(datetime, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
+    longitude=as.numeric(longitude),
+    latitude=as.numeric(latitude),
+    date=as_date(datetime)
+  )
+# glimpse(tags)
 save(tags, file="data/tags.Rda")
 load("data/tags.Rda")
 
@@ -106,14 +129,14 @@ tally_fresh <- tracks %>% filter(nest_age=="fresh") %>%
 
 # Tally all fresh tracks with nest
 tally_all <- tracks %>% 
-    filter(nest_age=='fresh') %>%
-    group_by(date, species) %>% tally(sort=F) %>% ungroup()
+  filter(nest_age=='fresh') %>%
+  group_by(date, species) %>% tally(sort=F) %>% ungroup()
 colnames(tally_all) <- c('date', 'species', 'all')
 
 # Tally fresh tracks with nest
 tally_nesting <- tracks %>% 
-    filter(nest_age=='fresh', nest_type=='successful-crawl') %>%
-    group_by(date, species) %>% tally(sort=F) %>% ungroup()
+  filter(nest_age=='fresh', nest_type=='successful-crawl') %>%
+  group_by(date, species) %>% tally(sort=F) %>% ungroup()
 colnames(tally_nesting) <- c('date', 'species', 'nesting')
 
 
@@ -130,9 +153,9 @@ nesting_success <- mutate(nesting, nesting_success=nesting/all)
 * Forms "TrackCount 0.10" (Nov-Dec 2016) and "Track or Treat 0.26" (Feb 2017)
 * Data warehouse ODK Aggregate at [dpaw-data.appspot.com](https://dpaw-data.appspot.com/)
 * Data exported manually from dpaw-data as JSON and ingested (scripted) into
-  [WAStD](https://strandings.dpaw.wa.gov.au/) after each field trip
+[WAStD](https://strandings.dpaw.wa.gov.au/) after each field trip
 * **`r no_observations` records** retrieved from WAStD API on 
-  `r data_retrieved_on` GMT+08 when compiling this workbook
+`r data_retrieved_on` GMT+08 when compiling this workbook
 * Observations span **`r earliest_observation` - `r latest_observation` GMT+08**
 
 
@@ -198,19 +221,19 @@ any known biases on recorded data.
 ## Nesting effort (hello sabrina!)
 ```{r}
 ggplot(nesting_success, aes(x=date, colour=species)) +
-    geom_point(aes(y=all, shape="all")) + 
-    geom_point(aes(y=nesting, shape="successful")) + 
-    ggtitle("Nesting effort at Thevenard Is") +
-    labs(x="Date", y="Number of nesting emergences") +
-    facet_wrap("species", ncol=1)
+  geom_point(aes(y=all, shape="all")) + 
+  geom_point(aes(y=nesting, shape="successful")) + 
+  ggtitle("Nesting effort at Thevenard Is") +
+  labs(x="Date", y="Number of nesting emergences") +
+  facet_wrap("species", ncol=1)
 ```
 
 ## Nesting success
 ```{r}
 ggplot(nesting_success, aes(x=date, y=nesting_success, colour=species)) +
-    geom_point() + ggtitle("Nesting success at Thevenard Is") +
-    labs(x="Date", y="Success rate of nesting emergences") +
-    facet_wrap("species", ncol=1)
+  geom_point() + ggtitle("Nesting success at Thevenard Is") +
+  labs(x="Date", y="Success rate of nesting emergences") +
+  facet_wrap("species", ncol=1)
 ```
 
 
@@ -244,11 +267,11 @@ d.spdf.grd <- spCbind(d.spdf, over(d.spdf, grd))
 
 # Create species profiles for species track abundance per grid cell and date
 dd <- d.spdf.grd@data %>% 
-    filter(!is.na(id)) %>%
-    group_by(date, id, species) %>% 
-    tally(sort=F) %>% 
-    ungroup() %>%
-    spread(species, n, fill=0) %>% left_join(grd, by="id", copy=T)
+  filter(!is.na(id)) %>%
+  group_by(date, id, species) %>% 
+  tally(sort=F) %>% 
+  ungroup() %>%
+  spread(species, n, fill=0) %>% left_join(grd, by="id", copy=T)
 colnames(dd) <- make.names(colnames(dd))
 DT::datatable(dd)
 
@@ -271,9 +294,9 @@ The nesting emergence abundance between Flatbacks and Greens seem to correlate i
 * Right-skewed distributions can be log-transformed.
 * Left-skewed distributions can be sqrt-transformed.
 * Sparse observations should be Hellinger-transformed to reduce false similarity 
-  between sites through shared absence (which might be undersampling rather than 
-  true absence).
-  
+between sites through shared absence (which might be undersampling rather than 
+true absence).
+
 ```{r}
 qplot(Y.in$"chelonia.mydas", geom="histogram") 
 qplot(Y.in$"natator.depressus", geom="histogram")
@@ -331,9 +354,9 @@ Outcome:
 ```{r}
 plot.xs <- function(nr, coords, scores, fs){
   fig <- ordisurf(coords, scores[,nr], bubble=3,
-           main=paste("Spatial pattern", fs[nr,2]), 
-           sub=paste("explains", round(as.numeric(fs[nr,3]), digits=3)*100, 
-                     "% variance"))
+                  main=paste("Spatial pattern", fs[nr,2]), 
+                  sub=paste("explains", round(as.numeric(fs[nr,3]), digits=3)*100, 
+                            "% variance"))
   pdf(paste0("data/spatial_pattern_", nr, ".pdf"), width=6, height=6)
   fig
   dev.off()
@@ -358,9 +381,9 @@ lapply(seq_len(nrow(Xs.sel)),
 #' fs: an output data.frame of forward.sel
 plot.xt <- function(nr, dates, scores, fs){
   fig <- plot(x=ymd(dates), y=scores[,nr], type="p",
-     xlab="", ylab=paste("PCNM", fs[nr,2]), 
-     main=paste("Temporal pattern", fs[nr,2]), 
-     sub=paste("explains", round(as.numeric(fs[nr,3]), digits=3)*100, "% variance"))
+              xlab="", ylab=paste("PCNM", fs[nr,2]), 
+              main=paste("Temporal pattern", fs[nr,2]), 
+              sub=paste("explains", round(as.numeric(fs[nr,3]), digits=3)*100, "% variance"))
   pdf(paste0("data/temporal_pattern_", nr, ".pdf"), width=6, height=6)
   fig
   dev.off()
