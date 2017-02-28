@@ -58,7 +58,7 @@ atabase prompted a re-development of the process, which is described in this doc
 # Field data ingestion
 
 ```{r}
-con <- odbcConnect("turtle_tagging", uid=UN, pwd=PW)
+con <- odbcConnect("turtle_tagging", uid=Sys.getenv("W2_UN"), pwd=Sys.getenv("W2_PW"))
 entry_batches <- sqlQuery(con, 'select * from dbo.TRT_ENTRY_BATCHES')
 data_entry <- sqlQuery(con, 'select * from dbo.TRT_DATA_ENTRY')
 data_entry_operators <- sqlQuery(con, 'select * from TRT_DATA_ENTRY_PERSONS')

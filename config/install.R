@@ -1,0 +1,5 @@
+install.packages("packfor", repos="http://R-Forge.R-project.org")
+install.packages("spacemakeR", repos="http://R-Forge.R-project.org")
+install.packages("adespatial", repos="http://R-Forge.R-project.org")
+install.packages("PCNM", repos="http://R-Forge.R-project.org")
+install.packages("AEM", repos="http://R-Forge.R-project.org")

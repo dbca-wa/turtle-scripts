@@ -8,7 +8,6 @@ output: html_document
 ```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 setwd("~/projects/turtle-scripts/wastd")
-# https://cran.r-project.org/web/packages/tidyjson/vignettes/introduction-to-tidyjson.html
 library(httr)
 library(plyr)
 library(dplyr)
@@ -21,19 +20,24 @@ library(rgdal)
 # install.packages("../data/packfor_0.0-8.tar.gz", repos = NULL, type = "source")
 library(packfor)
 
+# Load sensitive settings as environment variables
 if (file.exists("../config/setup.R")) source("../config/setup.R")
+
+# Data URLs
 api <- "https://strandings.dpaw.wa.gov.au/api/1/"
 pars <- "?taxon=Cheloniidae&limit=10000&format=json"
-hdr <- c(Authorization = APITOKEN)
-res_trk <- httr::GET(paste0(api, "turtle-nest-encounters/", pars), 
-                     add_headers(.headers = hdr)) 
-data_trk <- res_trk %>% content("text", encoding="utf-8") %>% as.tbl_json()
-data_trk_json <- attr(res_trk, "JSON")[[1]]$results
+url_trk <- paste0(api, "turtle-nest-encounters/", pars)
+url_tag <- paste0(api, "animal-encounters/", pars)
 
-res_tag <- httr::GET(paste0(api, "animal-encounters/", pars), 
-                     add_headers(.headers = hdr)) 
+# Tracks are TurtleNestEncounters
+res_trk <- GET(url_trk, add_headers(Authorization = Sys.getenv("WASTD_APITOKEN")))
+data_trk <- res_trk %>% content("text", encoding="utf-8") %>% as.tbl_json()
+data_trk_json <- attr(data_trk, "JSON")[[1]]$results
+
+# Tags are AnimalEncounters
+res_tag <- GET(url_tag, add_headers(Authorization = Sys.getenv("WASTD_APITOKEN"))) 
 data_tag <- res_tag %>% content("text", encoding="utf-8") %>% as.tbl_json()
-data_tag_json <- attr(res_tag, "JSON")[[1]]$results
+data_tag_json <- attr(data_tag, "JSON")[[1]]$results
 
 flatten_trk <- function(li){
   datetime <- li$when
@@ -62,7 +66,7 @@ gmt08 <- "Australia/Perth"
 ord <- c("YmdHMSz", "adbYHMS")
 
 
-# Very slow, but more expressive:
+# Very slow, but more expressive way to flatten nested JSON to CSV:
 # tracks <- data_trk %>%
 #   enter_object("results") %>%
 #   gather_array() %>%
@@ -84,7 +88,7 @@ ord <- c("YmdHMSz", "adbYHMS")
 #     latitude=as.numeric(latitude)
 #   )
 
-# Very fast through vectorisation: flatten nested list into tbl_df
+# Vectorisation performs better:
 tr <- ldply(data_trk_json, flatten_trk) %>% tbl_df()
 colnames(tr) <- c("datetime_raw", "longitude", "latitude", "species", "nest_age", "nest_type")
 tracks <- tr %>%
@@ -98,9 +102,9 @@ tracks <- tr %>%
 save(tracks, file="data/tracks.Rda")
 load("data/tracks.Rda")
 
-tags <- ldply(data_tag_json, flatten_tag) %>% tbl_df()
-colnames(tags) <- c("datetime", "longitude", "latitude", "species", "health", "activity")
-tags <- tags %>%
+ta <- ldply(data_tag_json, flatten_tag) %>% tbl_df()
+colnames(ta) <- c("datetime", "longitude", "latitude", "species", "health", "activity")
+tags <- ta %>%
   mutate(
     datetime=with_tz(parse_date_time(datetime, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
     longitude=as.numeric(longitude),
@@ -111,13 +115,16 @@ tags <- tags %>%
 save(tags, file="data/tags.Rda")
 load("data/tags.Rda")
 
-
-
 # Metadata on data currency
-data_retrieved_on <- with_tz(parse_date_time(res_trk$headers$date, orders=ord, tz=utc), tzone=gmt08)
-no_observations <- nrow(res_trk)
-earliest_observation <- with_tz(min(tracks$datetime), tzone=gmt08)
-latest_observation <- with_tz(max(tracks$datetime), tzone=gmt08)
+track_data_retrieved_on <- with_tz(parse_date_time(res_trk$headers$date, orders=ord, tz=utc), tzone=gmt08)
+no_track_observations <- nrow(res_trk)
+earliest_track_observation <- with_tz(min(tracks$datetime), tzone=gmt08)
+latest_track_observation <- with_tz(max(tracks$datetime), tzone=gmt08)
+
+tag_data_retrieved_on <- with_tz(parse_date_time(res_tag$headers$date, orders=ord, tz=utc), tzone=gmt08)
+no_tag_observations <- nrow(res_tag)
+earliest_tag_observation <- with_tz(min(tags$datetime), tzone=gmt08)
+latest_tag_observation <- with_tz(max(tags$datetime), tzone=gmt08)
 
 # Tally all tracks
 tally_data <- tracks %>%
@@ -144,20 +151,30 @@ colnames(tally_nesting) <- c('date', 'species', 'nesting')
 nesting <- left_join(tally_all, tally_nesting, by=c('date','species')) 
 nesting[is.na(nesting)] <- 0
 nesting_success <- mutate(nesting, nesting_success=nesting/all)
-
 ```
 
 # Data
 
-* Data recorded on Android tablets using digital data capture software ODK Collect
-* Forms "TrackCount 0.10" (Nov-Dec 2016) and "Track or Treat 0.26" (Feb 2017)
-* Data warehouse ODK Aggregate at [dpaw-data.appspot.com](https://dpaw-data.appspot.com/)
-* Data exported manually from dpaw-data as JSON and ingested (scripted) into
-[WAStD](https://strandings.dpaw.wa.gov.au/) after each field trip
-* **`r no_observations` records** retrieved from WAStD API on 
-`r data_retrieved_on` GMT+08 when compiling this workbook
-* Observations span **`r earliest_observation` - `r latest_observation` GMT+08**
+## Tracks and nests
 
+* Tracks were recorded on Android tablets using digital data capture software ODK Collect
+* Forms "TrackCount 0.10" (Nov-Dec 2016), "Track or Treat 0.26" (Feb 2017) and v0.31 (Feb 2017)
+* Data warehouse ODK Aggregate at [dpaw-data.appspot.com](https://dpaw-data.appspot.com/)
+* Data exported (through GUI) from dpaw-data as JSON and ingested (scripted) into
+  [WAStD](https://strandings.dpaw.wa.gov.au/) after each field trip
+* **`r no_track_observations` records** retrieved from WAStD API on 
+  `r track_data_retrieved_on` GMT+08 when compiling this workbook
+* Track observations span **`r earliest_track_observation` - `r latest_track_observation` GMT+08**
+
+## Tagging of nesting turtles
+
+* Nesting turtles recorded on paper data sheets, entered and QA'd in WAMTRAM
+* Data exported from WAMTRAM master db (scripted) into CSV and saved to 
+  internal data catalogue
+* Data ingested (scripted) from CSV into WAStD
+* **`r no_tag_observations` records** retrieved from WAStD API on 
+  `r tag_data_retrieved_on` GMT+08 when compiling this workbook
+* Tag observations span **`r earliest_tag_observation` - `r latest_tag_observation` GMT+08**
 
 ## Interactive datatable: Tracks
 ```{r}
@@ -188,7 +205,7 @@ leaflet(tracks) %>%
 ```
 
 # Nesting effort
-TODO: include tagging from here on.
+q.TODO: include tagging from here on.
 ## New tracks by species
 ```{r}
 ggplot(tally_fresh, aes(x=date, y=n, colour=nest_type)) +
@@ -218,29 +235,33 @@ There may be more periods with artificially low track count.
 **TODO** enter surveys into WAStD, annotate with observations on weather, methodology,
 any known biases on recorded data.
 
-## Nesting effort (hello sabrina!)
+## Nesting effort
 ```{r}
-ggplot(nesting_success, aes(x=date, colour=species)) +
-  geom_point(aes(y=all, shape="all")) + 
-  geom_point(aes(y=nesting, shape="successful")) + 
+gg_nesting_abundance <- ggplot(nesting_success, aes(x=date)) +
+  geom_bar(aes(y=all), stat = "identity", color = "black", fill = "black") +
+  geom_bar(aes(y=nesting), stat = "identity", color = "gray", fill="gray") +
   ggtitle("Nesting effort at Thevenard Is") +
   labs(x="Date", y="Number of nesting emergences") +
   facet_wrap("species", ncol=1)
+gg_nesting_abundance
+ggsave("data/nesting_abundance.pdf", gg_nesting_abundance, width=7, height=7)
 ```
 
 ## Nesting success
 ```{r}
-ggplot(nesting_success, aes(x=date, y=nesting_success, colour=species)) +
-  geom_point() + ggtitle("Nesting success at Thevenard Is") +
-  labs(x="Date", y="Success rate of nesting emergences") +
-  facet_wrap("species", ncol=1)
+gg_nesting_success <- ggplot(nesting_success, aes(x = date, y = nesting_success)) +
+  ggtitle("Nesting success at Thevenard Is") +
+  geom_bar(stat = "identity") +
+  labs(x = "Date", y = "Success rate of nesting emergences") +
+  facet_wrap("species", ncol = 1)
+gg_nesting_success
+ggsave("data/nesting_success.pdf", gg_nesting_success, width=7, height=7)
 ```
 
 
 ## Modelling the nesting seasons
-Beginning, peak, end of nesting season per species at location
-
-**TODO fit model to data per species**
+This section aims to determine beginning, peak, and end of nesting season per 
+species at the given location.
 
 ## Spatial and temporal patterns of abundance
 Spatial and temporal patterns of species abundance (daily species tallies) (PCNM)
