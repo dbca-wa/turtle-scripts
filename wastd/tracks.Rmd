@@ -1,7 +1,7 @@
 ---
 title: "Turtle tracks"
 author: "Florian Mayer, Dept Parks & Wildlife WA"
-date: "12/02/2017"
+date: "28/02/2017"
 output: html_document
 ---
 
@@ -94,7 +94,11 @@ tracks <- data_trk_json %>%
     nest_type=V6
   ) %>%
   filter(
-    latitude < -21.44 & latitude > -21.47 & longitude > 114.96 & longitude < 115.03
+    latitude < -21.44,
+    latitude > -21.47,
+    longitude > 114.96,
+    longitude < 115.03,
+    date > dmy("19/11/2016")
   )
 save(tracks, file="data/tracks.Rda")
 load("data/tracks.Rda")
@@ -112,7 +116,11 @@ tags <- data_tag_json %>%
     activity=V6
   ) %>%
   filter(
-    latitude < -21.44 & latitude > -21.47 & longitude > 114.96 & longitude < 115.03
+    latitude < -21.44,
+    latitude > -21.47,
+    longitude > 114.96,
+    longitude < 115.03,
+    date > dmy("19/11/2016")
   )
 save(tags, file="data/tags.Rda")
 load("data/tags.Rda")
@@ -128,31 +136,36 @@ no_tag_observations <- nrow(tags)
 earliest_tag_observation <- with_tz(min(tags$datetime), tzone=gmt08)
 latest_tag_observation <- with_tz(max(tags$datetime), tzone=gmt08)
 
-# TODO get nesting success for tags from "eggs laid"
-# TODO bind_rows(tracks, tags) incl nesting success, exclude "old" tracks
+# TODO get nesting success for tags from "NESTING"
+emergences <- bind_rows(
+  tracks %>% filter(nest_age=="fresh") %>% transmute(date=date, species=species, type=nest_type),
+  tags %>% transmute(date=date, species=species, type=activity)
+)
 
-# Tally all tracks
-tally_data <- tracks %>%
-  group_by(date, species, nest_age) %>% tally(sort=F) %>% ungroup()
-
-# Tally only "fresh" tracks
-tally_fresh <- tracks %>% filter(nest_age=="fresh") %>%
-  group_by(date, species, nest_type) %>% tally(sort=F) %>% ungroup()
+# Tally all tracks and tags
+tally_data <- emergences %>%
+  group_by(date, species, type) %>% tally(sort=F) %>% ungroup()
 
 # Tally all fresh tracks with nest
-tally_all <- tracks %>% 
-  filter(nest_age=='fresh') %>%
-  group_by(date, species) %>% tally(sort=F) %>% ungroup()
-colnames(tally_all) <- c('date', 'species', 'all')
+tally_all <- emergences %>% 
+  group_by(date, species) %>% tally(sort=F) %>% ungroup() %>% 
+  transmute(date=date, species=species, all=n)
 
 # Tally fresh tracks with nest
-tally_nesting <- tracks %>% 
-  filter(nest_age=='fresh', nest_type=='successful-crawl') %>%
-  group_by(date, species) %>% tally(sort=F) %>% ungroup()
-colnames(tally_nesting) <- c('date', 'species', 'nesting')
+tally_nesting <- emergences %>% 
+  filter(type=='successful-crawl' | 
+           type=="hatched-nest" | 
+           type=="returning-to-water"| 
+           type=="laying-eggs"| 
+           type=="digging-body-pit"| 
+           type=="arriving"| 
+           type=="filling-in-egg-chamber"| 
+           type=="excavating-egg-chamber"
+         ) %>%
+  group_by(date, species) %>% tally(sort=F) %>% ungroup() %>%
+  transmute(date=date, species=species, nesting=n)
 
-
-# Join successful nesting crawls with all nesting crawls
+# Join successful nesting emergences with all nesting emergences
 nesting <- left_join(tally_all, tally_nesting, by=c('date','species')) 
 nesting[is.na(nesting)] <- 0
 nesting_success <- mutate(nesting, nesting_success=nesting/all)
@@ -245,7 +258,7 @@ are shown from here.
 
 ## New tracks by species
 ```{r}
-ggplot(tally_fresh, aes(x=date, y=n, colour=nest_type)) +
+ggplot(tally_data, aes(x=date, y=n, colour=type)) +
   geom_point() + facet_wrap("species", ncol=1)
 ```
 
@@ -260,7 +273,7 @@ likely blown over. This will result in false absence of tracks on 20/11/2016-22/
 Wind conditions after 22/11/2016 are unknown and may also decrease the number of 
 detected tracks.
 
-Durign the field trip in Feb 2017 (exact dates to be confirmed), a cyclone 
+During the field trip in Feb 2017 (exact dates to be confirmed), a cyclone 
 prevented track counts on some days and may have blown away many tracks on other 
 days, resulting in days without track counts as well as days with falsely low 
 track counts.
@@ -276,12 +289,12 @@ any known biases on recorded data.
 ```{r}
 gg_nesting_abundance <- ggplot(nesting_success, aes(x=date)) +
   geom_bar(aes(y=all), stat="identity", color="black", fill="black") +
-  geom_bar(aes(y=nesting), stat="identity", color="gray", fill="gray") +
-  ggtitle("Nesting effort at Thevenard Is") +
-  labs(x="Date", y="Number of nesting emergences") +
+  geom_bar(aes(y=nesting), stat="identity", color="green", fill="green") +
+  ggtitle("Nesting effort at Thevenard Island") +
+  labs(x="Date", y="Number of all and successful nesting emergences") +
   facet_wrap("species", ncol=1)
 gg_nesting_abundance
-ggsave("data/nesting_abundance.pdf", gg_nesting_abundance, width=7, height=10)
+ggsave("data/nesting_abundance.pdf", gg_nesting_abundance, width=7, height=7)
 ```
 
 ## Nesting success
@@ -292,7 +305,7 @@ gg_nesting_success <- ggplot(nesting_success, aes(x=date, y=nesting_success)) +
   labs(x="Date", y ="Success rate of nesting emergences") +
   facet_wrap("species", ncol = 1)
 gg_nesting_success
-ggsave("data/nesting_success.pdf", gg_nesting_success, width=7, height=10)
+ggsave("data/nesting_success.pdf", gg_nesting_success, width=7, height=7)
 ```
 
 
@@ -307,12 +320,37 @@ Spatial and temporal patterns of species abundance (daily species tallies) (PCNM
 Observations have to be binned into spatial (rectangular grid cells) and 
 temporal (days) buckets and pivoted into species profiles.
 
+Here, a rectangular grid (roughly 100 x 100m) enclosing the study area was 
+artificially created. The extent and rectangular shape of the grid has no link 
+to the actual study site (the beaches of Thevenard Island), and was chosen solely
+for convenience.
+
+It is to be decided whether the actual nesting beaches, gridded into equidistant
+sections, would be a more appropriate spatial unit.
+
 ```{r}
 grd = readOGR("thv_grid.geojson", "OGRGeoJSON")
-head(tracks)
-d <- tracks
+leaflet() %>% addTiles() %>% addPolygons(data=grd, weight=1, color="orange")
+```
 
-# Turn data into SpatialPointsDataFrame (R's "Shapefile"")
+
+```{r}
+d <- bind_rows(
+  tracks %>% 
+    filter(nest_age=="fresh") %>% 
+    transmute(latitude=latitude, 
+              longitude=longitude, 
+              date=date, 
+              species=species, 
+              type=nest_type),
+  tags %>% 
+    transmute(latitude=latitude, 
+              longitude=longitude, 
+              date=date, 
+              species=species, 
+              type=activity)
+)
+# Turn data into SpatialPointsDataFrame (R's "Shapefile")
 wgs84 = CRS('+proj=longlat +datum=WGS84 +no_defs')
 d.sp <- SpatialPoints(coords=select(d, longitude, latitude), proj4string=wgs84)
 d.spdf <- SpatialPointsDataFrame(d.sp, data=d, proj4string=wgs84)
@@ -341,6 +379,7 @@ Y.in <- dd %>% select(-id, -date, -xmin, -xmax, -ymin, -ymax)
 pairs(Y.in, main="Correlations between species")
 ```
 The nesting emergence abundance between Flatbacks and Greens seem to correlate inversely.
+Observations of Hawksbills and turtles with unknown species ID are sparse.
 
 ### Skewness in variables
 
@@ -356,7 +395,7 @@ true absence).
 qplot(Y.in$"chelonia.mydas", geom="histogram") 
 qplot(Y.in$"natator.depressus", geom="histogram")
 ```
-The main species look a bit left-skewed and show many absences.
+The two main species look a bit left-skewed and show many absences.
 
 The Hellinger transformation will help reduce false similarity through shared absences.
 
@@ -401,9 +440,11 @@ plot(Y.vp)
 
 Outcome: 
 
-* Spatial patterns explain a total of 4% of the variance.
-* Temporal patterns explain a total of 11% of the variance.
-* Another 1% of the variance is co-explained by both spatial and temporal patterns.
+* Spatial patterns explain a total of `r round(Y.vp$part$fract$Adj.R.squared[1] * 100, 2)`% of the variance.
+* Temporal patterns explain a total of `r round(Y.vp$part$fract$Adj.R.squared[2] * 100, 2)`% of the variance.
+* Another `r round(Y.vp$part$indfract$Adj.R.squared[2] * 100, 2)`% of the variance is co-explained by both spatial and temporal patterns.
+* The remaining variation that is unexplained through spatial or temporal patterns is
+  `r round(Y.vp$part$indfract$Adj.R.squared[4] * 100, 2)`%.
 
 ## Spatial patterns
 ```{r}
@@ -456,9 +497,12 @@ XTm <- as.matrix(XT)
 Y.rda <- rda(Y ~ XSm + XTm)
 ordiplot(Y.rda)
 ```
+
 # Questions
 
 * Are there any hotspots of different species?
+* Do certain species (Gn, Fb) favour certain beach aspects? 
+  Correct for difficulty of approach (shallow reef is hard to swim over).
 * Does the tagging area cover the main nesting area?
 
 ```{r, echo=FALSE}
