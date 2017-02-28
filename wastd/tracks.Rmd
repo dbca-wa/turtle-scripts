@@ -1,5 +1,5 @@
 ---
-title: "Turtle tracks"
+title: "Turtle nesting effort"
 author: "Florian Mayer, Dept Parks & Wildlife WA"
 date: "28/02/2017"
 output: html_document
@@ -25,8 +25,9 @@ library(ggplot2)
 library(rgdal)
 library(sp)
 library(maptools)
-library(packfor)
 library(vegan)
+library(PCNM)
+library(adespatial)
 
 # Load sensitive settings as environment variables
 if (file.exists("../config/setup.R")) source("../config/setup.R")
@@ -236,7 +237,9 @@ DT::datatable(tags)
 
 
 ## Interactive map
-Hover-scroll to zoom, click features to inspect.
+Hover-scroll to zoom, click features to inspect. Hold mouse outside map to scroll page.
+
+Be patient when scrolling, your browser is earning its salary right now.
 ```{r}
 track <- makeAwesomeIcon(icon="home", markerColor="green")
 tag <- makeAwesomeIcon(icon="tag", markerColor="blue")
@@ -253,10 +256,8 @@ leaflet(tracks) %>%
 ```
 
 # Nesting effort
-**coming soon** Nesting turtles will be included. Currently, only tracks / nests
-are shown from here.
 
-## New tracks by species
+## Nesting emergences by species
 ```{r}
 ggplot(tally_data, aes(x=date, y=n, colour=type)) +
   geom_point() + facet_wrap("species", ncol=1)
@@ -286,6 +287,7 @@ There may be more periods with artificially low track count.
 any known biases on recorded data.
 
 ## Nesting effort
+Tagging, missed turtles and tracks / nests are combined.
 ```{r}
 gg_nesting_abundance <- ggplot(nesting_success, aes(x=date)) +
   geom_bar(aes(y=all), stat="identity", color="black", fill="black") +
@@ -313,17 +315,20 @@ ggsave("data/nesting_success.pdf", gg_nesting_success, width=7, height=7)
 This section aims to determine beginning, peak, and end of nesting season per 
 species at the given location.
 
+**TODO** This section is under construction.
+
 ## Spatial and temporal patterns of abundance
 Spatial and temporal patterns of species abundance (daily species tallies) (PCNM)
 
 ### Species profiles
-Observations have to be binned into spatial (rectangular grid cells) and 
-temporal (days) buckets and pivoted into species profiles.
+Observations have to be summarised into spatial (rectangular grid cells) and 
+temporal (days) units and pivoted into species profiles.
 
 Here, a rectangular grid (roughly 100 x 100m) enclosing the study area was 
 artificially created. The extent and rectangular shape of the grid has no link 
 to the actual study site (the beaches of Thevenard Island), and was chosen solely
-for convenience.
+for convenience. A grid too narrow will introduce false similarity through 
+shared absences, while a grid too wide will lose spatial detail.
 
 It is to be decided whether the actual nesting beaches, gridded into equidistant
 sections, would be a more appropriate spatial unit.
@@ -416,14 +421,25 @@ pairs(Y)
 
 
 ### PCNM
-party time.
+Party time. 
+Following [this tutorial](https://sites.ualberta.ca/~ahamann/teaching/renr690/Lab9.pdf).
 ```{r}
-Xs.site.pcnm <- pcnm(dist(X.site.xy))
-sites_pcnm <- cbind(grd@data, scores(Xs.site.pcnm))
+plot(Xs)
+Xs.dist <- dist(Xs)
+# TODO: discard all but nearest neighbour
+# Xs.dist[which(Xs.dist>4*min(Xs.dist))]
+# X.spantree <- spantree(Xs.dist)
+Xs.site.pcnm <- PCNM(Xs.dist)
+summary(Xs.site.pcnm)
+Xs.site.pcnm.pos <- as.data.frame(Xs.site.pcnm$vectors)[,which(Xs.site.pcnm$Moran_I$Positive == T)]
+sites_pcnm <- cbind(grd@data, scores(Xs.site.pcnm.pos))
 surveys_pcnm <- left_join(dd, sites_pcnm, by="id")
 Xs.scores <- select(surveys_pcnm, starts_with("PCNM"))
-Xt.pcnm <- pcnm(dist(Xt))
-Xt.scores <- as.data.frame(scores(Xt.pcnm))
+Xt.dist <- dist(Xt)
+Xt.pcnm <- PCNM(Xt.dist, thresh=4*min(Xs.dist))
+# Xt.pcnm.pos <- as.data.frame(Xt.pcnm$vectors)[,which(Xt.pcnm$Moran_I$Positive == T)]
+Xt.scores <- as.data.frame(scores(Xt.pcnm)) # use .pos once PCNM installed
+
 
 # TODO Moran's I
 Xs.sel <- forward.sel(Y, Xs.scores)
