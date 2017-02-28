@@ -8,17 +8,25 @@ output: html_document
 ```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 setwd("~/projects/turtle-scripts/wastd")
+# Data management
 library(httr)
 library(plyr)
 library(dplyr)
 library(lubridate)
 library(tidyjson)
+library(tidyr)  
+
+# Visualisation
 library(DT)
 library(leaflet)
 library(ggplot2)
+
+# Spatial analysis
 library(rgdal)
-# install.packages("../data/packfor_0.0-8.tar.gz", repos = NULL, type = "source")
+library(sp)
+library(maptools)
 library(packfor)
+library(vegan)
 
 # Load sensitive settings as environment variables
 if (file.exists("../config/setup.R")) source("../config/setup.R")
@@ -32,46 +40,35 @@ url_tag <- paste0(api, "animal-encounters/", pars)
 # Tracks are TurtleNestEncounters
 res_trk <- GET(url_trk, add_headers(Authorization = Sys.getenv("WASTD_APITOKEN")))
 data_trk <- res_trk %>% content("text", encoding="utf-8") %>% as.tbl_json()
-data_trk_json <- attr(data_trk, "JSON")[[1]]$results
+data_trk_json <- attr(data_trk, "JSON")[[1]]$results  # $features
 
 # Tags are AnimalEncounters
 res_tag <- GET(url_tag, add_headers(Authorization = Sys.getenv("WASTD_APITOKEN"))) 
 data_tag <- res_tag %>% content("text", encoding="utf-8") %>% as.tbl_json()
-data_tag_json <- attr(data_tag, "JSON")[[1]]$results
+data_tag_json <- attr(data_tag, "JSON")[[1]]$results  # features
 
 flatten_trk <- function(li){
-  datetime <- li$when
-  lon <- li$where$longitude
-  lat <- li$where$latitude
-  species <- li$species
-  nest_age <- li$nest_age
-  nest_type <- li$nest_type
-  out <- c(datetime, lon, lat, species, nest_age, nest_type)
+  out <- c(li$when, li$longitude, li$latitude, li$species, li$nest_age, li$nest_type)
   out
 }
 
 flatten_tag <- function(li){
-  datetime <- li$when
-  lon <- li$where$longitude
-  lat <- li$where$latitude
-  species <- li$species
-  health <- li$health
-  activity <- li$activity
-  out <- c(datetime, lon, lat, species, health, activity)
+  out <- c(li$when, li$longitude, li$latitude, li$species, li$health, li$activity)
   out
 }
 
+# Datetime
 utc <- "UTC"
 gmt08 <- "Australia/Perth"
 ord <- c("YmdHMSz", "adbYHMS")
 
 
-# Very slow, but more expressive way to flatten nested JSON to CSV:
+# Flatten nested JSON to data.table using tidyjson: slow but more expressive
 # tracks <- data_trk %>%
 #   enter_object("results") %>%
 #   gather_array() %>%
 #   spread_values(
-#     datetime = jstring("when"),
+#     datetime = with_tz(parse_date_time(jstring("when"), orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
 #     species = jstring("species"),
 #     nest_age = jstring("nest_age"),
 #     nest_type = jstring("nest_type")
@@ -79,52 +76,60 @@ ord <- c("YmdHMSz", "adbYHMS")
 #   enter_object("where") %>% 
 #   gather_array() %>% 
 #   spread_values(
-#     lon = jnumber("longitude"),
-#     lat = jnumber("latitude")
-#   ) %>%
-#   mutate(
-#     datetime=with_tz(parse_date_time(datetime, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
-#     longitude=as.numeric(longitude),
-#     latitude=as.numeric(latitude)
-#   )
+#     longitude=as.numeric(jnumber("longitude")),
+#     latitude=as.numeric(jnumber("latitude"))
+#   ) 
 
-# Vectorisation performs better:
-tr <- ldply(data_trk_json, flatten_trk) %>% tbl_df()
-colnames(tr) <- c("datetime_raw", "longitude", "latitude", "species", "nest_age", "nest_type")
-tracks <- tr %>%
-  mutate(
-    datetime=with_tz(parse_date_time(datetime_raw, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
-    longitude=as.numeric(longitude),
-    latitude=as.numeric(latitude),
-    date=as_date(datetime)
+# Flatten nested JSON, parse field formats and rename columns
+tracks <- data_trk_json %>%
+  ldply(flatten_trk) %>% 
+  tbl_df() %>%
+  transmute(
+    datetime=with_tz(parse_date_time(V1, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
+    longitude=as.numeric(V2),
+    latitude=as.numeric(V3),
+    date=as_date(as_date(V1) - hours(12)),
+    species=V4,
+    nest_age=V5,
+    nest_type=V6
+  ) %>%
+  filter(
+    latitude < -21.44 & latitude > -21.47 & longitude > 114.96 & longitude < 115.03
   )
-# glimpse(tracks)
 save(tracks, file="data/tracks.Rda")
 load("data/tracks.Rda")
 
-ta <- ldply(data_tag_json, flatten_tag) %>% tbl_df()
-colnames(ta) <- c("datetime", "longitude", "latitude", "species", "health", "activity")
-tags <- ta %>%
-  mutate(
-    datetime=with_tz(parse_date_time(datetime, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
-    longitude=as.numeric(longitude),
-    latitude=as.numeric(latitude),
-    date=as_date(datetime)
+tags <- data_tag_json %>% 
+  ldply(flatten_tag) %>%
+  tbl_df() %>%
+  transmute(
+    datetime=with_tz(parse_date_time(V1, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
+    longitude=as.numeric(V2),
+    latitude=as.numeric(V3),
+    date=as_date(as_date(V1) - hours(12)),
+    species=V4,
+    health=V5,
+    activity=V6
+  ) %>%
+  filter(
+    latitude < -21.44 & latitude > -21.47 & longitude > 114.96 & longitude < 115.03
   )
-# glimpse(tags)
 save(tags, file="data/tags.Rda")
 load("data/tags.Rda")
 
 # Metadata on data currency
 track_data_retrieved_on <- with_tz(parse_date_time(res_trk$headers$date, orders=ord, tz=utc), tzone=gmt08)
-no_track_observations <- nrow(res_trk)
+no_track_observations <- nrow(tracks)
 earliest_track_observation <- with_tz(min(tracks$datetime), tzone=gmt08)
 latest_track_observation <- with_tz(max(tracks$datetime), tzone=gmt08)
 
 tag_data_retrieved_on <- with_tz(parse_date_time(res_tag$headers$date, orders=ord, tz=utc), tzone=gmt08)
-no_tag_observations <- nrow(res_tag)
+no_tag_observations <- nrow(tags)
 earliest_tag_observation <- with_tz(min(tags$datetime), tzone=gmt08)
 latest_tag_observation <- with_tz(max(tags$datetime), tzone=gmt08)
+
+# TODO get nesting success for tags from "eggs laid"
+# TODO bind_rows(tracks, tags) incl nesting success, exclude "old" tracks
 
 # Tally all tracks
 tally_data <- tracks %>%
@@ -176,6 +181,36 @@ nesting_success <- mutate(nesting, nesting_success=nesting/all)
   `r tag_data_retrieved_on` GMT+08 when compiling this workbook
 * Tag observations span **`r earliest_tag_observation` - `r latest_tag_observation` GMT+08**
 
+## Turtle dates
+The column "date" is the reconstructed emergence date. 
+
+For tagged nesting turtles:
+
+* Assume nesting turtles are recorded between sunset and sunrise
+* "turtle tagged 18 Dec 2016 22:15" = "emergence_date 18 Dec 2016"
+* "turtle tagged 19 Dec 2016 02:13" = "emergence_date 18 Dec 2016"
+* Count as nesting success (assuming all encounters are tagging after nesting)
+
+For fresh tracks ("made last night"): 
+
+* Assume tracks are recorded "the morning after" and before noon
+* "fresh track recorded 19 Dec 2016 06:23" = "emergence_date 18 Dec 2016"
+* Count as nesting success if nest was found.
+
+For old tracks ("older than from last night"): 
+
+* discard observations
+* We do not check for nests on old tracks, so nesting success is "unknown" and 
+  analysed as "not successful"
+* Nests without clear tracks are recorded as "nest"
+
+All dates are calculated as the calendar date (year, month, day) 12 hours before
+the obesrvation's datetime. This subtracts one day from the date of all 
+observations made between midnight and noon (mornings), and preserves the data of all
+observations made between noon and midnight (afternoons).
+
+All subsequent analyses bin the data by this reconstructed emergence date.
+
 ## Interactive datatable: Tracks
 ```{r}
 DT::datatable(tracks)
@@ -198,14 +233,16 @@ leaflet(tracks) %>%
   addAwesomeMarkers(~longitude, ~latitude,
                     data=tracks, label=~species,
                     icon=track,
-                    popup=~paste(nest_age, species, nest_type, datetime)) %>%
+                    popup=~paste(nest_age, species, nest_type, date)) %>%
   addAwesomeMarkers(~longitude, ~latitude, data=tags, label=~species,
                     icon=tag,
-                    popup=~paste(species, activity, datetime))
+                    popup=~paste(health, species, activity, date))
 ```
 
 # Nesting effort
-q.TODO: include tagging from here on.
+**coming soon** Nesting turtles will be included. Currently, only tracks / nests
+are shown from here.
+
 ## New tracks by species
 ```{r}
 ggplot(tally_fresh, aes(x=date, y=n, colour=nest_type)) +
@@ -238,24 +275,24 @@ any known biases on recorded data.
 ## Nesting effort
 ```{r}
 gg_nesting_abundance <- ggplot(nesting_success, aes(x=date)) +
-  geom_bar(aes(y=all), stat = "identity", color = "black", fill = "black") +
-  geom_bar(aes(y=nesting), stat = "identity", color = "gray", fill="gray") +
+  geom_bar(aes(y=all), stat="identity", color="black", fill="black") +
+  geom_bar(aes(y=nesting), stat="identity", color="gray", fill="gray") +
   ggtitle("Nesting effort at Thevenard Is") +
   labs(x="Date", y="Number of nesting emergences") +
   facet_wrap("species", ncol=1)
 gg_nesting_abundance
-ggsave("data/nesting_abundance.pdf", gg_nesting_abundance, width=7, height=7)
+ggsave("data/nesting_abundance.pdf", gg_nesting_abundance, width=7, height=10)
 ```
 
 ## Nesting success
 ```{r}
-gg_nesting_success <- ggplot(nesting_success, aes(x = date, y = nesting_success)) +
+gg_nesting_success <- ggplot(nesting_success, aes(x=date, y=nesting_success)) +
   ggtitle("Nesting success at Thevenard Is") +
-  geom_bar(stat = "identity") +
-  labs(x = "Date", y = "Success rate of nesting emergences") +
+  geom_bar(stat="identity") +
+  labs(x="Date", y ="Success rate of nesting emergences") +
   facet_wrap("species", ncol = 1)
 gg_nesting_success
-ggsave("data/nesting_success.pdf", gg_nesting_success, width=7, height=7)
+ggsave("data/nesting_success.pdf", gg_nesting_success, width=7, height=10)
 ```
 
 
@@ -273,9 +310,6 @@ temporal (days) buckets and pivoted into species profiles.
 ```{r}
 grd = readOGR("thv_grid.geojson", "OGRGeoJSON")
 head(tracks)
-library(sp)
-library(maptools)
-library(tidyr)    
 d <- tracks
 
 # Turn data into SpatialPointsDataFrame (R's "Shapefile"")
@@ -327,7 +361,7 @@ The main species look a bit left-skewed and show many absences.
 The Hellinger transformation will help reduce false similarity through shared absences.
 
 ```{r}
-library(vegan)
+
 Y.hel <- Y.in %>% decostand("hellinger")
 pairs(Y.hel)
 qplot(Y.hel$"chelonia.mydas", geom="histogram")
