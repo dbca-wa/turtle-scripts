@@ -373,10 +373,14 @@ dd <- d.spdf.grd@data %>%
 colnames(dd) <- make.names(colnames(dd))
 DT::datatable(dd)
 
-X.site.xy <- grd@data %>% select(xmin, ymin) %>% as.data.frame()
-Xs <- dd %>% select(xmin, ymin)
+# Xs: coordinates of grid cells with encounters, Xs.id: plus grid cell ID
+Xs.id <- grd@data %>% filter(id %in% unique(dd$id)) %>% dplyr::select(id, xmin, ymin)
+Xs <- Xs.id %>% dplyr::select(-id)
+plot(Xs)
+
 Xt <- difftime(dd$date, origin)
-Y.in <- dd %>% select(-id, -date, -xmin, -xmax, -ymin, -ymax)
+Y.in <- dd %>% dplyr::select(-id, -date, -xmin, -xmax, -ymin, -ymax)
+X.coords <- dd %>% dplyr::select(xmin, ymin)
 ```
 
 ### Correlations between variables
@@ -415,7 +419,7 @@ qplot(Y.hel$"natator.depressus", geom="histogram")
 Remove linear spatial trends, lest they eat up explanatory power.
 
 ```{r}
-Y <- residuals(rda(Y.hel, Xs))
+Y <- residuals(rda(Y.hel, X.coords))
 pairs(Y)
 ```
 
@@ -430,14 +434,18 @@ Xs.dist <- dist(Xs)
 # Xs.dist[which(Xs.dist>4*min(Xs.dist))]
 # X.spantree <- spantree(Xs.dist)
 Xs.site.pcnm <- PCNM(Xs.dist)
+# Truncation level = 0.001415214 
+# Time to compute PCNMs = 3045.977000  sec = 50 min -- need to optimize
 summary(Xs.site.pcnm)
 Xs.site.pcnm.pos <- as.data.frame(Xs.site.pcnm$vectors)[,which(Xs.site.pcnm$Moran_I$Positive == T)]
-sites_pcnm <- cbind(grd@data, scores(Xs.site.pcnm.pos))
+sites_pcnm <- cbind(Xs.id, scores(Xs.site.pcnm.pos))
 surveys_pcnm <- left_join(dd, sites_pcnm, by="id")
-Xs.scores <- select(surveys_pcnm, starts_with("PCNM"))
+
+Xs.scores <- dplyr::select(surveys_pcnm, starts_with("V"))
+
 Xt.dist <- dist(Xt)
-Xt.pcnm <- PCNM(Xt.dist, thresh=4*min(Xs.dist))
-# Xt.pcnm.pos <- as.data.frame(Xt.pcnm$vectors)[,which(Xt.pcnm$Moran_I$Positive == T)]
+Xt.pcnm <- PCNM(Xt.dist)
+Xt.pcnm.pos <- as.data.frame(Xt.pcnm$vectors)[,which(Xt.pcnm$Moran_I$Positive == T)]
 Xt.scores <- as.data.frame(scores(Xt.pcnm)) # use .pos once PCNM installed
 
 
@@ -477,8 +485,8 @@ plot.xs <- function(nr, coords, scores, fs){
 
 lapply(seq_len(nrow(Xs.sel)), 
        plot.xs, 
-       select(sites_pcnm, xmin, ymin), 
-       select(sites_pcnm, starts_with("PCNM")), 
+       dplyr::select(sites_pcnm, xmin, ymin), 
+       dplyr::select(sites_pcnm, starts_with("V")), 
        Xs.sel)
 ```
 
