@@ -1,7 +1,7 @@
 ---
 title: "Turtle nesting effort"
 author: "Florian Mayer, Dept Parks & Wildlife WA"
-date: "28/02/2017"
+date: "01/03/2017"
 output: html_document
 ---
 
@@ -340,7 +340,7 @@ leaflet() %>% addTiles() %>% addPolygons(data=grd, weight=1, color="orange")
 
 
 ```{r}
-d <- bind_rows(
+nesting_events <- bind_rows(
   tracks %>% 
     filter(nest_age=="fresh") %>% 
     transmute(latitude=latitude, 
@@ -354,33 +354,45 @@ d <- bind_rows(
               date=date, 
               species=species, 
               type=activity)
-)
+  ) %>%
+  mutate(
+    diffdate=difftime(date, origin)
+  )
 # Turn data into SpatialPointsDataFrame (R's "Shapefile")
 wgs84 = CRS('+proj=longlat +datum=WGS84 +no_defs')
-d.sp <- SpatialPoints(coords=select(d, longitude, latitude), proj4string=wgs84)
-d.spdf <- SpatialPointsDataFrame(d.sp, data=d, proj4string=wgs84)
+d.sp <- SpatialPoints(coords=dplyr::select(nesting_events, longitude, latitude), proj4string=wgs84)
+d.spdf <- SpatialPointsDataFrame(d.sp, data=nesting_events, proj4string=wgs84)
 
-# Join data to grid polygons
+# Join data to grid polygons to have grid polygon id with each event
 d.spdf.grd <- spCbind(d.spdf, over(d.spdf, grd))
 
-# Create species profiles for species track abundance per grid cell and date
-dd <- d.spdf.grd@data %>% 
+# Create species profiles for species track abundance per grid cell id and event date
+species_profiles <- d.spdf.grd@data %>% 
   filter(!is.na(id)) %>%
-  group_by(date, id, species) %>% 
+  group_by(diffdate, date, id, species) %>% 
   tally(sort=F) %>% 
   ungroup() %>%
   spread(species, n, fill=0) %>% left_join(grd, by="id", copy=T)
-colnames(dd) <- make.names(colnames(dd))
-DT::datatable(dd)
+colnames(species_profiles) <- make.names(colnames(species_profiles))
+DT::datatable(species_profiles)
+# Responding vars: species profiles
+# Y.in has one row per survey (date x grid cell)
+Y.in <- species_profiles %>% 
+  dplyr::select(-id, -diffdate, -date, -xmin, -xmax, -ymin, -ymax)
 
-# Xs: coordinates of grid cells with encounters, Xs.id: plus grid cell ID
-Xs.id <- grd@data %>% filter(id %in% unique(dd$id)) %>% dplyr::select(id, xmin, ymin)
+X.coords <- dd %>% dplyr::select(xmin, ymin)
+
+# Xs: coordinates of grid cells with encounters; Xs.id: plus grid cell ID
+# Xs and Xs.id have one row per grid cell with encounters
+Xs.id <- grd@data %>% 
+  filter(id %in% unique(species_profiles$id)) %>% 
+  dplyr::select(id, xmin, ymin)
 Xs <- Xs.id %>% dplyr::select(-id)
+
 plot(Xs)
 
-Xt <- difftime(dd$date, origin)
-Y.in <- dd %>% dplyr::select(-id, -date, -xmin, -xmax, -ymin, -ymax)
-X.coords <- dd %>% dplyr::select(xmin, ymin)
+Xt <- unique(dd$diffdate) %>% tbl_df()
+colnames(Xt) <- "diffdate"
 ```
 
 ### Correlations between variables
@@ -429,31 +441,27 @@ Party time.
 Following [this tutorial](https://sites.ualberta.ca/~ahamann/teaching/renr690/Lab9.pdf).
 ```{r}
 plot(Xs)
-Xs.dist <- dist(Xs)
-# TODO: discard all but nearest neighbour
-# Xs.dist[which(Xs.dist>4*min(Xs.dist))]
-# X.spantree <- spantree(Xs.dist)
-Xs.site.pcnm <- PCNM(Xs.dist)
-# Truncation level = 0.001415214 
-# Time to compute PCNMs = 3045.977000  sec = 50 min -- need to optimize
+Xs.site.pcnm <- PCNM(dist(Xs))
 summary(Xs.site.pcnm)
+plot(Xs.site.pcnm$spanning, main="Spanning tree of sites")
 Xs.site.pcnm.pos <- as.data.frame(Xs.site.pcnm$vectors)[,which(Xs.site.pcnm$Moran_I$Positive == T)]
 sites_pcnm <- cbind(Xs.id, scores(Xs.site.pcnm.pos))
 surveys_pcnm <- left_join(dd, sites_pcnm, by="id")
-
 Xs.scores <- dplyr::select(surveys_pcnm, starts_with("V"))
 
-Xt.dist <- dist(Xt)
-Xt.pcnm <- PCNM(Xt.dist)
+Xt.pcnm <- PCNM(dist(Xt))
+summary(Xt.pcnm)
+plot(Xt.pcnm$spanning, main="Spanning tree of observation dates")
 Xt.pcnm.pos <- as.data.frame(Xt.pcnm$vectors)[,which(Xt.pcnm$Moran_I$Positive == T)]
-Xt.scores <- as.data.frame(scores(Xt.pcnm)) # use .pos once PCNM installed
-
+dates_pcnm <- cbind(Xt, scores(Xt.pcnm.pos))
+surveys_pcnm_t <- dd %>% dplyr::left_join(dates_pcnm, by="diffdate", copy=T)
+Xt.scores <- dplyr::select(surveys_pcnm_t, starts_with("V"))
 
 # TODO Moran's I
 Xs.sel <- forward.sel(Y, Xs.scores)
 Xt.sel <- forward.sel(Y, Xt.scores)
-XS <- Xs.scores %>% select(Xs.sel$order)
-XT <- Xt.scores %>% select(Xt.sel$order)
+XS <- Xs.scores %>% dplyr::select(Xs.sel$order)
+XT <- Xt.scores %>% dplyr::select(Xt.sel$order)
 
 Xs.sel
 Xt.sel
