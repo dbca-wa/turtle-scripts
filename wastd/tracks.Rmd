@@ -335,7 +335,9 @@ sections, would be a more appropriate spatial unit.
 
 ```{r}
 grd = readOGR("thv_grid.geojson", "OGRGeoJSON")
-leaflet() %>% addTiles() %>% addPolygons(data=grd, weight=1, color="orange")
+leaflet() %>% 
+  addTiles() %>% 
+  addPolygons(data=grd, weight=1, color="orange", label = ~paste(id))
 ```
 
 
@@ -563,17 +565,23 @@ dx <- species_profiles %>%
 
 plot(dx)
 
-ordisurf(
+steff_fb <- ordisurf(
   cbind(dx$grid, dx$date), dx$nd, bubble=3,
   main="Spatiotemporal nesting patterns: Natator depressus",
-  sub="Total nesting effort",
   xlab="Beach segment ID", ylab="Day since 1970")
 
-ordisurf(
+steff_cm <- ordisurf(
   cbind(dx$grid, dx$date), dx$cm, bubble=3,
   main="Spatiotemporal nesting patterns: Chelonia mydas",
   sub="Total nesting effort",
   xlab="Beach segment ID", ylab="Day since 1970")
+
+
+# are beach segment IDs in sequence? Make more readable:
+# p <- plot(Xs.id$xmin, Xs.id$ymin, xlab="Longitude", ylab="Latitude")
+# text(Xs, labels=Xs.id$id, cex=1)
+
+Xs.id$id
 ```
 
 
