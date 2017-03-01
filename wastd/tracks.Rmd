@@ -380,7 +380,7 @@ DT::datatable(species_profiles)
 Y.in <- species_profiles %>% 
   dplyr::select(-id, -diffdate, -date, -xmin, -xmax, -ymin, -ymax)
 
-X.coords <- dd %>% dplyr::select(xmin, ymin)
+X.coords <- species_profiles %>% dplyr::select(xmin, ymin)
 
 # Xs: coordinates of grid cells with encounters; Xs.id: plus grid cell ID
 # Xs and Xs.id have one row per grid cell with encounters
@@ -391,7 +391,7 @@ Xs <- Xs.id %>% dplyr::select(-id)
 
 plot(Xs)
 
-Xt <- unique(dd$diffdate) %>% tbl_df()
+Xt <- unique(species_profiles$diffdate) %>% tbl_df()
 colnames(Xt) <- "diffdate"
 ```
 
@@ -446,7 +446,7 @@ summary(Xs.site.pcnm)
 plot(Xs.site.pcnm$spanning, main="Spanning tree of sites")
 Xs.site.pcnm.pos <- as.data.frame(Xs.site.pcnm$vectors)[,which(Xs.site.pcnm$Moran_I$Positive == T)]
 sites_pcnm <- cbind(Xs.id, scores(Xs.site.pcnm.pos))
-surveys_pcnm <- left_join(dd, sites_pcnm, by="id")
+surveys_pcnm <- species_profiles %>% dplyr::left_join(sites_pcnm, by="id", copy=T)
 Xs.scores <- dplyr::select(surveys_pcnm, starts_with("V"))
 
 Xt.pcnm <- PCNM(dist(Xt))
@@ -454,10 +454,9 @@ summary(Xt.pcnm)
 plot(Xt.pcnm$spanning, main="Spanning tree of observation dates")
 Xt.pcnm.pos <- as.data.frame(Xt.pcnm$vectors)[,which(Xt.pcnm$Moran_I$Positive == T)]
 dates_pcnm <- cbind(Xt, scores(Xt.pcnm.pos))
-surveys_pcnm_t <- dd %>% dplyr::left_join(dates_pcnm, by="diffdate", copy=T)
+surveys_pcnm_t <- species_profiles %>% dplyr::left_join(dates_pcnm, by="diffdate", copy=T)
 Xt.scores <- dplyr::select(surveys_pcnm_t, starts_with("V"))
 
-# TODO Moran's I
 Xs.sel <- forward.sel(Y, Xs.scores)
 Xt.sel <- forward.sel(Y, Xt.scores)
 XS <- Xs.scores %>% dplyr::select(Xs.sel$order)
@@ -481,6 +480,7 @@ Outcome:
 ## Spatial patterns
 ```{r}
 plot.xs <- function(nr, coords, scores, fs){
+  
   fig <- ordisurf(coords, scores[,nr], bubble=3,
                   main=paste("Spatial pattern", fs[nr,2]), 
                   sub=paste("explains", round(as.numeric(fs[nr,3]), digits=3)*100, 
@@ -500,7 +500,6 @@ lapply(seq_len(nrow(Xs.sel)),
 
 ### Temporal patterns
 ```{r}
-
 #' Create a scatterplot of PCNM values against dates.
 #' 
 #' nr: The row number of the forward.sel dataframe
@@ -519,15 +518,19 @@ plot.xt <- function(nr, dates, scores, fs){
 }
 
 # Plot all significant temporal PCNM variables.
-lapply(Xt.sel$order, plot.xt, dd$date, XT, Xt.sel)
+# lapply(Xt.sel$order, plot.xt, species_profiles$date, XT, Xt.sel)
 ```
 
 A spot of modelling!
 ```{r}
 XSm <- as.matrix(XS)
 XTm <- as.matrix(XT)
+
 Y.rda <- rda(Y ~ XSm + XTm)
-ordiplot(Y.rda)
+fig <- ordiplot(Y.rda, main="Constrained ordination (RDA) all species", type="none")
+points(fig, "sites", pch=21, col="red", bg="yellow")
+text(fig, "species", col="blue", cex=0.9)
+identify(fig, "spec")
 ```
 
 # Questions
@@ -536,6 +539,43 @@ ordiplot(Y.rda)
 * Do certain species (Gn, Fb) favour certain beach aspects? 
   Correct for difficulty of approach (shallow reef is hard to swim over).
 * Does the tagging area cover the main nesting area?
+
+
+The following figure shows nesting effort as total nesting events across space 
+(x-axis) and time (y-axis).
+
+The x-axis shows the grid cell ID of the 100x100m grid used to group encounters
+into site x species profiles. The axis can be imagined as if the beach around
+Thevenard were cut in one place and straightened into one line.
+
+The y-axis shows the observation date as days since the epoch start (1970).
+
+```{r}
+dx <- species_profiles %>%
+  transmute(
+    grid=id,
+    nd=natator.depressus,
+    cm=chelonia.mydas
+  ) %>%
+  cbind(
+    date=as.numeric(surveys_pcnm$diffdate)
+  )
+
+plot(dx)
+
+ordisurf(
+  cbind(dx$grid, dx$date), dx$nd, bubble=3,
+  main="Spatiotemporal nesting patterns: Natator depressus",
+  sub="Total nesting effort",
+  xlab="Beach segment ID", ylab="Day since 1970")
+
+ordisurf(
+  cbind(dx$grid, dx$date), dx$cm, bubble=3,
+  main="Spatiotemporal nesting patterns: Chelonia mydas",
+  sub="Total nesting effort",
+  xlab="Beach segment ID", ylab="Day since 1970")
+```
+
 
 ```{r, echo=FALSE}
 setwd("~/projects/turtle-scripts")
