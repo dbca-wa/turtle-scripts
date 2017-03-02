@@ -8,10 +8,18 @@ output: html_document
 ```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 setwd("~/projects/turtle-scripts/wastd")
+# Spatial analysis
+library(rgdal)
+library(sp)
+library(maptools)
+library(vegan)
+library(PCNM)
+library(adespatial)
+
 # Data management
 library(httr)
 library(plyr)
-library(dplyr)
+library(dplyr) # load after PCNM to be default for "select"
 library(lubridate)
 library(tidyjson)
 library(tidyr)  
@@ -20,14 +28,6 @@ library(tidyr)
 library(DT)
 library(leaflet)
 library(ggplot2)
-
-# Spatial analysis
-library(rgdal)
-library(sp)
-library(maptools)
-library(vegan)
-library(PCNM)
-library(adespatial)
 
 # Load sensitive settings as environment variables
 if (file.exists("../config/setup.R")) source("../config/setup.R")
@@ -64,7 +64,7 @@ gmt08 <- "Australia/Perth"
 ord <- c("YmdHMSz", "adbYHMS")
 
 
-# Flatten nested JSON to data.table using tidyjson: slow but more expressive
+# Flatten nested JSON to data.table using tidyjson: slow but more readable
 # tracks <- data_trk %>%
 #   enter_object("results") %>%
 #   gather_array() %>%
@@ -127,49 +127,17 @@ save(tags, file="data/tags.Rda")
 load("data/tags.Rda")
 
 # Metadata on data currency
-track_data_retrieved_on <- with_tz(parse_date_time(res_trk$headers$date, orders=ord, tz=utc), tzone=gmt08)
+track_data_retrieved_on <- with_tz(
+  parse_date_time(res_trk$headers$date, orders=ord, tz=utc), tzone=gmt08)
 no_track_observations <- nrow(tracks)
 earliest_track_observation <- with_tz(min(tracks$datetime), tzone=gmt08)
 latest_track_observation <- with_tz(max(tracks$datetime), tzone=gmt08)
 
-tag_data_retrieved_on <- with_tz(parse_date_time(res_tag$headers$date, orders=ord, tz=utc), tzone=gmt08)
+tag_data_retrieved_on <- with_tz(
+  parse_date_time(res_tag$headers$date, orders=ord, tz=utc), tzone=gmt08)
 no_tag_observations <- nrow(tags)
 earliest_tag_observation <- with_tz(min(tags$datetime), tzone=gmt08)
 latest_tag_observation <- with_tz(max(tags$datetime), tzone=gmt08)
-
-# TODO get nesting success for tags from "NESTING"
-emergences <- bind_rows(
-  tracks %>% filter(nest_age=="fresh") %>% transmute(date=date, species=species, type=nest_type),
-  tags %>% transmute(date=date, species=species, type=activity)
-)
-
-# Tally all tracks and tags
-tally_data <- emergences %>%
-  group_by(date, species, type) %>% tally(sort=F) %>% ungroup()
-
-# Tally all fresh tracks with nest
-tally_all <- emergences %>% 
-  group_by(date, species) %>% tally(sort=F) %>% ungroup() %>% 
-  transmute(date=date, species=species, all=n)
-
-# Tally fresh tracks with nest
-tally_nesting <- emergences %>% 
-  filter(type=='successful-crawl' | 
-           type=="hatched-nest" | 
-           type=="returning-to-water"| 
-           type=="laying-eggs"| 
-           type=="digging-body-pit"| 
-           type=="arriving"| 
-           type=="filling-in-egg-chamber"| 
-           type=="excavating-egg-chamber"
-         ) %>%
-  group_by(date, species) %>% tally(sort=F) %>% ungroup() %>%
-  transmute(date=date, species=species, nesting=n)
-
-# Join successful nesting emergences with all nesting emergences
-nesting <- left_join(tally_all, tally_nesting, by=c('date','species')) 
-nesting[is.na(nesting)] <- 0
-nesting_success <- mutate(nesting, nesting_success=nesting/all)
 ```
 
 # Data
@@ -256,69 +224,36 @@ leaflet(tracks) %>%
 ```
 
 # Nesting effort
+To visualise and analyse nesting effort, data from track counts is combined with
+data from tagging and missed turtles. 
+Location and species are shared, while track / nest type (from track count) and
+turtle activity (from tagging) are combined into one column.
 
-## Nesting emergences by species
+**TODO** Nesting success from tagging is not yet loaded from the original data,
+but will replace turtle activity with the variable "nesting success".
+
+Furthermore, turtle dates are calculated for all encounters.
+
 ```{r}
-ggplot(tally_data, aes(x=date, y=n, colour=type)) +
-  geom_point() + facet_wrap("species", ncol=1)
+nesting_encounters <- bind_rows(
+  tracks %>% 
+    filter(nest_age=="fresh") %>% 
+    transmute(latitude=latitude, 
+              longitude=longitude, 
+              date=date, 
+              species=species, 
+              type=nest_type),
+  tags %>% 
+    transmute(latitude=latitude, 
+              longitude=longitude, 
+              date=date, 
+              species=species, 
+              type=activity)
+  ) %>%
+  mutate(
+    diffdate=difftime(date, origin)
+  )
 ```
-
-**Note** Track and nest counts within the tagging sector (Jetty to Chevron) 
-from the night of 20/11/2016 to 21/11/2016 were not recorded
-in the ODK Collect app the morning after, as wind and foot traffic during the night
-rendered the tracks unreadable. The tracks and nests were recorded on paper data
-sheets and will turn up in the tagging database WAMTRAM2.
-
-November 20-22 were windy, and tracks on the south side of the western end were
-likely blown over. This will result in false absence of tracks on 20/11/2016-22/11/2016.
-Wind conditions after 22/11/2016 are unknown and may also decrease the number of 
-detected tracks.
-
-During the field trip in Feb 2017 (exact dates to be confirmed), a cyclone 
-prevented track counts on some days and may have blown away many tracks on other 
-days, resulting in days without track counts as well as days with falsely low 
-track counts.
-
-There may be more periods with artificially low track count.
-
-**TODO** identify periods of artificially low track count from field diary
-
-**TODO** enter surveys into WAStD, annotate with observations on weather, methodology,
-any known biases on recorded data.
-
-## Nesting effort
-Tagging, missed turtles and tracks / nests are combined.
-```{r}
-gg_nesting_abundance <- ggplot(nesting_success, aes(x=date)) +
-  geom_bar(aes(y=all), stat="identity", color="black", fill="black") +
-  geom_bar(aes(y=nesting), stat="identity", color="green", fill="green") +
-  ggtitle("Nesting effort at Thevenard Island") +
-  labs(x="Date", y="Number of all and successful nesting emergences") +
-  facet_wrap("species", ncol=1)
-gg_nesting_abundance
-ggsave("data/nesting_abundance.pdf", gg_nesting_abundance, width=7, height=7)
-```
-
-## Nesting success
-```{r}
-gg_nesting_success <- ggplot(nesting_success, aes(x=date, y=nesting_success)) +
-  ggtitle("Nesting success at Thevenard Is") +
-  geom_bar(stat="identity") +
-  labs(x="Date", y ="Success rate of nesting emergences") +
-  facet_wrap("species", ncol = 1)
-gg_nesting_success
-ggsave("data/nesting_success.pdf", gg_nesting_success, width=7, height=7)
-```
-
-
-## Modelling the nesting seasons
-This section aims to determine beginning, peak, and end of nesting season per 
-species at the given location.
-
-**TODO** This section is under construction.
-
-## Spatial and temporal patterns of abundance
-Spatial and temporal patterns of species abundance (daily species tallies) (PCNM)
 
 ### Species profiles
 Observations have to be summarised into spatial (rectangular grid cells) and 
@@ -340,35 +275,117 @@ leaflet() %>%
   addPolygons(data=grd, weight=1, color="orange", label = ~paste(id))
 ```
 
+Turn nesting encounters into a SpatialPointsDataFrame (SPDF, R's "Shapefile"), 
+then spatially join this SPDF to the grid cells the encounter lies in.
+Only the grid cells over sandy beaches will contain encounters.
 
 ```{r}
-nesting_events <- bind_rows(
-  tracks %>% 
-    filter(nest_age=="fresh") %>% 
-    transmute(latitude=latitude, 
-              longitude=longitude, 
-              date=date, 
-              species=species, 
-              type=nest_type),
-  tags %>% 
-    transmute(latitude=latitude, 
-              longitude=longitude, 
-              date=date, 
-              species=species, 
-              type=activity)
-  ) %>%
-  mutate(
-    diffdate=difftime(date, origin)
-  )
-# Turn data into SpatialPointsDataFrame (R's "Shapefile")
 wgs84 = CRS('+proj=longlat +datum=WGS84 +no_defs')
-d.sp <- SpatialPoints(coords=dplyr::select(nesting_events, longitude, latitude), proj4string=wgs84)
-d.spdf <- SpatialPointsDataFrame(d.sp, data=nesting_events, proj4string=wgs84)
-
-# Join data to grid polygons to have grid polygon id with each event
+d.sp <- SpatialPoints(coords=dplyr::select(nesting_encounters, longitude, latitude), proj4string=wgs84)
+d.spdf <- SpatialPointsDataFrame(d.sp, data=nesting_encounters, proj4string=wgs84)
 d.spdf.grd <- spCbind(d.spdf, over(d.spdf, grd))
+```
 
-# Create species profiles for species track abundance per grid cell id and event date
+## Nesting effort by species
+Nesting encounters are tallied by date, species and type.
+```{r}
+nesting_type_by_date <- nesting_encounters %>%
+  group_by(date, species, type) %>% tally(sort=F) %>% ungroup() %>%
+  rename(all=n)
+
+ggplot(nesting_type_by_date, aes(x=date, y=all, colour=type)) +
+  geom_point() + facet_wrap("species", ncol=1)
+```
+
+Nesting success is calculated as the ratio of tallied successful over total
+nesting encounters per date and species. 
+This combines nesting over the whole area for each surveyed day.
+```{r}
+all_nesting_by_date <- nesting_encounters %>%
+  group_by(date, species) %>% tally(sort=F) %>% ungroup() %>% rename(all=n)
+
+successful_nesting_by_date <- nesting_encounters %>% 
+  filter(type=='successful-crawl' | 
+           type=="hatched-nest" | 
+           type=="returning-to-water"| 
+           type=="laying-eggs"| 
+           type=="digging-body-pit"| 
+           type=="arriving"| 
+           type=="filling-in-egg-chamber"| 
+           type=="excavating-egg-chamber"
+         ) %>%
+  group_by(date, species) %>% tally(sort=F) %>% ungroup() %>%
+  mutate(n = ifelse(is.na(n), 0, n)) %>%
+  transmute(date=date, species=species, successful=n)
+
+# Join nesting emergences with nesting success or 0
+nesting_success <- all_nesting_by_date %>%
+  left_join(successful_nesting_by_date, by=c('date','species')) %>%
+  mutate(nesting_success=successful/all)
+
+gg_nesting_abundance <- ggplot(nesting_success, aes(x=date)) +
+  geom_bar(aes(y=all), stat="identity", color="black", fill="black") +
+  geom_bar(aes(y=successful), stat="identity", color="green", fill="green") +
+  ggtitle("Nesting effort at Thevenard Island") +
+  labs(x="Date", y="Number of all and successful nesting emergences") +
+  facet_wrap("species", ncol=1)
+gg_nesting_abundance
+ggsave("data/nesting_abundance.pdf", gg_nesting_abundance, width=7, height=7)
+```
+
+
+```{r}
+gg_nesting_success <- ggplot(nesting_success, aes(x=date, y=nesting_success)) +
+  ggtitle("Nesting success at Thevenard Is") +
+  geom_bar(stat="identity") +
+  labs(x="Date", y ="Success rate of nesting emergences") +
+  facet_wrap("species", ncol = 1)
+gg_nesting_success
+ggsave("data/nesting_success.pdf", gg_nesting_success, width=7, height=7)
+```
+
+
+```{r}
+qplot(longitude, latitude, data = d.spdf.grd@data, facets = ~species, color=date)
+```
+
+**Note** Track and nest counts within the tagging sector (Jetty to Chevron) 
+from the night of 20/11/2016 to 21/11/2016 were not recorded
+in the ODK Collect app the morning after, as wind and foot traffic during the night
+rendered the tracks unreadable. The tracks and nests were recorded on paper data
+sheets and will turn up in the tagging database WAMTRAM2.
+
+November 20-22 were windy, and tracks on the south side of the western end were
+likely blown over. This will result in false absence of tracks on 20/11/2016-22/11/2016.
+Wind conditions after 22/11/2016 are unknown and may also decrease the number of 
+detected tracks.
+
+During the field trip in Feb 2017 (exact dates to be confirmed), a cyclone 
+prevented track counts on some days and may have blown away many tracks on other 
+days, resulting in days without track counts as well as days with falsely low 
+track counts.
+
+There may be more periods with artificially low track count.
+
+**TODO** 
+
+* identify periods of artificially low track count from field diary and highlight
+in figures
+* enter surveys into WAStD, annotate with observations on weather, methodology,
+any known biases on recorded data.
+
+
+## Modelling the nesting seasons
+This section aims to determine beginning, peak, and end of nesting season per 
+species at the given location.
+
+**TODO** This section is under construction.
+
+## Spatial and temporal patterns of abundance
+Spatial and temporal patterns of species abundance (daily species tallies) (PCNM)
+
+Create species profiles for species track abundance per grid cell id and encounter date.
+```{r}
 species_profiles <- d.spdf.grd@data %>% 
   filter(!is.na(id)) %>%
   group_by(diffdate, date, id, species) %>% 
@@ -377,25 +394,60 @@ species_profiles <- d.spdf.grd@data %>%
   spread(species, n, fill=0) %>% left_join(grd, by="id", copy=T)
 colnames(species_profiles) <- make.names(colnames(species_profiles))
 DT::datatable(species_profiles)
-# Responding vars: species profiles
-# Y.in has one row per survey (date x grid cell)
+```
+
+Separate the species profile data into 
+
+* initial responding data Y.in (nesting event tallies per species), and
+* point coordinates of each grid cell X.coords.
+
+These data frames have one row per surveyed combination of grid cell and date.
+
+Listing only grid cells with encounters, Xs contain the coordinates, Xs.id contain
+coordinates plus grid cell ID.
+Both Xs and Xs.id have one row per grid cell with encounters.
+
+Lastly, Xt lists all unique surveyed turtle dates as days since 1970, a numerical
+value as required by spatial analysis tools which cannot parse comlex data types 
+such as  dates.
+```{r}
 Y.in <- species_profiles %>% 
   dplyr::select(-id, -diffdate, -date, -xmin, -xmax, -ymin, -ymax)
 
 X.coords <- species_profiles %>% dplyr::select(xmin, ymin)
 
-# Xs: coordinates of grid cells with encounters; Xs.id: plus grid cell ID
-# Xs and Xs.id have one row per grid cell with encounters
 Xs.id <- grd@data %>% 
   filter(id %in% unique(species_profiles$id)) %>% 
   dplyr::select(id, xmin, ymin)
 Xs <- Xs.id %>% dplyr::select(-id)
-
 plot(Xs)
 
 Xt <- unique(species_profiles$diffdate) %>% tbl_df()
 colnames(Xt) <- "diffdate"
 ```
+
+Now we can summarise all nesting events (successful and non-successful) over the
+whole season (all observed dates) and plot by species.
+
+```{r}
+site_summary <- d.spdf.grd@data %>% 
+  filter(!is.na(id)) %>%
+  group_by(id, species) %>% 
+  tally(sort=F) %>% 
+  ungroup() %>%
+  left_join(Xs.id)
+
+gg_nesting_distribution <- ggplot(site_summary, aes(xmin, ymin, z=n)) + 
+  facet_wrap("species") + 
+  geom_density2d(color="grey") + 
+  geom_raster(aes(fill=n)) + 
+  ggtitle("Observed nesting events over whole season") + 
+  labs(x="Longitude", y="Latitude") 
+ggsave(gg_nesting_distribution, file="data/nesting_distribution.pdf", width=7, height=5)
+```
+Green turtles seem to concentrate on the NW corner and avoid the SE corner,
+where as Flatbacks seem to occur all around the island with a focus on the stretch
+between west of the Jetty and the Chevron property on the East end.
 
 ### Correlations between variables
 ```{r}
@@ -439,7 +491,6 @@ pairs(Y)
 
 
 ### PCNM
-Party time. 
 Following [this tutorial](https://sites.ualberta.ca/~ahamann/teaching/renr690/Lab9.pdf).
 ```{r}
 plot(Xs)
@@ -537,12 +588,12 @@ identify(fig, "spec")
 
 # Questions
 
-* Are there any hotspots of different species?
-* Do certain species (Gn, Fb) favour certain beach aspects? 
-  Correct for difficulty of approach (shallow reef is hard to swim over).
-* Does the tagging area cover the main nesting area?
+## Are there any hotspots of different species?
 
+## Do certain species (Gn, Fb) favour certain beach aspects? 
+Correct for difficulty of approach (shallow reef is hard to swim over).
 
+##Does the tagging area cover the main nesting area?
 The following figure shows nesting effort as total nesting events across space 
 (x-axis) and time (y-axis).
 
@@ -577,11 +628,9 @@ steff_cm <- ordisurf(
   xlab="Beach segment ID", ylab="Day since 1970")
 
 
-# are beach segment IDs in sequence? Make more readable:
+# are beach segment IDs in sequence? Make this more readable:
 # p <- plot(Xs.id$xmin, Xs.id$ymin, xlab="Longitude", ylab="Latitude")
 # text(Xs, labels=Xs.id$id, cex=1)
-
-Xs.id$id
 ```
 
 
