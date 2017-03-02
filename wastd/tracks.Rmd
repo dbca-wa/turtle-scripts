@@ -284,6 +284,7 @@ wgs84 = CRS('+proj=longlat +datum=WGS84 +no_defs')
 d.sp <- SpatialPoints(coords=dplyr::select(nesting_encounters, longitude, latitude), proj4string=wgs84)
 d.spdf <- SpatialPointsDataFrame(d.sp, data=nesting_encounters, proj4string=wgs84)
 d.spdf.grd <- spCbind(d.spdf, over(d.spdf, grd))
+# qplot(longitude, latitude, data = d.spdf.grd@data, facets = ~species, color=date)
 ```
 
 ## Nesting effort by species
@@ -342,11 +343,6 @@ gg_nesting_success <- ggplot(nesting_success, aes(x=date, y=nesting_success)) +
   facet_wrap("species", ncol = 1)
 gg_nesting_success
 ggsave("data/nesting_success.pdf", gg_nesting_success, width=7, height=7)
-```
-
-
-```{r}
-qplot(longitude, latitude, data = d.spdf.grd@data, facets = ~species, color=date)
 ```
 
 **Note** Track and nest counts within the tagging sector (Jetty to Chevron) 
@@ -440,10 +436,12 @@ site_summary <- d.spdf.grd@data %>%
 gg_nesting_distribution <- ggplot(site_summary, aes(xmin, ymin, z=n)) + 
   facet_wrap("species") + 
   geom_density2d(color="grey") + 
-  geom_raster(aes(fill=n)) + 
+  geom_raster(aes(fill=n)) +
+  scale_fill_gradientn(colours=c("blue","green","yellow","orange","red")) +
   ggtitle("Observed nesting events over whole season") + 
-  labs(x="Longitude", y="Latitude") 
-ggsave(gg_nesting_distribution, file="data/nesting_distribution.pdf", width=7, height=5)
+  labs(x="Longitude", y="Latitude")
+gg_nesting_distribution
+ggsave(gg_nesting_distribution, file="data/nesting_distribution_all_time.pdf", width=7, height=5)
 ```
 Green turtles seem to concentrate on the NW corner and avoid the SE corner,
 where as Flatbacks seem to occur all around the island with a focus on the stretch
