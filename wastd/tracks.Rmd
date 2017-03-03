@@ -30,38 +30,52 @@ if (file.exists("../config/load.R")) source("../config/load.R")
 * Data ingested (scripted) from CSV into WAStD
 
 ### Loading data from the WAStD API
-Using [api tricks](https://www.rstudio.com/resources/videos/using-web-apis-from-r/).
+Using some [api tricks](https://www.rstudio.com/resources/videos/using-web-apis-from-r/),
+a wrapper function `wastd_api` encapsulates the WAStD API:
+
+* From a given serializer name (e.g. `animal-encounters` for taggings or 
+  `turtle-nest-encounters` for tracks and nests) and some sensible defaults, 
+  the API call is constructed and executed.
+* On successful completion (which, depending on result size can take a while),
+  the response is decoded, an informative message is printed, and the nested JSON 
+  structure is flattened into a data.table.
 
 ```{r api}
-#' Expand an API serializer name into a WAStD API url
-wastd_api <- . %>% paste0("https://strandings.dpaw.wa.gov.au/api/1/", .)
+#' Return GeoJSON features from a WAStD API endpoint as data.table
+wastd_api <- function(serializer_name, 
+                      base_url="https://strandings.dpaw.wa.gov.au/api/1/",
+                      query=list(taxon="Cheloniidae", limit=10000, format="json"),
+                      wastd_api_token=Sys.getenv("WASTD_APITOKEN")){
+  res <- GET(paste0(base_url, serializer_name), query = query, 
+             add_headers(c(Authorization = wastd_api_token))) %>% stop_for_status()
+  text <- content(res, as = "text", encoding = "UTF-8")
+  if (identical(text, "")) stop("The response did not return any content.")
+  out <- fromJSON(text, flatten = T)$results$features
+  message(paste(nrow(out), serializer_name, "loaded from WAStD API on", res$headers$date))
+  out
+} 
 
-# Reqest GET query parameters and authorization headers
-qry = list(taxon="Cheloniidae", limit=10000, format="json")
-hdr = c(Authorization = Sys.getenv("WASTD_APITOKEN"))
-
-res_trk <- GET(wastd_api("turtle-nest-encounters/"), 
-               query = qry, add_headers(.headers = hdr)) %>% stop_for_status()
-res_tag <- GET(wastd_api("animal-encounters/"), 
-               query = qry, add_headers(.headers = hdr)) %>% stop_for_status()
+track_records <- wastd_api("turtle-nest-encounters")
+tag_records <- wastd_api("animal-encounters")
 ```
 
 ### Formatting the API response
-See [purrr talk](https://www.rstudio.com/resources/videos/happy-r-users-purrr/).
+Using [purrr magic](https://www.rstudio.com/resources/videos/happy-r-users-purrr/)
+
+* data types are parsed into native types (e.g. dates and numbers),
+* records are filtered to a location (THV) and date range (from Dec 20), and
+* the resulting R objects are saved locally to form a restore point.
 
 ```{r data_munging}
-#' Parse a HTTP response of GeoJSON to a data.table of features and handle errors
-parse_geojson <- function(res){
-  text <- content(res, as = "text", encoding = "UTF-8")
-  if (identical(text, "")) stop("The response did not return any content.")
-  fromJSON(text, flatten=T)$results$features
-}
+#' Return a UTC HTTP date as GMT+08
+utc_as_gmt08 <- . %>% 
+  parse_date_time(orders = c("YmdHMSz", "adbYHMS")) %>% 
+  with_tz(tzone="Australia/Perth")
 
-# Datetime
-utc_as_gmt08 <- . %>% parse_date_time(orders = c("YmdHMSz", "adbYHMS")) %>% with_tz(tzone="Australia/Perth")
+#' Calculate the "turtle date" from a given datetime
 turtle_date <- . %>% as_date %>% -hours(12) %>% as_date
 
-#' A filter function to restrict data to THV from 19 Dec 2016
+#' Filter a data.frame to records collected at THV after 19 Dec 2016
 thv_filter <- . %>% filter(
     latitude < -21.44,
     latitude > -21.47,
@@ -70,44 +84,39 @@ thv_filter <- . %>% filter(
     date > dmy("19/11/2016"))
 
 # Flatten nested JSON, parse field formats and rename columns
-tracks <- res_trk %>% 
-  parse_geojson %>%
+tracks <- track_records %>% 
   transmute(
-    datetime=properties.when %>% utc_as_gmt08,
-    longitude=as.numeric(properties.longitude),
-    latitude=as.numeric(properties.latitude),
-    date=properties.when %>% turtle_date,
-    species=properties.species,
-    nest_age=properties.nest_age,
-    nest_type=properties.nest_type
+    datetime = properties.when %>% utc_as_gmt08,
+    longitude = properties.longitude %>% as.numeric,
+    latitude = properties.latitude %>% as.numeric,
+    date = properties.when %>% turtle_date,
+    species = properties.species,
+    nest_age = properties.nest_age,
+    nest_type = properties.nest_type
   ) %>% thv_filter
-save(tracks, file="data/tracks.Rda")
+save(tracks, file = "data/tracks.Rda")
 load("data/tracks.Rda")
 
-tags <- res_tag %>% 
-  parse_geojson %>%
+tags <- tag_records %>% 
   transmute(
-    datetime=properties.when %>% utc_as_gmt08,
-    longitude=as.numeric(properties.longitude),
-    latitude=as.numeric(properties.latitude),
-    date=properties.when %>% turtle_date,
-    species=properties.species,
-    health=properties.health,
-    nesting=properties.nesting
+    datetime = properties.when %>% utc_as_gmt08,
+    longitude = properties.longitude %>% as.numeric,
+    latitude = properties.latitude %>% as.numeric,
+    date = properties.when %>% turtle_date,
+    species = properties.species,
+    health = properties.health,
+    nesting = properties.nesting_event
   ) %>% thv_filter
-save(tags, file="data/tags.Rda")
+save(tags, file = "data/tags.Rda")
 load("data/tags.Rda")
 ```
 
-* **`r nrow(tracks)` records** retrieved from WAStD API on 
-  `r res_trk$headers$date` when compiling this workbook
-* Track observations span **`r min(tracks$datetime)` - `r max(tracks$datetime)`"*
-* **`r nrow(tags)` records** retrieved from WAStD API on 
-  `r res_tag$headers$date` when compiling this workbook
+* Track observations span **`r min(tracks$datetime)` - `r max(tracks$datetime)`"**
 * Tag observations span **`r min(tags$datetime)` - `r max(tags$datetime)`**
 
 ### Turtle dates
-The column "date" is the reconstructed emergence date. 
+The column `date` is the reconstructed event date, as opposed to the `datetime`
+of the encounter as seen by the observer.
 
 For tagged nesting turtles:
 
@@ -136,7 +145,7 @@ observations made between noon and midnight (afternoons).
 
 All subsequent analyses bin the data by this reconstructed emergence date.
 
-## A first look of the data
+## A first look at the data
 ### Interactive datatable: Tracks
 
 ```{r dt_tracks}
@@ -155,18 +164,24 @@ Hover-scroll to zoom, click features to inspect. Hold mouse outside map to scrol
 
 Be patient when scrolling, your browser is earning its salary right now.
 ```{r map}
-track <- makeAwesomeIcon(icon="home", markerColor="green")
-tag <- makeAwesomeIcon(icon="tag", markerColor="blue")
+grd = readOGR("thv_grid.geojson", "OGRGeoJSON")
 leaflet(tracks) %>%
-  addProviderTiles("Esri.WorldImagery") %>%
+  addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+  addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
   setView(lng=115.0, lat=-21.45, zoom=12) %>%
+  addPolygons(data = grd, weight = 1, color = "orange", opacity = 0.5, 
+              label = ~paste(id), group = "Grid") %>%
   addAwesomeMarkers(~longitude, ~latitude,
-                    data=tracks, label=~species,
-                    icon=track,
-                    popup=~paste(nest_age, species, nest_type, date)) %>%
-  addAwesomeMarkers(~longitude, ~latitude, data=tags, label=~species,
-                    icon=tag,
-                    popup=~paste(health, species, "nesting:", nesting, date))
+                    data = tracks, label = ~species,
+                    icon = makeAwesomeIcon(icon = "home", markerColor = "green"),
+                    popup = ~paste(nest_age, species, nest_type, date),
+                    group = "Tracks") %>%
+  addAwesomeMarkers(~longitude, ~latitude, data = tags, label = ~species,
+                    icon = makeAwesomeIcon(icon = "tag", markerColor = "blue"),
+                    popup = ~paste(health, species, "nesting:", nesting, date),
+                    group = "Tags") %>%
+  addLayersControl(baseGroups = c("Aerial", "Place names"),
+                   overlayGroups = c("Grid", "Tracks", "Tags"))
 ```
 
 # Nesting effort
@@ -180,18 +195,18 @@ The column `date` is the "turtle date".
 ```{r nesting_encounters}
 nesting_encounters <- bind_rows(
   tracks %>% 
-    filter(nest_age=="fresh") %>% 
-    transmute(latitude=latitude, 
-              longitude=longitude, 
-              date=date, 
-              species=species, 
-              type=nest_type),
+    filter(nest_age == "fresh") %>% 
+    transmute(latitude = latitude, 
+              longitude = longitude, 
+              date = date, 
+              species = species, 
+              type = nest_type),
   tags %>% 
-    transmute(latitude=latitude, 
-              longitude=longitude, 
-              date=date, 
-              species=species, 
-              type=nesting)
+    transmute(latitude = latitude, 
+              longitude = longitude, 
+              date = date, 
+              species = species, 
+              type = nesting)
   ) %>%
   mutate(
     diffdate=difftime(date, origin)
@@ -211,21 +226,14 @@ shared absences, while a grid too wide will lose spatial detail.
 It is to be decided whether the actual nesting beaches, gridded into equidistant
 sections, would be a more appropriate spatial unit.
 
-```{r load_grid}
-grd = readOGR("thv_grid.geojson", "OGRGeoJSON")
-leaflet() %>% 
-  addTiles() %>% 
-  addPolygons(data=grd, weight=1, color="orange", label = ~paste(id))
-```
-
 Turn nesting encounters into a SpatialPointsDataFrame (SPDF, R's "Shapefile"), 
 then spatially join this SPDF to the grid cells the encounter lies in.
 Only the grid cells over sandy beaches will contain encounters.
 
 ```{r make_spdf}
 wgs84 = CRS('+proj=longlat +datum=WGS84 +no_defs')
-d.sp <- SpatialPoints(coords=dplyr::select(nesting_encounters, longitude, latitude), proj4string=wgs84)
-d.spdf <- SpatialPointsDataFrame(d.sp, data=nesting_encounters, proj4string=wgs84)
+d.sp <- SpatialPoints(coords = select(nesting_encounters, longitude, latitude), proj4string = wgs84)
+d.spdf <- SpatialPointsDataFrame(d.sp, data = nesting_encounters, proj4string = wgs84)
 d.spdf.grd <- spCbind(d.spdf, over(d.spdf, grd))
 # qplot(longitude, latitude, data = d.spdf.grd@data, facets = ~species, color=date)
 ```
@@ -245,13 +253,19 @@ Nesting success is calculated as the ratio of tallied successful over total
 nesting encounters per date and species. 
 This combines nesting over the whole area for each surveyed day.
 
+As successful nesting events are counted (this is negotiable):
+
+* fresh tracks with nests (`successful-crawl`),
+* hatched nests,
+* tagged turtles with nesting `present`.
+
 ```{r plot_nesting_abundance}
 all_nesting_by_date <- nesting_encounters %>%
-  group_by(date, species) %>% tally(sort=F) %>% ungroup() %>% rename(all=n)
+  group_by(date, species) %>% tally() %>% ungroup() %>% rename(all=n)
 
 successful_nesting_by_date <- nesting_encounters %>% 
-  filter(type=='successful-crawl' | type=="hatched-nest" | type=="present") %>%
-  group_by(date, species) %>% tally(sort=F) %>% ungroup() %>%
+  filter(type == 'successful-crawl' | type == "hatched-nest" | type == "present") %>%
+  group_by(date, species) %>% tally() %>% ungroup() %>%
   mutate(n = ifelse(is.na(n), 0, n)) %>%
   transmute(date=date, species=species, successful=n)
 
