@@ -17,7 +17,10 @@ library(dplyr) # load after PCNM to be default for "select"
 library(lubridate)
 library(stringr)
 library(tidyjson)
+library(jsonlite)
 library(tidyr)
+library(purrr)
+library(tibble)
 
 # Visualisation
 library(DT)

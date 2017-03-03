@@ -30,127 +30,81 @@ if (file.exists("../config/load.R")) source("../config/load.R")
 * Data ingested (scripted) from CSV into WAStD
 
 ### Loading data from the WAStD API
+Using [api tricks](https://www.rstudio.com/resources/videos/using-web-apis-from-r/).
 
 ```{r api}
-# Data URLs
-api <- "https://strandings.dpaw.wa.gov.au/api/1/"
-pars <- "?taxon=Cheloniidae&limit=10000&format=json"
-url_trk <- paste0(api, "turtle-nest-encounters/", pars)
-url_tag <- paste0(api, "animal-encounters/", pars)
+#' Expand an API serializer name into a WAStD API url
+wastd_api <- . %>% paste0("https://strandings.dpaw.wa.gov.au/api/1/", .)
 
-# Tracks are TurtleNestEncounters
-res_trk <- GET(url_trk, add_headers(Authorization = Sys.getenv("WASTD_APITOKEN")))
-data_trk <- res_trk %>% content("text", encoding="utf-8") %>% as.tbl_json()
-data_trk_json <- attr(data_trk, "JSON")[[1]]$results  # $features
+# Reqest GET query parameters and authorization headers
+qry = list(taxon="Cheloniidae", limit=10000, format="json")
+hdr = c(Authorization = Sys.getenv("WASTD_APITOKEN"))
 
-# Tags are AnimalEncounters
-res_tag <- GET(url_tag, add_headers(Authorization = Sys.getenv("WASTD_APITOKEN"))) 
-data_tag <- res_tag %>% content("text", encoding="utf-8") %>% as.tbl_json()
-data_tag_json <- attr(data_tag, "JSON")[[1]]$results  # features
+res_trk <- GET(wastd_api("turtle-nest-encounters/"), 
+               query = qry, add_headers(.headers = hdr)) %>% stop_for_status()
+res_tag <- GET(wastd_api("animal-encounters/"), 
+               query = qry, add_headers(.headers = hdr)) %>% stop_for_status()
 ```
 
 ### Formatting the API response
+See [purrr talk](https://www.rstudio.com/resources/videos/happy-r-users-purrr/).
 
 ```{r data_munging}
-flatten_trk <- function(li){
-  out <- c(li$when, li$longitude, li$latitude, li$species, li$nest_age, li$nest_type)
-  out
-}
-
-flatten_tag <- function(li){
-  out <- c(li$when, li$longitude, li$latitude, li$species, li$health, li$activity)
-  out
+#' Parse a HTTP response of GeoJSON to a data.table of features and handle errors
+parse_geojson <- function(res){
+  text <- content(res, as = "text", encoding = "UTF-8")
+  if (identical(text, "")) stop("The response did not return any content.")
+  fromJSON(text, flatten=T)$results$features
 }
 
 # Datetime
-utc <- "UTC"
-gmt08 <- "Australia/Perth"
-ord <- c("YmdHMSz", "adbYHMS")
+utc_as_gmt08 <- . %>% parse_date_time(orders = c("YmdHMSz", "adbYHMS")) %>% with_tz(tzone="Australia/Perth")
+turtle_date <- . %>% as_date %>% -hours(12) %>% as_date
 
-
-# Flatten nested JSON to data.table using tidyjson: slow but more readable
-# tracks <- data_trk %>%
-#   enter_object("results") %>%
-#   gather_array() %>%
-#   spread_values(
-#     datetime = with_tz(parse_date_time(jstring("when"), orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
-#     species = jstring("species"),
-#     nest_age = jstring("nest_age"),
-#     nest_type = jstring("nest_type")
-#   ) %>%
-#   enter_object("where") %>% 
-#   gather_array() %>% 
-#   spread_values(
-#     longitude=as.numeric(jnumber("longitude")),
-#     latitude=as.numeric(jnumber("latitude"))
-#   ) 
-
-# Flatten nested JSON, parse field formats and rename columns
-tracks <- data_trk_json %>%
-  ldply(flatten_trk) %>% 
-  tbl_df() %>%
-  transmute(
-    datetime=with_tz(parse_date_time(V1, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
-    longitude=as.numeric(V2),
-    latitude=as.numeric(V3),
-    date=as_date(as_date(V1) - hours(12)),
-    species=V4,
-    nest_age=V5,
-    nest_type=V6
-  ) %>%
-  filter(
+#' A filter function to restrict data to THV from 19 Dec 2016
+thv_filter <- . %>% filter(
     latitude < -21.44,
     latitude > -21.47,
     longitude > 114.96,
     longitude < 115.03,
-    date > dmy("19/11/2016")
-  )
+    date > dmy("19/11/2016"))
+
+# Flatten nested JSON, parse field formats and rename columns
+tracks <- res_trk %>% 
+  parse_geojson %>%
+  transmute(
+    datetime=properties.when %>% utc_as_gmt08,
+    longitude=as.numeric(properties.longitude),
+    latitude=as.numeric(properties.latitude),
+    date=properties.when %>% turtle_date,
+    species=properties.species,
+    nest_age=properties.nest_age,
+    nest_type=properties.nest_type
+  ) %>% thv_filter
 save(tracks, file="data/tracks.Rda")
 load("data/tracks.Rda")
 
-tags <- data_tag_json %>% 
-  ldply(flatten_tag) %>%
-  tbl_df() %>%
+tags <- res_tag %>% 
+  parse_geojson %>%
   transmute(
-    datetime=with_tz(parse_date_time(V1, orders=c("YmdHMSz"), tz=utc), tzone=gmt08),
-    longitude=as.numeric(V2),
-    latitude=as.numeric(V3),
-    date=as_date(as_date(V1) - hours(12)),
-    species=V4,
-    health=V5,
-    activity=V6
-  ) %>%
-  filter(
-    latitude < -21.44,
-    latitude > -21.47,
-    longitude > 114.96,
-    longitude < 115.03,
-    date > dmy("19/11/2016")
-  )
+    datetime=properties.when %>% utc_as_gmt08,
+    longitude=as.numeric(properties.longitude),
+    latitude=as.numeric(properties.latitude),
+    date=properties.when %>% turtle_date,
+    species=properties.species,
+    health=properties.health,
+    nesting=properties.nesting
+  ) %>% thv_filter
 save(tags, file="data/tags.Rda")
 load("data/tags.Rda")
-
-# Metadata on data currency
-track_data_retrieved_on <- with_tz(
-  parse_date_time(res_trk$headers$date, orders=ord, tz=utc), tzone=gmt08)
-no_track_observations <- nrow(tracks)
-earliest_track_observation <- with_tz(min(tracks$datetime), tzone=gmt08)
-latest_track_observation <- with_tz(max(tracks$datetime), tzone=gmt08)
-
-tag_data_retrieved_on <- with_tz(
-  parse_date_time(res_tag$headers$date, orders=ord, tz=utc), tzone=gmt08)
-no_tag_observations <- nrow(tags)
-earliest_tag_observation <- with_tz(min(tags$datetime), tzone=gmt08)
-latest_tag_observation <- with_tz(max(tags$datetime), tzone=gmt08)
 ```
 
-
-* **`r no_track_observations` records** retrieved from WAStD API on 
-  `r track_data_retrieved_on` GMT+08 when compiling this workbook
-* Track observations span **`r earliest_track_observation` - `r latest_track_observation` GMT+08**
-* **`r no_tag_observations` records** retrieved from WAStD API on 
-  `r tag_data_retrieved_on` GMT+08 when compiling this workbook
-* Tag observations span **`r earliest_tag_observation` - `r latest_tag_observation` GMT+08**
+* **`r nrow(tracks)` records** retrieved from WAStD API on 
+  `r res_trk$headers$date` when compiling this workbook
+* Track observations span **`r min(tracks$datetime)` - `r max(tracks$datetime)`"*
+* **`r nrow(tags)` records** retrieved from WAStD API on 
+  `r res_tag$headers$date` when compiling this workbook
+* Tag observations span **`r min(tags$datetime)` - `r max(tags$datetime)`**
 
 ### Turtle dates
 The column "date" is the reconstructed emergence date. 
@@ -212,17 +166,14 @@ leaflet(tracks) %>%
                     popup=~paste(nest_age, species, nest_type, date)) %>%
   addAwesomeMarkers(~longitude, ~latitude, data=tags, label=~species,
                     icon=tag,
-                    popup=~paste(health, species, activity, date))
+                    popup=~paste(health, species, "nesting:", nesting, date))
 ```
 
 # Nesting effort
 To visualise and analyse nesting effort, data from track counts is combined with
 data from tagging and missed turtles. 
 Location and species are shared, while track / nest type (from track count) and
-turtle activity (from tagging) are combined into one column.
-
-**TODO** Nesting success from tagging is not yet loaded from the original data,
-but will replace turtle activity with the variable "nesting success".
+turtle nesting (from tagging) are combined into one column.
 
 The column `date` is the "turtle date".
 
@@ -240,7 +191,7 @@ nesting_encounters <- bind_rows(
               longitude=longitude, 
               date=date, 
               species=species, 
-              type=activity)
+              type=nesting)
   ) %>%
   mutate(
     diffdate=difftime(date, origin)
@@ -299,15 +250,7 @@ all_nesting_by_date <- nesting_encounters %>%
   group_by(date, species) %>% tally(sort=F) %>% ungroup() %>% rename(all=n)
 
 successful_nesting_by_date <- nesting_encounters %>% 
-  filter(type=='successful-crawl' | 
-           type=="hatched-nest" | 
-           type=="returning-to-water"| 
-           type=="laying-eggs"| 
-           type=="digging-body-pit"| 
-           type=="arriving"| 
-           type=="filling-in-egg-chamber"| 
-           type=="excavating-egg-chamber"
-         ) %>%
+  filter(type=='successful-crawl' | type=="hatched-nest" | type=="present") %>%
   group_by(date, species) %>% tally(sort=F) %>% ungroup() %>%
   mutate(n = ifelse(is.na(n), 0, n)) %>%
   transmute(date=date, species=species, successful=n)
@@ -425,7 +368,7 @@ site_summary <- d.spdf.grd@data %>%
   group_by(id, species) %>% 
   tally(sort=F) %>% 
   ungroup() %>%
-  left_join(Xs.id)
+  left_join(Xs.id,by = "id")
 
 gg_nesting_distribution <- ggplot(site_summary, aes(xmin, ymin, z=n)) + 
   facet_wrap("species") + 
@@ -477,7 +420,7 @@ This assumes sparse observations, where shared absence is due to undersampling
 or low population density. The high number of nesting events may violate this assumption,
 so that Hellinger transformation may not be appropriate.
 
-Alternatively, relative abundance is calculated through 
+Alternatively, relative abundance is calculated through division by row (site) sum.
 
 ```{r plot_Yhel}
 Y.hel <- Y.in %>% decostand("hellinger")

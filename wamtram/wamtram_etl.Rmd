@@ -4,8 +4,6 @@ author: "Florian Mayer"
 date: "18 July 2016"
 output: html_document
 ---
-
-
 ```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 setwd("~/projects/turtle-scripts/wamtram")
@@ -17,7 +15,7 @@ library(RODBC)
 This document describes and executes the Extraction, Transformation and (up)Loading
 of data from the Turtle Tagging database WAMTRAM 2 to the data catalogue.
 
-It is based on technical documentation provided by Simon Woodman.
+It is based on technical documentation provided by WAMTRAM 1 developer Simon Woodman.
 
 # Installation
 Setup RODBC as per
@@ -25,8 +23,7 @@ Setup RODBC as per
 and configure an ODBC data source for the tagging database, e.g.
 
 * in Windows: ask IT to configure the ODBC data source in Control Panel > ODBC Data Sources,
-* Apple: going to the Apple store and buying a new MacBook Pro, or
-* Linux: writing four lines to a file `~/.odbc.ini`:
+* Linux: create `~/.odbc.ini`:
 
 ```{r, eval=F}
 [turtle_tagging]
@@ -118,13 +115,15 @@ continues on to the next record.
 If the record is successfully processed then the resulting values for `TURLTE_ID`
 and `OBSERVATION_ID` are stored in the record.
 
-The stored procedure can be run multiple times on the same batch, as records that have the `TURTLE_ID` and `OBSERVATION_ID` set are skipped. Records that have previously failed are reprocessed.
+The stored procedure can be run multiple times on the same batch, as records with 
+existing `TURTLE_ID` and `OBSERVATION_ID` are skipped. 
+Records that have previously failed are reprocessed.
 
 This stored procedure is run from a button in the main WA Marine Turtles application.
 
 ## `dbo.ValidateDataEntryBatch`
-This routine loops through all the records in the `TRT_DATA_ENTRY` table for a specified batch
-and attempts to validate each record.
+This routine loops through all the records in the `TRT_DATA_ENTRY` table for a 
+specified batch and attempts to validate each record.
 
 Data is not transferred into the main application tables; however the
 `ERROR_NUMBER` and `ERROR_MESSAGE` fields are populated for problem records.
@@ -132,34 +131,35 @@ Data is not transferred into the main application tables; however the
 In this way the user can check all the records in the batch before deciding to
 load any data in the main application tables.
 
-
 ## `dbo.ValidateDataEntryRecord`
-This routine validates the values entered for a single record in the `TRT_DATA_ENTRY` table,
-and is called by the dbo.ValidateDataEntryBatch stored procedure.
+This routine validates the values entered for a single record in the 
+`TRT_DATA_ENTRY` table, and is called by the dbo.ValidateDataEntryBatch stored 
+procedure.
 
 ## `dbo.CheckPerson`
 This routine checks the `TRT_PERSONS` table for an existing record and returns
 the value of the primary key (`PERSON_ID)`.
 
-## `dbo.EntryBatchAddExistingTag`
-A helper routine for the dbo.EntryBatch stored procedure that adds a single record
+## `dbo.EntryBatchAddExistingTag`: apply a new flipper tag during capture
+A helper routine for the stored procedure `dbo.EntryBatch` that adds a single record
 to the `TRT_RECORDED_TAGS` table, and updates the status of the respective
 record in the `TRT_TAGS` table.
 
-This is used for an observation when a new flipper tag has been attached to a turtle.
+This is run when a new flipper tag has been attached to a turtle.
 
-## `dbo.EntryBatchAddNewTag`
-A helper routine for the `dbo.EntryBatch` stored procedure that adds a single record
+## `dbo.EntryBatchAddNewTag`: re-sight an attached flipper tag during re-capture
+A helper routine for the stored procedure `dbo.EntryBatch` that adds a single record
 to the `TRT_RECORDED_TAGS` table.
 
-This is used for an observation when a previously attached flipper tag is recorded.
+This is run when a previously attached flipper tag is recorded.
 
 ## `dbo.ValidateIdentification`
 A helper routine for the `dbo.EntryBatch` stored procedure that validates other
 turtle identification types (i.e. identification other than flipper or pit tags).
 
 ## `dbo.ValidateMeasurement`
-Validates measurements against minimum and maximum values stored in the `dbo.TRT_MEASUREMENT_TYPES` table.
+Validates measurements against minimum and maximum values stored in the 
+`dbo.TRT_MEASUREMENT_TYPES` table.
 
 ## `dbo.ValidateFloatRange`
 A generic function for validating that the FLOAT value falls within an acceptable range.
@@ -195,13 +195,14 @@ This is a summary function that displays the history of inter-season remigration
 for each turtle recorded in the system. It is used by the view `TRV_INTERSEASON_MIGRATION`.
 
 ### `dbo.ObservationTags`
-This is a summary function that returns a list of tags recorded for a turtle for a given observation.
+This is a summary function that returns a list of tags recorded for a turtle for 
+a given observation.
 It is not currently used.
 
 ## Other Functionality: Stored Procedures
 
 ### `dbo.TransferObservationsByFlipperTag`
-Changes in the database structure for version 2 of the WA Marine Turtles application
+Changes in the database structure between WAMTRAM v1 and v2
 introduced modified referential integrity constraints between the tables
 `TRT_OBSERVATIONS`, `TRT_TAGS` and `TRT_RECORDED_TAGS` table.
 This had the benefit of ensuring valid data between these tables,
@@ -221,9 +222,10 @@ so a stored procedure was developed to handle this.
 # Data
 This section aims to extract the raw data from the database.
 
-Note: WAMTRAM 1 has uppercase named tables `TRT_*`,  WAMTRAM 2
-(Pendoley-Rawcliffe) added lowercased `tbl*` tables.
-
+Note: WAMTRAM 1 tables are prefixed with `TRT_*` following departmental naming 
+conventions, whereas Pendoley-Rawcliffe tables are prefixed with `tbl*` as per
+common MS Access naming convention.
+There exists duplication of records between the two sets of tables.
 
 ## Sites
 Nesting beaches are stored in table `TRT_PLACES`.
@@ -259,8 +261,15 @@ DT::datatable(badsites)
 
 Most of these are offshore, in-water captures/releases.
 
-**Task** The database custodian needs to sit with a GIS analyst to
-digitise all `r nrow(sites)` sites as polygons.
+**TODO** The database custodian (BP) needs to sit with a GIS analyst to
+digitise all `r nrow(sites)` sites as polygons. 
+The site polygons shall be delineated by:
+
+* The exact extent of the location as a segment of the high water mark.
+* A well-chosen buffer of the high water mark to accommodate observations 
+  both at low tide (buffer seawards) and encounters with nesting turtles.
+* The polygons shall be simplified to consist of exactly one polygon ring and 
+  not overlap with each other.
 
 ## Observations
 Ancillary lookup tables are sanitised and joined to the observations.
@@ -385,6 +394,11 @@ damages <- sqlQuery(con, "select * from dbo.TRT_DAMAGE;")
 # 128k
 obs <- sqlQuery(con, "select * from dbo.TRT_OBSERVATIONS;")
 
+# save all objects
+# save.image("data/wamtram_all.RData")
+# resume
+# load("data/wamtram_all.RData")
+
 ord <- c("YmdHMS", "Ymd")
 utc <- "UTC"
 gmt08 <- "Australia/Perth"
@@ -426,7 +440,7 @@ enc <- o %>%
 datatable(enc)
 # write.csv(o, file="data/wamtram_encounters.csv", row.names=F)
 write.csv(enc, file="data/wamtram_encounters.csv", row.names=F)
-ckanr::resource_update(W2_ENC_CSV_RID, "data/wamtram_encounters.csv")
+ckanr::resource_update(Sys.getenv("W2_ENC_CSV_RID"), "data/wamtram_encounters.csv")
 ```
 
 
