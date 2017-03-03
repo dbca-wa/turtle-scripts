@@ -73,7 +73,7 @@ utc_as_gmt08 <- . %>%
   with_tz(tzone="Australia/Perth")
 
 #' Calculate the "turtle date" from a given datetime
-turtle_date <- . %>% as_date %>% -hours(12) %>% as_date
+turtle_date <- . %>% utc_as_gmt08 %>% -hours(12) %>% as_date
 
 #' Filter a data.frame to records collected at THV after 19 Dec 2016
 thv_filter <- . %>% filter(
