@@ -1,42 +1,44 @@
+## Install from source
 setwd("~/projects/turtle-scripts/")
-install.packages("spacemakeR", repos="http://R-Forge.R-project.org")
-install.packages("ape")
-install.packages("spdep")
-install.packages("ade4")
-install.packages("vegan")
-# install.packages("AEM", repos="http://R-Forge.R-project.org")
-install.packages("data/AEM_0.6.tar.gz", repos = NULL, type = "source")
-# install.packages("PCNM", repos="http://R-Forge.R-project.org")
-install.packages("data/PCNM_2.1-4.tgz", repos = NULL, type = .Platform$pkgType)
+install.packages("data/AEM_0.6.tar.gz", repos = NULL, type = "source", lib = Sys.getenv("R_LIBS_USER"))
+install.packages("data/PCNM_2.1-4.tgz", repos = NULL, type = "source", lib = Sys.getenv("R_LIBS_USER"))
 
-# install.packages("packfor", repos="http://R-Forge.R-project.org")
-# require(devtools); install_github("sdray/adespatial") # replaces packfor::forward.sel
-install.packages("adespatial", repos="http://R-Forge.R-project.org")
+## Install from custom repository
+# install.packages("AEM", repos="http://R-Forge.R-project.org", lib = Sys.getenv("R_LIBS_USER"))  # offline, use source
+# install.packages("PCNM", repos="http://R-Forge.R-project.org", lib = Sys.getenv("R_LIBS_USER")) # offline, use source
+install.packages("spacemakeR", repos="http://R-Forge.R-project.org", lib = Sys.getenv("R_LIBS_USER"))
+# install.packages("packfor", repos="http://R-Forge.R-project.org") ## superceded by adespatial
+# install.packages("adespatial", repos="http://R-Forge.R-project.org") # offline, use github
 
+## Install from Github
+require(devtools)
+# adespatial replaces packfor::forward.sel
+devtools::install_github("sdray/adespatial", lib = Sys.getenv("R_LIBS_USER"))
+devtools::install_github("ropensci/ckanr", lib = Sys.getenv("R_LIBS_USER"))
+
+## Install packages from CRAN
 install.packages(c(
-# Database management
-"RODBC",
-"ckanr",
+  "RODBC",
 
-# Spatial analysis
-"rgdal",
-"sp",
-"maptools",
-"vegan",
+  "rgdal",
+  "sp",
+  "maptools",
+  "vegan",
+  "ape",
+  "spdep",
+  "ade4",
 
-# Data management
-"Hmisc",
-"httr",
-"plyr",
-"dplyr",
-"lubridate",
-"stringr",
-"tidyjson",
-"tidyr",
+  "Hmisc",
+  "httr",
+  "plyr",
+  "dplyr",
+  "lubridate",
+  "stringr",
+  "tidyjson",
+  "tidyr",
 
-# Visualisation
-"DT",
-"mapview",
-"leaflet",
-"ggplot2"
-))
+  "DT",
+  "mapview",
+  "leaflet",
+  "ggplot2"),
+  lib = Sys.getenv("R_LIBS_USER"))
