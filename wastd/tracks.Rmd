@@ -8,30 +8,30 @@ output: html_document
 ```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 setwd("~/projects/turtle-scripts/wastd")
-# Spatial analysis
-library(rgdal)
-library(sp)
-library(maptools)
-library(vegan)
-library(PCNM)
-library(adespatial)
-
-# Data management
-library(httr)
-library(plyr)
-library(dplyr) # load after PCNM to be default for "select"
-library(lubridate)
-library(tidyjson)
-library(tidyr)  
-
-# Visualisation
-library(DT)
-library(leaflet)
-library(ggplot2)
-
-# Load sensitive settings as environment variables
 if (file.exists("../config/setup.R")) source("../config/setup.R")
+if (file.exists("../config/load.R")) source("../config/load.R")
+```
 
+# Data
+
+## Tracks and nests
+
+* Tracks were recorded on Android tablets using digital data capture software ODK Collect
+* Forms "TrackCount 0.10" (Nov-Dec 2016), "Track or Treat 0.26" (Feb 2017) and v0.31 (Feb 2017)
+* Data warehouse ODK Aggregate at [dpaw-data.appspot.com](https://dpaw-data.appspot.com/)
+* Data exported (through GUI) from dpaw-data as JSON and ingested (scripted) into
+  [WAStD](https://strandings.dpaw.wa.gov.au/) after each field trip
+  
+## Tagging of nesting turtles
+
+* Nesting turtles recorded on paper data sheets, entered and QA'd in WAMTRAM
+* Data exported from WAMTRAM master db (scripted) into CSV and saved to 
+  internal data catalogue
+* Data ingested (scripted) from CSV into WAStD
+
+### Loading data from the WAStD API
+
+```{r api}
 # Data URLs
 api <- "https://strandings.dpaw.wa.gov.au/api/1/"
 pars <- "?taxon=Cheloniidae&limit=10000&format=json"
@@ -47,7 +47,11 @@ data_trk_json <- attr(data_trk, "JSON")[[1]]$results  # $features
 res_tag <- GET(url_tag, add_headers(Authorization = Sys.getenv("WASTD_APITOKEN"))) 
 data_tag <- res_tag %>% content("text", encoding="utf-8") %>% as.tbl_json()
 data_tag_json <- attr(data_tag, "JSON")[[1]]$results  # features
+```
 
+### Formatting the API response
+
+```{r data_munging}
 flatten_trk <- function(li){
   out <- c(li$when, li$longitude, li$latitude, li$species, li$nest_age, li$nest_type)
   out
@@ -140,30 +144,15 @@ earliest_tag_observation <- with_tz(min(tags$datetime), tzone=gmt08)
 latest_tag_observation <- with_tz(max(tags$datetime), tzone=gmt08)
 ```
 
-# Data
 
-## Tracks and nests
-
-* Tracks were recorded on Android tablets using digital data capture software ODK Collect
-* Forms "TrackCount 0.10" (Nov-Dec 2016), "Track or Treat 0.26" (Feb 2017) and v0.31 (Feb 2017)
-* Data warehouse ODK Aggregate at [dpaw-data.appspot.com](https://dpaw-data.appspot.com/)
-* Data exported (through GUI) from dpaw-data as JSON and ingested (scripted) into
-  [WAStD](https://strandings.dpaw.wa.gov.au/) after each field trip
 * **`r no_track_observations` records** retrieved from WAStD API on 
   `r track_data_retrieved_on` GMT+08 when compiling this workbook
 * Track observations span **`r earliest_track_observation` - `r latest_track_observation` GMT+08**
-
-## Tagging of nesting turtles
-
-* Nesting turtles recorded on paper data sheets, entered and QA'd in WAMTRAM
-* Data exported from WAMTRAM master db (scripted) into CSV and saved to 
-  internal data catalogue
-* Data ingested (scripted) from CSV into WAStD
 * **`r no_tag_observations` records** retrieved from WAStD API on 
   `r tag_data_retrieved_on` GMT+08 when compiling this workbook
 * Tag observations span **`r earliest_tag_observation` - `r latest_tag_observation` GMT+08**
 
-## Turtle dates
+### Turtle dates
 The column "date" is the reconstructed emergence date. 
 
 For tagged nesting turtles:
@@ -193,22 +182,25 @@ observations made between noon and midnight (afternoons).
 
 All subsequent analyses bin the data by this reconstructed emergence date.
 
-## Interactive datatable: Tracks
-```{r}
+## A first look of the data
+### Interactive datatable: Tracks
+
+```{r dt_tracks}
 DT::datatable(tracks)
 ```
 
-## Interactive datatable: Nesting turtles
-```{r}
+### Interactive datatable: Nesting turtles
+
+```{r dt_tags}
 DT::datatable(tags)
 ```
 
 
-## Interactive map
+### Interactive map
 Hover-scroll to zoom, click features to inspect. Hold mouse outside map to scroll page.
 
 Be patient when scrolling, your browser is earning its salary right now.
-```{r}
+```{r map}
 track <- makeAwesomeIcon(icon="home", markerColor="green")
 tag <- makeAwesomeIcon(icon="tag", markerColor="blue")
 leaflet(tracks) %>%
@@ -232,9 +224,9 @@ turtle activity (from tagging) are combined into one column.
 **TODO** Nesting success from tagging is not yet loaded from the original data,
 but will replace turtle activity with the variable "nesting success".
 
-Furthermore, turtle dates are calculated for all encounters.
+The column `date` is the "turtle date".
 
-```{r}
+```{r nesting_encounters}
 nesting_encounters <- bind_rows(
   tracks %>% 
     filter(nest_age=="fresh") %>% 
@@ -268,7 +260,7 @@ shared absences, while a grid too wide will lose spatial detail.
 It is to be decided whether the actual nesting beaches, gridded into equidistant
 sections, would be a more appropriate spatial unit.
 
-```{r}
+```{r load_grid}
 grd = readOGR("thv_grid.geojson", "OGRGeoJSON")
 leaflet() %>% 
   addTiles() %>% 
@@ -279,7 +271,7 @@ Turn nesting encounters into a SpatialPointsDataFrame (SPDF, R's "Shapefile"),
 then spatially join this SPDF to the grid cells the encounter lies in.
 Only the grid cells over sandy beaches will contain encounters.
 
-```{r}
+```{r make_spdf}
 wgs84 = CRS('+proj=longlat +datum=WGS84 +no_defs')
 d.sp <- SpatialPoints(coords=dplyr::select(nesting_encounters, longitude, latitude), proj4string=wgs84)
 d.spdf <- SpatialPointsDataFrame(d.sp, data=nesting_encounters, proj4string=wgs84)
@@ -289,7 +281,7 @@ d.spdf.grd <- spCbind(d.spdf, over(d.spdf, grd))
 
 ## Nesting effort by species
 Nesting encounters are tallied by date, species and type.
-```{r}
+```{r plot_nesting_type_by_date}
 nesting_type_by_date <- nesting_encounters %>%
   group_by(date, species, type) %>% tally(sort=F) %>% ungroup() %>%
   rename(all=n)
@@ -301,7 +293,8 @@ ggplot(nesting_type_by_date, aes(x=date, y=all, colour=type)) +
 Nesting success is calculated as the ratio of tallied successful over total
 nesting encounters per date and species. 
 This combines nesting over the whole area for each surveyed day.
-```{r}
+
+```{r plot_nesting_abundance}
 all_nesting_by_date <- nesting_encounters %>%
   group_by(date, species) %>% tally(sort=F) %>% ungroup() %>% rename(all=n)
 
@@ -335,7 +328,7 @@ ggsave("data/nesting_abundance.pdf", gg_nesting_abundance, width=7, height=7)
 ```
 
 
-```{r}
+```{r plot_nesting_success}
 gg_nesting_success <- ggplot(nesting_success, aes(x=date, y=nesting_success)) +
   ggtitle("Nesting success at Thevenard Is") +
   geom_bar(stat="identity") +
@@ -365,10 +358,10 @@ There may be more periods with artificially low track count.
 
 **TODO** 
 
-* identify periods of artificially low track count from field diary and highlight
-in figures
-* enter surveys into WAStD, annotate with observations on weather, methodology,
-any known biases on recorded data.
+* Identify periods of artificially low track count from field diary and highlight
+  in figures.
+* Enter surveys into WAStD, annotate with observations on weather, methodology,
+  any known biases on recorded data.
 
 
 ## Modelling the nesting seasons
@@ -381,7 +374,7 @@ species at the given location.
 Spatial and temporal patterns of species abundance (daily species tallies) (PCNM)
 
 Create species profiles for species track abundance per grid cell id and encounter date.
-```{r}
+```{r dt_species_profiles}
 species_profiles <- d.spdf.grd@data %>% 
   filter(!is.na(id)) %>%
   group_by(diffdate, date, id, species) %>% 
@@ -406,7 +399,8 @@ Both Xs and Xs.id have one row per grid cell with encounters.
 Lastly, Xt lists all unique surveyed turtle dates as days since 1970, a numerical
 value as required by spatial analysis tools which cannot parse comlex data types 
 such as  dates.
-```{r}
+
+```{r split_species_profiles}
 Y.in <- species_profiles %>% 
   dplyr::select(-id, -diffdate, -date, -xmin, -xmax, -ymin, -ymax)
 
@@ -425,7 +419,7 @@ colnames(Xt) <- "diffdate"
 Now we can summarise all nesting events (successful and non-successful) over the
 whole season (all observed dates) and plot by species.
 
-```{r}
+```{r plot_nesting_distribution}
 site_summary <- d.spdf.grd@data %>% 
   filter(!is.na(id)) %>%
   group_by(id, species) %>% 
@@ -448,7 +442,7 @@ where as Flatbacks seem to occur all around the island with a focus on the stret
 between west of the Jetty and the Chevron property on the East end.
 
 ### Correlations between variables
-```{r}
+```{r plot_pairs_Y}
 pairs(Y.in, main="Correlations between species")
 ```
 The nesting emergence abundance between Flatbacks and Greens seem to correlate inversely.
@@ -464,33 +458,66 @@ Observations of Hawksbills and turtles with unknown species ID are sparse.
 between sites through shared absence (which might be undersampling rather than 
 true absence).
 
-```{r}
-qplot(Y.in$"chelonia.mydas", geom="histogram") 
-qplot(Y.in$"natator.depressus", geom="histogram")
+```{r plot_Y_abundance}
+qplot(Y.in$"chelonia.mydas", 
+      geom="histogram", 
+      main="Abundance of Chelonia mydas", 
+      xlab="Absolute abundance per grid cell",
+      ylab="Count")
+qplot(Y.in$"natator.depressus", 
+      geom="histogram", 
+      main="Abundance of Natator depressus", 
+      xlab="Absolute abundance per grid cell",
+      ylab="Count")
 ```
 The two main species look a bit left-skewed and show many absences.
 
 The Hellinger transformation will help reduce false similarity through shared absences.
+This assumes sparse observations, where shared absence is due to undersampling
+or low population density. The high number of nesting events may violate this assumption,
+so that Hellinger transformation may not be appropriate.
 
-```{r}
+Alternatively, relative abundance is calculated through 
 
+```{r plot_Yhel}
 Y.hel <- Y.in %>% decostand("hellinger")
 pairs(Y.hel)
-qplot(Y.hel$"chelonia.mydas", geom="histogram")
-qplot(Y.hel$"natator.depressus", geom="histogram")
+qplot(Y.hel$"chelonia.mydas", 
+      geom="histogram", 
+      main="Abundance of Chelonia mydas", 
+      xlab="Hellinger-transformed abundance per grid cell",
+      ylab="Count")
+qplot(Y.hel$"natator.depressus", 
+      geom="histogram", 
+      main="Abundance of Natator depressus", 
+      xlab="Hellinger-transformed abundance per grid cell",
+      ylab="Count")
+
+Y.tot <- Y.in %>% decostand("total", MARGIN=1) # relative abundance as % of site total count
+pairs(Y.tot)
+qplot(Y.tot$"chelonia.mydas", 
+      geom="histogram", 
+      main="Abundance of Chelonia mydas", 
+      xlab="Relative abundance (% of site total) per grid cell",
+      ylab="Count")
+qplot(Y.tot$"natator.depressus", 
+      geom="histogram", 
+      main="Abundance of Chelonia mydas", 
+      xlab="Relative abundance (% of site total) per grid cell",
+      ylab="Count")
 ```
 
 Remove linear spatial trends, lest they eat up explanatory power.
 
-```{r}
-Y <- residuals(rda(Y.hel, X.coords))
+```{r plot_detrended_Y}
+Y <- residuals(rda(Y.tot, X.coords))
 pairs(Y)
 ```
 
 
 ### PCNM
 Following [this tutorial](https://sites.ualberta.ca/~ahamann/teaching/renr690/Lab9.pdf).
-```{r}
+```{r pcnm}
 plot(Xs)
 Xs.site.pcnm <- PCNM(dist(Xs))
 summary(Xs.site.pcnm)
@@ -529,7 +556,7 @@ Outcome:
   `r round(Y.vp$part$indfract$Adj.R.squared[4] * 100, 2)`%.
 
 ## Spatial patterns
-```{r}
+```{r plot_xs_pcnm}
 plot.xs <- function(nr, coords, scores, fs){
   
   fig <- ordisurf(coords, scores[,nr], bubble=3,
@@ -550,7 +577,7 @@ lapply(seq_len(nrow(Xs.sel)),
 ```
 
 ### Temporal patterns
-```{r}
+```{r lot_xt_pcnm}
 #' Create a scatterplot of PCNM values against dates.
 #' 
 #' nr: The row number of the forward.sel dataframe
@@ -573,7 +600,7 @@ plot.xt <- function(nr, dates, scores, fs){
 ```
 
 A spot of modelling!
-```{r}
+```{r ordination}
 XSm <- as.matrix(XS)
 XTm <- as.matrix(XT)
 
@@ -632,6 +659,6 @@ steff_cm <- ordisurf(
 ```
 
 
-```{r, echo=FALSE}
+```{r, reset_workdir, echo=FALSE}
 setwd("~/projects/turtle-scripts")
 ```

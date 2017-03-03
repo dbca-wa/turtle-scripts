@@ -27,21 +27,16 @@ the owner's write permissions: `ckanr::ckanr_setup(url=CKAN, key=APIKEY)`.
 
 Create your own `setup.R` from the template `setup_template.R`.
 Then, load required libraries and source `setup.R`.
-```{r, warning=FALSE, message=FALSE}
+
+```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 setwd("~/projects/turtle-scripts/ningaloo")
-library(Hmisc)
-library(htmlTable)
-library(tidyr)
-library(dplyr)
-library(lubridate)
-library(ckanr)
-library(DT)
-library(rgdal)
-library(mapview)
-library(leaflet)
 if (file.exists("../config/setup.R")) source("../config/setup.R")
+if (file.exists("../config/load.R")) source("../config/load.R")
+library(RODBC)
 refresh_data <- TRUE # download fresh database snapshot or use local copy
 ```
+
 
 # Extract data
 Download, unzip and open the Access mdb file from the data catalogue.

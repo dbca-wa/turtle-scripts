@@ -4,21 +4,14 @@ author: "Florian Mayer"
 date: "18 July 2016"
 output: html_document
 ---
-```{r, message=F}
+
+
+```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 setwd("~/projects/turtle-scripts/wamtram")
-library(Hmisc)
-library(tidyr)
-library(dplyr)
-library(stringr)
-library(lubridate)
-library(ckanr)
-library(DT)
-library(rgdal)
-library(mapview)
-library(leaflet)
-library(vegan)
-library(RODBC)
 if (file.exists("../config/setup.R")) source("../config/setup.R")
+if (file.exists("../config/load.R")) source("../config/load.R")
+library(RODBC)
 ```
 
 This document describes and executes the Extraction, Transformation and (up)Loading
@@ -403,23 +396,22 @@ o <- obs %>%
         observation_datetime_gmt08=o_date + hours(hour(o_time)) + minutes(minute(o_time)),
         observation_datetime_utc=with_tz(observation_datetime_gmt08, tz=utc)
     ) %>%
+    dplyr::select(
+        -OBSERVATION_DATE, -OBSERVATION_TIME, -OBSERVATION_DATE_OLD, 
+        -CORRECTED_DATE, -DATE_CONVENTION, -o_date, -o_time
+    ) %>%
     rename(
         activity_code=ACTIVITY_CODE
     ) %>%
     left_join(activities, by="activity_code") %>%
-    # left_join(sites, by="PLACE_CODE") %>%
-    select(
-        -OBSERVATION_DATE, -OBSERVATION_TIME, -OBSERVATION_DATE_OLD, 
-        -CORRECTED_DATE, -DATE_CONVENTION, -o_date, -o_time
-    ) %>%
-    left_join(person_names, by=c("MEASURER_PERSON_ID" = "PERSON_ID")) %>%
-    rename(measured_by=name) %>%
-    left_join(person_names, by=c("MEASURER_REPORTER_PERSON_ID" = "PERSON_ID")) %>%
-    rename(measurements_reported_by=name) %>%
-    left_join(person_names, by=c("TAGGER_PERSON_ID" = "PERSON_ID")) %>%
-    rename(tagged_by=name) %>%
-    left_join(person_names, by=c("REPORTER_PERSON_ID" = "PERSON_ID")) %>%
-    rename(reported_by=name) %>%
+    # left_join(person_names, by=c("MEASURER_PERSON_ID" = "PERSON_ID")) %>%
+    # rename(measured_by=name) %>%
+    # left_join(person_names, by=c("MEASURER_REPORTER_PERSON_ID" = "PERSON_ID")) %>%
+    # rename(measurements_reported_by=name) %>%
+    # left_join(person_names, by=c("TAGGER_PERSON_ID" = "PERSON_ID")) %>%
+    # rename(tagged_by=name) %>%
+    # left_join(person_names, by=c("REPORTER_PERSON_ID" = "PERSON_ID")) %>%
+    # rename(reported_by=name) %>%
     left_join(sites, by=c("PLACE_CODE" = "name")) %>%
     left_join(turtles, by="TURTLE_ID") 
 
