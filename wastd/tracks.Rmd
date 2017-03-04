@@ -105,7 +105,8 @@ tags <- tag_records %>%
     date = properties.when %>% turtle_date,
     species = properties.species,
     health = properties.health,
-    nesting = properties.nesting_event
+    nesting = properties.nesting_event,
+    name=properties.name
   ) %>% thv_filter
 save(tags, file = "data/tags.Rda")
 load("data/tags.Rda")
@@ -143,7 +144,7 @@ the obesrvation's datetime. This subtracts one day from the date of all
 observations made between midnight and noon (mornings), and preserves the data of all
 observations made between noon and midnight (afternoons).
 
-All subsequent analyses bin the data by this reconstructed emergence date.
+All subsequent analyses bin the data by this reconstructed nesting event date.
 
 ## A first look at the data
 ### Interactive datatable: Tracks
@@ -176,14 +177,24 @@ leaflet(tracks) %>%
                     icon = makeAwesomeIcon(icon = "home", markerColor = "green"),
                     popup = ~paste(nest_age, species, nest_type, date),
                     group = "Tracks") %>%
-  addAwesomeMarkers(~longitude, ~latitude, data = tags, label = ~species,
+  addAwesomeMarkers(~longitude, ~latitude, data = tags, label = ~paste(name, date),
                     icon = makeAwesomeIcon(icon = "tag", markerColor = "blue"),
-                    popup = ~paste(health, species, "nesting:", nesting, date),
+                    popup = ~paste(name, date, species, "nesting:", nesting),
                     group = "Tags") %>%
   addLayersControl(baseGroups = c("Aerial", "Place names"),
                    overlayGroups = c("Grid", "Tracks", "Tags"))
 ```
 
+## Nesting history
+```{r}
+nesting_history <- ggplot(data=tags, aes(x=date, y=name, color=nesting)) + 
+  geom_point() + 
+  geom_line() +
+  ggtitle("Nesting history of tagged turtles") + 
+  labs(x="Date", y ="Primary flipper tag label")
+nesting_history
+ggsave(nesting_history, file="data/nesting_history.pdf", height = 20, width =7)
+```
 # Nesting effort
 To visualise and analyse nesting effort, data from track counts is combined with
 data from tagging and missed turtles. 
