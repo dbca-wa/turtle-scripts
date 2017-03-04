@@ -41,6 +41,8 @@ a wrapper function `wastd_api` encapsulates the WAStD API:
   structure is flattened into a data.table.
 
 ```{r api}
+conn <- vdbConn("vdb", name = "trelliscopedb")
+
 #' Return GeoJSON features from a WAStD API endpoint as data.table
 wastd_api <- function(serializer_name, 
                       base_url="https://strandings.dpaw.wa.gov.au/api/1/",

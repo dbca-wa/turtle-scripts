@@ -18,6 +18,7 @@ devtools::install_github("ropensci/ckanr", lib = Sys.getenv("R_LIBS_USER"))
 devtools::install_github("rstudio/leaflet", lib = Sys.getenv("R_LIBS_USER"))
 
 ## Install packages from CRAN
+install.packages(c("datadr", "trelliscope"))
 install.packages(c(
   "RODBC",
 
