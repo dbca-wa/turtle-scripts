@@ -1,0 +1,83 @@
+---
+title: "Cetacean strandings"
+author: "Dept Parks and Wildlife"
+date: "10/03/2017"
+output: html_document
+---
+
+```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/projects/turtle-scripts/wastd")
+if (file.exists("../config/setup.R")) source("../config/setup.R")
+if (file.exists("../config/load.R")) source("../config/load.R")
+```
+
+
+# Data
+```{r api}
+#' Return GeoJSON features from a WAStD API endpoint as data.table
+wastd_api <- function(serializer_name, 
+                      base_url="https://strandings.dpaw.wa.gov.au/api/1/",
+                      query=list(taxon="Cetacea", limit=10000, format="json"),
+                      wastd_api_token=Sys.getenv("WASTD_APITOKEN")){
+  res <- GET(paste0(base_url, serializer_name), query = query, 
+             add_headers(c(Authorization = wastd_api_token))) %>% stop_for_status()
+  text <- content(res, as = "text", encoding = "UTF-8")
+  if (identical(text, "")) stop("The response did not return any content.")
+  out <- fromJSON(text, flatten = T)$features
+  message(paste(nrow(out), serializer_name, "loaded from WAStD API on", res$headers$date))
+  out
+} 
+
+incidents <- wastd_api("animal-encounters")
+
+#' Return a UTC HTTP date as GMT+08
+utc_as_gmt08 <- . %>% 
+  parse_date_time(orders = c("YmdHMSz", "adbYHMS")) %>% 
+  with_tz(tzone="Australia/Perth")
+
+inc <- incidents %>% 
+  tbl_df %>%
+  mutate(
+    datetime = properties.when %>% utc_as_gmt08,
+    year=year(datetime),
+    longitude = properties.longitude %>% as.numeric,
+    latitude = properties.latitude %>% as.numeric,
+    species = properties.species,
+    health = properties.health,
+    cause_of_death=properties.cause_of_death,
+    nesting = properties.nesting_event,
+    name=properties.name
+  )
+save(inc, file = "data/incidents.Rda")
+load("data/incidents.Rda")
+
+inc %>% select(-properties.behaviour) %>% DT::datatable()
+```
+
+# Incidents
+
+```{r}
+inc_by_year <- inc %>%
+  group_by(year, cause_of_death) %>% tally() %>% ungroup()
+
+hb_by_year <- inc %>%
+  filter(species == "megaptera-novaeangliae") %>% 
+  group_by(year, cause_of_death) %>% tally() %>% ungroup()
+
+ggplot(data=inc_by_year, aes(x=year, y=n, color=cause_of_death)) + 
+  geom_line() +
+  geom_point() +
+  ggtitle("Cetacean incidents by cause of death") +
+  theme_minimal() +
+  labs(x="", y="") +
+  ggsave(file="data/cetacean_incidents_by_year_and_type.pdf")
+
+ggplot(data=hb_by_year, aes(x=year, y=n, color=cause_of_death)) + 
+  geom_line() +
+  geom_point() +
+  ggtitle("Humpback whale incidents by cause of death") +
+  labs(x="", y="") +
+  theme_minimal() +
+  ggsave(file="data/humpback_incidents_by_year_and_type.pdf")
+```
