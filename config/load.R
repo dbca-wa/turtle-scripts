@@ -1,4 +1,5 @@
 library(ckanr)
+library(gh)
 
 # Spatial analysis
 library(rgdal)
@@ -13,18 +14,17 @@ library(Hmisc)
 library(htmlTable)
 library(httr)
 library(plyr)
-library(dplyr) # load after PCNM to be default for "select"
 library(lubridate)
 library(stringr)
 library(tidyjson)
 library(jsonlite)
-library(tidyr)
-library(purrr)
 library(tibble)
+
+library(tidyverse)
+library(magrittr)
 
 # Visualisation
 library(DT)
 library(mapview)
 library(leaflet)
-library(ggplot2)
 library(trelliscope)

@@ -16,9 +16,10 @@ require(devtools)
 devtools::install_github("sdray/adespatial", lib = Sys.getenv("R_LIBS_USER"))
 devtools::install_github("ropensci/ckanr", lib = Sys.getenv("R_LIBS_USER"))
 devtools::install_github("rstudio/leaflet", lib = Sys.getenv("R_LIBS_USER"))
+devtools::install_github("tidyverse/ggplot2", lib = Sys.getenv("R_LIBS_USER"))
+devtools::install_github("r-pkgs/gh", lib = Sys.getenv("R_LIBS_USER"))
 
 ## Install packages from CRAN
-install.packages(c("datadr", "trelliscope"))
 install.packages(c(
   "RODBC",
 
@@ -33,16 +34,13 @@ install.packages(c(
   "Hmisc",
   "httr",
   "plyr",
-  "dplyr",
-  "lubridate",
-  "stringr",
-  "tidyjson",
-  "jsonlite",
-  "tidyr",
-  "tibble",
-  "purrr",
+  "tidyverse",
+  "magrittr",
 
   "DT",
   "mapview",
-  "ggplot2"),
+  "datadr",
+  "trelliscope",
+  "listviewer"
+  ),
   lib = Sys.getenv("R_LIBS_USER"))

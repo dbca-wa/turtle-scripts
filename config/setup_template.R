@@ -26,3 +26,6 @@ Sys.setenv(W2_PW='DBPASSWORD')
 
 # tracks.Rmd
 Sys.setenv(WASTD_APITOKEN="Token MY-WASTD-API-TOKEN")
+
+# Github access token: https://github.com/settings/tokens
+Sys.setenv(GITHUB_PAT="")
