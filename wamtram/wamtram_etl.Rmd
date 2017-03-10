@@ -407,12 +407,12 @@ o <- obs %>%
     mutate(
         o_date=parse_date_time(CORRECTED_DATE, orders=ord, tz=gmt08),
         o_time=parse_date_time(OBSERVATION_TIME, orders=ord, tz=gmt08),
-        observation_datetime_gmt08=o_date + hours(hour(o_time)) + minutes(minute(o_time)),
+        observation_datetime_gmt08=o_date - days(1) + hours(hour(o_time)) + minutes(minute(o_time)),
         observation_datetime_utc=with_tz(observation_datetime_gmt08, tz=utc)
     ) %>%
     dplyr::select(
-        -OBSERVATION_DATE, -OBSERVATION_TIME, -OBSERVATION_DATE_OLD, 
-        -CORRECTED_DATE, -DATE_CONVENTION, -o_date, -o_time
+        -OBSERVATION_DATE, -OBSERVATION_DATE_OLD, -DATE_CONVENTION,
+        -CORRECTED_DATE, -OBSERVATION_TIME, -o_date, -o_time
     ) %>%
     rename(
         activity_code=ACTIVITY_CODE
@@ -437,7 +437,6 @@ enc <- o %>%
     filter(!is.na(LONGITUDE) & !is.na(observation_datetime_utc)) %>%
     filter(PLACE_CODE == "THEE" | PLACE_CODE == "THNB")
 
-datatable(enc)
 # write.csv(o, file="data/wamtram_encounters.csv", row.names=F)
 write.csv(enc, file="data/wamtram_encounters.csv", row.names=F)
 ckanr::resource_update(Sys.getenv("W2_ENC_CSV_RID"), "data/wamtram_encounters.csv")
