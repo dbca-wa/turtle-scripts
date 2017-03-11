@@ -223,6 +223,8 @@ leaflet(tracks) %>%
                     icon = makeAwesomeIcon(icon = "tag", markerColor = "blue"),
                     popup = ~paste(name, datetime, species, "nesting:", nesting),
                     group = "Tags") %>%
+  addHeatmap(data=tags, lng = ~longitude, lat = ~latitude, 
+             blur = 20, max = 1, radius = 15) %>%
   # addAwesomeMarkers(~longitude, ~latitude,
   #                   data = nests, label = ~species,
   #                   icon = makeAwesomeIcon(icon = "home", markerColor = "yellow"),
@@ -419,7 +421,7 @@ species_profiles <- d.spdf.grd@data %>%
   tally(sort=F) %>% 
   ungroup() %>%
   spread(species, n, fill=0) %>% left_join(grd, by="id", copy=T) %>%
-  set_colnames(make.names(colnames(.x)))
+  set_colnames(make.names(colnames(.)))
 
 DT::datatable(species_profiles)
 ```

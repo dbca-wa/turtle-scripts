@@ -81,3 +81,32 @@ ggplot(data=hb_by_year, aes(x=year, y=n, color=cause_of_death)) +
   theme_minimal() +
   ggsave(file="data/humpback_incidents_by_year_and_type.pdf")
 ```
+
+```{r}
+factor_colors <- colorFactor(
+  topo.colors(15), 
+  levels=length(unique(inc$cause_of_death)), 
+  domain=inc$cause_of_death)
+
+red_icon <- makeAwesomeIcon(icon = "warning-sign", 
+                            markerColor = "red", 
+                            iconColor = "white")
+
+leaflet(inc) %>% 
+  addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+  addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+  setView(lng=120.0, lat=-25, zoom=4) %>%
+  addAwesomeMarkers(~longitude, ~latitude,
+                    data=inc, 
+                    icon = red_icon,
+                    label = ~paste(year, properties.sex, species, cause_of_death),
+                    popup = ~paste(year, properties.sex, species, cause_of_death),
+                    group = ~species) %>%
+  addHeatmap(lng = ~longitude, lat = ~latitude,  # intensity = ~mag,
+             blur = 20, 
+             max = 1, 
+             radius = 15) %>%
+  addLayersControl(baseGroups = c("Aerial", "Place names"),
+                   overlayGroups = ~species)
+
+```
