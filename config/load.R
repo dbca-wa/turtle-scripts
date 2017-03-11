@@ -29,3 +29,8 @@ library(mapview)
 library(leaflet)
 library(leaflet.extras)
 library(trelliscope)
+library(RColorBrewer)
+
+# Sentiment analysis
+library(sentiment)
+library(wordcloud)
