@@ -29,3 +29,7 @@ Sys.setenv(WASTD_APITOKEN="Token MY-WASTD-API-TOKEN")
 
 # Github access token: https://github.com/settings/tokens
 Sys.setenv(GITHUB_PAT="")
+
+# Facebook: http://thinktostart.com/analyzing-facebook-with-r/
+Sys.setenv(FB_APPID="appid")
+Sys.setenv(FB_SECRET="appsecret")

@@ -1,0 +1,22 @@
+---
+title: "Facebook"
+author: "Florian Mayer"
+date: "11/03/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/projects/turtle-scripts/testing")
+if (file.exists("../config/setup.R")) source("../config/setup.R")
+if (file.exists("../config/load.R")) source("../config/load.R")
+require(devtools)
+require (Rfacebook) || install_github("Rfacebook", "pablobarbera", subdir="Rfacebook")
+require (Rfacebook)
+```
+```{r}
+fb_oauth <- fbOAuth(app_id=Sys.getenv("FB_APPID"), 
+                    app_secret=Sys.getenv("FB_SECRET"), 
+                    extended_permissions = TRUE)
+
+```
