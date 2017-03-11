@@ -10,13 +10,92 @@ knitr::opts_chunk$set(echo = TRUE)
 setwd("~/projects/turtle-scripts/testing")
 if (file.exists("../config/setup.R")) source("../config/setup.R")
 if (file.exists("../config/load.R")) source("../config/load.R")
-require(devtools)
-require (Rfacebook) || install_github("Rfacebook", "pablobarbera", subdir="Rfacebook")
+
 require (Rfacebook)
+# fb_oauth <- fbOAuth(app_id=Sys.getenv("FB_APPID"), 
+#                     app_secret=Sys.getenv("FB_SECRET"), 
+#                     extended_permissions = TRUE)
+load("fb_oauth.Rda")
+
+# install.packages("fitdistrplus")
+library(fitdistrplus)
 ```
+
+
 ```{r}
-fb_oauth <- fbOAuth(app_id=Sys.getenv("FB_APPID"), 
-                    app_secret=Sys.getenv("FB_SECRET"), 
-                    extended_permissions = TRUE)
+# me <- getUsers("584266338", token = fb_oauth)
+# pd_id <- searchGroup(name="perthdrummerscommunity", token = fb_oauth)
+# pd <- getGroup(pd_id$id, since='2013/01/01', n=10000, token = fb_oauth)
+# save(pd, file="perth_drummers.Rda")
+load("perth_drummers.Rda")
+
+utc_as_gmt08 <- . %>% 
+  parse_date_time(orders = c("YmdHMSz", "adbYHMS")) %>% 
+  with_tz(tzone="Australia/Perth")
+
+p <- pd %>% 
+  tbl_df %>%
+  mutate(
+    created_time = created_time %>% utc_as_gmt08,
+    date = created_time %>% as_date) 
 
 ```
+
+# Perth Drummers
+Drum shed hangouts:
+
+* Sunday 02/08/2015
+* Sunday 07/02/2016
+* Sunday 06/11/2016
+
+## Top posters
+
+```{r}
+pnames <- p %>%
+  group_by(from_name) %>% tally(sort=T) %>% filter(n > 2)
+
+datatable(pnames, caption = "Total contributions")
+```
+
+## Top impact
+How are likes on posts distributed?
+
+```{r}
+post_likes <- p %>% group_by(likes_count) %>% tally %>% ungroup()
+
+ggplot(post_likes, aes(x=likes_count, y=n)) + 
+  geom_point() +
+  ggtitle("Distribution of likes per post") +
+  xlab("Likes on post") + 
+  ylab("Number of posts") +
+  theme_minimal()
+  #geom_smooth(method="gam", aes(color="GAM"), formula= (y ~ 1/exp(x)), se=T, linetype = 1)
+
+```
+Most get few likes, heaps get some, few get heaps. Looks exponential.
+
+
+How are posts liked over time? Did major events cause more likes?
+```{r}
+min_likes <- 20
+p_liked <- p %>% filter(likes_count>=min_likes)
+
+ggplot(p_liked, aes(x=date, y=likes_count, color=from_name)) +
+  geom_point() + 
+  geom_vline(xintercept =  as.numeric(dmy("02/08/2015"))) +
+  annotate("text", x = dmy("02/08/2015"), y = 15, label="Hangout 1") +
+  geom_vline(xintercept =  as.numeric(dmy("07/02/2016"))) +
+  annotate("text", x = dmy("07/02/2016"), y = 15, label="Hangout 2") +
+  geom_vline(xintercept =  as.numeric(dmy("06/11/2016"))) +
+  annotate("text", x = dmy("06/11/2016"), y = 15, label="Hangout 3") +  
+  ggtitle("Favourite posts", 
+          subtitle=paste("Posts with more than", min_likes ,"likes")) +
+  scale_x_date(date_breaks="2 months", date_labels = "%b %y") +
+  xlab("") + ylab("Number of likes") +
+  theme_minimal() + 
+  theme(
+    legend.position="None",
+    axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
