@@ -131,10 +131,6 @@ pem <- p %>%
 Next, classify emotion and polarity. These steps run for a while.
 
 ```{r}
-
-classify_emotion(pem$msg[1:200],algorithm="bayes",verbose=TRUE)
-
-
 class_emo = classify_emotion(pem$msg, algorithm="bayes", prior=1.0)
 # get emotion best fit
 emotion = class_emo[,7]
@@ -206,3 +202,6 @@ Sabian is mentioned in posts classified as fearful.
 Pulmac is mentioned in posts classfied as angry.
 
 Take this with a grain of salt.
+
+
+Next: try [tidytext](https://rpubs.com/pparacch/235472).
