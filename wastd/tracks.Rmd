@@ -83,8 +83,10 @@ tracks <- track_records$content %>%
     nest_age = properties.nest_age,
     nest_type = properties.nest_type,
     obs = properties.observation_set,
-    hatching_success =  properties.observation_set %>% map(get_num_field, "hatching_success"),
-    emergence_success = properties.observation_set %>% map(get_num_field, "emergence_success")
+    hatching_success =  properties.observation_set %>% 
+      map(get_num_field, "hatching_success"),
+    emergence_success = properties.observation_set %>% 
+      map(get_num_field, "emergence_success")
   ) %>% thv_filter 
 save(tracks, file = "data/tracks.Rda")
 load("data/tracks.Rda")
@@ -377,13 +379,6 @@ No track count survey on morning of 2016-11-25. Track count on 2016-11-26
 tracks as "fresh", including tracks from non-surveyed day before. 
 It would be accetable to split tracks from turtle date 2016-11-25 across turtle 
 dates 2016-11-25 and 2016-11-24.
-
-
-```{r}
-nests <- tracks %>% filter(hatching_success>-1)
-nests[1,]$hatching_success %>% as.numeric
-nests %>% mutate(hs = as.numeric(hatching_success))
-```
 
 **TODO** 
 
@@ -688,6 +683,42 @@ steff_cm <- ordisurf(
 # p <- plot(Xs.id$xmin, Xs.id$ymin, xlab="Longitude", ylab="Latitude")
 # text(Xs, labels=Xs.id$id, cex=1)
 ```
+
+
+```{r}
+nests <- tracks %>% 
+  filter(hatching_success>-1) %>% 
+  mutate(
+    hatching_success = as.numeric(hatching_success),
+    emergence_success = as.numeric(emergence_success)
+  ) %>%
+  select(datetime, date, longitude, latitude, species, hatching_success, emergence_success)
+DT::datatable(nests)
+```
+
+```{r}
+ggplot(nests) + 
+  geom_boxplot(aes(group=date, x=date, y=as.numeric(hatching_success)), color="black") +
+  geom_boxplot(aes(group=date, x=date, y=as.numeric(emergence_success)), color="gray") +
+  xlab("Date") + ylab("Success rate in percent") + ggtitle("Hatching and emergence success") +
+  theme_minimal()
+```
+
+```{r}
+leaflet(nests) %>% 
+  addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+  addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+  setView(lng=115.0, lat=-21.45, zoom=12) %>%
+  addAwesomeMarkers(~longitude, ~latitude,
+                    # data = filter(tracks19, nest_type != "hatched-nest"), 
+                    data=nests, label = ~species,
+                    icon = makeAwesomeIcon(icon = "home", markerColor = "green"),
+                    popup = ~paste(species, datetime, "HS", hatching_success, "ES", emergence_success),
+                    group = "Nests") %>%
+  addLayersControl(baseGroups = c("Aerial", "Place names"),
+                   overlayGroups = c("Nests"))
+```
+
 
 
 ```{r, reset_workdir, echo=FALSE}

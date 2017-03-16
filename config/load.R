@@ -199,9 +199,8 @@ get_num_field <- function(ds, field, na.value=-1) {
         purrr::when(
           length(.) > 1, ~.[[1]],
           ~.
-        ) %>%
-        as.numeric,
-      ~ na.value)
-
+        ),
+      ~ na.value) %>%
+    as.numeric
   val
 }
