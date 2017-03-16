@@ -42,45 +42,17 @@ a wrapper function `wastd_api` encapsulates the WAStD API:
 
 ```{r api}
 # conn <- vdbConn("vdb", name = "trelliscopedb")
-
-#' Return GeoJSON features from a WAStD API endpoint as data.table
-wastd_api <- function(serializer_name, 
-                      base_url="https://strandings.dpaw.wa.gov.au/api/1/",
-                      query=list(taxon="Cheloniidae", limit=10000, format="json"),
-                      wastd_api_token=Sys.getenv("WASTD_APITOKEN")){
-  res <- GET(paste0(base_url, serializer_name), query = query, 
-             add_headers(c(Authorization = wastd_api_token))) %>% stop_for_status()
-  text <- content(res, as = "text", encoding = "UTF-8")
-  if (identical(text, "")) stop("The response did not return any content.")
-  out <- fromJSON(text, flatten = T)$features
-  message(paste(nrow(out), serializer_name, "loaded from WAStD API on", res$headers$date))
-  out
-} 
-
-#' Return GeoJSON features from a WAStD API endpoint as JSON
-wastd_api_json <- function(serializer_name, 
-                      base_url="https://strandings.dpaw.wa.gov.au/api/1/",
-                      query=list(taxon="Cheloniidae", limit=10000, format="json"),
-                      wastd_api_token=Sys.getenv("WASTD_APITOKEN")){
-  res <- GET(paste0(base_url, serializer_name), query = query, 
-             add_headers(c(Authorization = wastd_api_token))) %>% stop_for_status()
-  text <- content(res, as = "text", encoding = "UTF-8")
-  text
-  if (identical(text, "")) stop("The response did not return any content.")
-  out <- fromJSON(text, simplifyVector = FALSE)$features
-  message(paste(length(out), serializer_name, "loaded from WAStD API on", res$headers$date))
-  out
-}
-
 track_records <- wastd_api("turtle-nest-encounters")
 tag_records <- wastd_api("animal-encounters")
-
-nest_json <- wastd_api_json("turtle-nest-encounters", 
+nest_json <- wastd_api("turtle-nest-encounters", 
                              query=list(taxon="Cheloniidae", 
                                         limit=10000, 
                                         format="json", 
-                                        nest_type="hatched-nest"))
-# listviewer::jsonedit(nest_json)
+                                        nest_type="hatched-nest"),
+                            simplify=FALSE)
+
+
+# listviewer::jsonedit(nest_json$content)
 ```
 
 ### Formatting the API response
@@ -91,14 +63,6 @@ Using [purrr magic](https://www.rstudio.com/resources/videos/happy-r-users-purrr
 * the resulting R objects are saved locally to form a restore point.
 
 ```{r data_munging}
-#' Return a UTC HTTP date as GMT+08
-utc_as_gmt08 <- . %>% 
-  parse_date_time(orders = c("YmdHMSz", "adbYHMS")) %>% 
-  with_tz(tzone="Australia/Perth")
-
-#' Calculate the "turtle date" from a given datetime
-turtle_date <- . %>% utc_as_gmt08 %>% -hours(12) %>% as_date
-
 #' Filter a data.frame to records collected at THV after 19 Dec 2016
 #' TODO replace with filtering for THV 2016/2017 field trips at API
 thv_filter <- . %>% filter(
@@ -109,25 +73,28 @@ thv_filter <- . %>% filter(
     date > dmy("17/11/2016"))
 
 # Flatten nested JSON, parse field formats and rename columns
-tracks <- track_records %>% 
+tracks <- track_records$content %>% 
   mutate(
     datetime = properties.when %>% utc_as_gmt08,
     longitude = properties.longitude %>% as.numeric,
     latitude = properties.latitude %>% as.numeric,
-    date = properties.when %>% turtle_date,
+    date = properties.when %>% as_turtle_date,
     species = properties.species,
     nest_age = properties.nest_age,
-    nest_type = properties.nest_type
-  ) %>% thv_filter
+    nest_type = properties.nest_type,
+    obs = properties.observation_set,
+    hatching_success =  properties.observation_set %>% map(get_num_field, "hatching_success"),
+    emergence_success = properties.observation_set %>% map(get_num_field, "emergence_success")
+  ) %>% thv_filter 
 save(tracks, file = "data/tracks.Rda")
 load("data/tracks.Rda")
 
-tags <- tag_records %>% 
+tags <- tag_records$content %>% 
   mutate(
     datetime = properties.when %>% utc_as_gmt08,
     longitude = properties.longitude %>% as.numeric,
     latitude = properties.latitude %>% as.numeric,
-    date = properties.when %>% turtle_date,
+    date = properties.when %>% as_turtle_date,
     species = properties.species,
     health = properties.health,
     nesting = properties.nesting_event,
@@ -136,20 +103,37 @@ tags <- tag_records %>%
 save(tags, file = "data/tags.Rda")
 load("data/tags.Rda")
 
-# nests <- nest_json %>% {
-#   tibble(
-#     datetime = map_chr(., c("properties", "when")) %>% utc_as_gmt08,
-#     longitude = map_dbl(., c("properties", "longitude")),
-#     latitude = map_dbl(., c("properties", "latitude")),
-#     turtle_date = map_chr(., c("properties", "when")) %>% turtle_date,
-#     species = map_chr(., c("properties", "species"))  
-#     # TODO: get properties.observation_set.observation_name=="turtlenestobservation".hatching_success
-#     )
+# TODO extract from lists of lists
+# extract_field <- function(lol, field){
+#   if (length(lol) == 0) return(NA)
+#   oo <- set_names(lol, map_chr(lol, "observation_name"))
+#   if ("turtlenestobservation" %in% names(oo)) {
+#     return(extract2(oo$turtlenestobservation, field))
+#   } else return(NA)
 # }
+# 
+# #' Get a numeric field from an unnamed list of lists
+# get_field <- function(lol, field) {
+#   if (length(lol) == 0) return(NA)
+#   cat("Operating on list of lists of length", length(lol))
+#   l1 <- map(lol, c("properties", "observation_set")) %>% map(., extract_field(l1, field))
+# }
+# 
+# get_field(nest_json$content, "hatching_success")
 
-nests <- tracks %>% filter(nest_type == "hatched-nest") %>% 
-  filter(lengths(properties.observation_set) > 0)
-# %>% map(str_detect, "emergence_success")
+
+nests <- nest_json$content %>% {
+  tibble::tibble(
+    datetime = map_chr(., c("properties", "when")) %>% utc_as_gmt08,
+    longitude = map_dbl(., c("properties", "longitude")),
+    latitude = map_dbl(., c("properties", "latitude")),
+    turtle_date = map_chr(., c("properties", "when")) %>% as_turtle_date,
+    species = map_chr(., c("properties", "species")),
+    obs = map(., c("properties", "observation_set"))
+    )
+} 
+# We will use nests once hs and es are extracted
+# listviewer::jsonedit(nests)
 ```
 
 * Track observations span **`r min(tracks$datetime)` - `r max(tracks$datetime)`"**
@@ -237,7 +221,7 @@ leaflet(tracks) %>%
 ```
 
 ## Nesting history
-```{r}
+```{r, fig.width=7,fig.height=20}
 ggplot(data=tags, aes(x=date, y=name, color=nesting)) + 
   geom_point() + 
   geom_line() +
@@ -393,6 +377,13 @@ No track count survey on morning of 2016-11-25. Track count on 2016-11-26
 tracks as "fresh", including tracks from non-surveyed day before. 
 It would be accetable to split tracks from turtle date 2016-11-25 across turtle 
 dates 2016-11-25 and 2016-11-24.
+
+
+```{r}
+nests <- tracks %>% filter(hatching_success>-1)
+nests[1,]$hatching_success %>% as.numeric
+nests %>% mutate(hs = as.numeric(hatching_success))
+```
 
 **TODO** 
 
