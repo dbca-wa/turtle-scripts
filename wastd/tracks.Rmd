@@ -63,6 +63,14 @@ Using [purrr magic](https://www.rstudio.com/resources/videos/happy-r-users-purrr
 * the resulting R objects are saved locally to form a restore point.
 
 ```{r data_munging}
+#' Return a UTC HTTP date as GMT+08
+utc_as_gmt08 <- . %>%
+  parse_date_time(orders = c("YmdHMSz", "adbYHMS")) %>%
+  with_tz(tzone="Australia/Perth")
+
+#' Calculate the "turtle date" from a given datetime
+as_turtle_date <- . %>% utc_as_gmt08 %>% -hours(12) %>% as_date
+
 #' Filter a data.frame to records collected at THV after 19 Dec 2016
 #' TODO replace with filtering for THV 2016/2017 field trips at API
 thv_filter <- . %>% filter(
@@ -72,9 +80,18 @@ thv_filter <- . %>% filter(
     longitude < 115.03,
     date > dmy("17/11/2016"))
 
-# O Lord of Darkness, accept this our functional sacrifice of three days and three nights
+#' O Lord of Darkness, accept this our functional sacrifice of three days and three nights
+#' From a list of unnamed lists, or the data.frame equivalent, extract a field or NA
 extract_possibly <- possibly(extract, otherwise = NA_real_)
 get_f <- function(lol, field) lol %>% unlist %>% extract_possibly(field) %>% unlist %>% as.numeric
+
+get_ff <- function(lol, field) {
+  purrr::when(
+    length(lol) == 0 ~ NA_real_,
+    ~ lol %>% unlist %>% extract_possibly(field) %>% unlist %>% as.numeric
+  )
+  # TODO replace numeric(0) with NA_real_
+  }
 
 # Flatten nested JSON, parse field formats and rename columns
 tracks <- track_records$content %>% 
@@ -87,12 +104,11 @@ tracks <- track_records$content %>%
     nest_age = properties.nest_age,
     nest_type = properties.nest_type,
     obs = properties.observation_set,
-    hatching_success =  obs %>% map(get_f, "hatching_success"),
-    emergence_success = obs %>% map(get_f, "emergence_success")
+    hatching_success =  obs %>% map(get_ff, "hatching_success"),
+    emergence_success = obs %>% map(get_ff, "emergence_success")
   ) %>% thv_filter 
 save(tracks, file = "data/tracks.Rda")
 load("data/tracks.Rda")
-
 
 tags <- tag_records$content %>% 
   mutate(
@@ -117,11 +133,12 @@ nests <- nest_json$content %>% {
     turtle_date = map_chr(., c("properties", "when")) %>% as_turtle_date,
     species = map_chr(., c("properties", "species")),
     obs = map(., c("properties", "observation_set")),
-    hatching_success = obs %>% map(get_f, "hatching_success"),
-    emergence_success = obs %>% map(get_f, "emergence_success")
+    hatching_success = obs %>% map(get_ff, "hatching_success"),
+    emergence_success = obs %>% map(get_ff, "emergence_success")
     )
 } 
 
+unique(nests$hatching_success)
 # listviewer::jsonedit(nests)
 ```
 
