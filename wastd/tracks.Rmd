@@ -72,6 +72,10 @@ thv_filter <- . %>% filter(
     longitude < 115.03,
     date > dmy("17/11/2016"))
 
+# O Lord of Darkness, accept this our functional sacrifice of three days and three nights
+extract_possibly <- possibly(extract, otherwise = NA_real_)
+get_f <- function(lol, field) lol %>% unlist %>% extract_possibly(field) %>% unlist %>% as.numeric
+
 # Flatten nested JSON, parse field formats and rename columns
 tracks <- track_records$content %>% 
   mutate(
@@ -83,13 +87,12 @@ tracks <- track_records$content %>%
     nest_age = properties.nest_age,
     nest_type = properties.nest_type,
     obs = properties.observation_set,
-    hatching_success =  properties.observation_set %>% 
-      map(get_num_field, "hatching_success"),
-    emergence_success = properties.observation_set %>% 
-      map(get_num_field, "emergence_success")
+    hatching_success =  obs %>% map(get_f, "hatching_success"),
+    emergence_success = obs %>% map(get_f, "emergence_success")
   ) %>% thv_filter 
 save(tracks, file = "data/tracks.Rda")
 load("data/tracks.Rda")
+
 
 tags <- tag_records$content %>% 
   mutate(
@@ -105,25 +108,7 @@ tags <- tag_records$content %>%
 save(tags, file = "data/tags.Rda")
 load("data/tags.Rda")
 
-# TODO extract from lists of lists
-# extract_field <- function(lol, field){
-#   if (length(lol) == 0) return(NA)
-#   oo <- set_names(lol, map_chr(lol, "observation_name"))
-#   if ("turtlenestobservation" %in% names(oo)) {
-#     return(extract2(oo$turtlenestobservation, field))
-#   } else return(NA)
-# }
-# 
-# #' Get a numeric field from an unnamed list of lists
-# get_field <- function(lol, field) {
-#   if (length(lol) == 0) return(NA)
-#   cat("Operating on list of lists of length", length(lol))
-#   l1 <- map(lol, c("properties", "observation_set")) %>% map(., extract_field(l1, field))
-# }
-# 
-# get_field(nest_json$content, "hatching_success")
-
-
+# Hold my beer, we'll do it in JSON
 nests <- nest_json$content %>% {
   tibble::tibble(
     datetime = map_chr(., c("properties", "when")) %>% utc_as_gmt08,
@@ -131,10 +116,12 @@ nests <- nest_json$content %>% {
     latitude = map_dbl(., c("properties", "latitude")),
     turtle_date = map_chr(., c("properties", "when")) %>% as_turtle_date,
     species = map_chr(., c("properties", "species")),
-    obs = map(., c("properties", "observation_set"))
+    obs = map(., c("properties", "observation_set")),
+    hatching_success = obs %>% map(get_f, "hatching_success"),
+    emergence_success = obs %>% map(get_f, "emergence_success")
     )
 } 
-# We will use nests once hs and es are extracted
+
 # listviewer::jsonedit(nests)
 ```
 
@@ -185,6 +172,10 @@ DT::datatable(tracks)
 DT::datatable(tags)
 ```
 
+```{r dt_nests}
+DT::datatable(nests)
+```
+
 
 ### Interactive map
 Hover-scroll to zoom, click features to inspect. Hold mouse outside map to scroll page.
@@ -192,6 +183,20 @@ Hover-scroll to zoom, click features to inspect. Hold mouse outside map to scrol
 Be patient when scrolling, your browser is earning its salary right now.
 ```{r map}
 grd = readOGR("thv_grid.geojson", "OGRGeoJSON")
+
+trackIcons <- awesomeIconList(
+  "cheloniidae-fam" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'black'),
+  "chelonia-mydas" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'green'),
+  "eretmochelys-imbricata" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'blue'),
+  "natator-depressus" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'red')
+  )
+tagIcons <- awesomeIconList(
+  "cheloniidae-fam" = makeAwesomeIcon(icon='tag', library='glyphicon', markerColor = 'black'),
+  "chelonia-mydas" = makeAwesomeIcon(icon='tag', library='glyphicon', markerColor = 'green'),
+  "eretmochelys-imbricata" = makeAwesomeIcon(icon='tag', library='glyphicon', markerColor = 'blue'),
+  "natator-depressus" = makeAwesomeIcon(icon='tag', library='glyphicon', markerColor = 'red')
+  )
+
 
 leaflet(tracks) %>% 
   addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
@@ -202,22 +207,22 @@ leaflet(tracks) %>%
   addAwesomeMarkers(~longitude, ~latitude,
                     # data = filter(tracks19, nest_type != "hatched-nest"), 
                     data=tracks, label = ~species,
-                    icon = makeAwesomeIcon(icon = "home", markerColor = "green"),
+                    icon = ~trackIcons[species],
                     popup = ~paste(nest_age, species, nest_type, datetime),
                     group = "Tracks") %>%
   addAwesomeMarkers(~longitude, ~latitude, data = tags, label = ~paste(name, date),
-                    icon = makeAwesomeIcon(icon = "tag", markerColor = "blue"),
+                    icon = ~tagIcons[species],
                     popup = ~paste(name, datetime, species, "nesting:", nesting),
                     group = "Tags") %>%
-  addHeatmap(data=tags, lng = ~longitude, lat = ~latitude, 
-             blur = 20, max = 1, radius = 15) %>%
+  # addHeatmap(data=tags, lng = ~longitude, lat = ~latitude, 
+  #            blur = 20, max = 1, radius = 15) %>%
   # addAwesomeMarkers(~longitude, ~latitude,
   #                   data = nests, label = ~species,
   #                   icon = makeAwesomeIcon(icon = "home", markerColor = "yellow"),
   #                   popup = ~paste(nest_age, species, nest_type, datetime),
   #                   group = "Nests") %>%
   addLayersControl(baseGroups = c("Aerial", "Place names"),
-                   overlayGroups = c("Grid", "Tracks", "Nests", "Tags"))
+                   overlayGroups = c("Grid", "Tracks", "Tags"))
 
 
 ```
@@ -229,6 +234,7 @@ ggplot(data=tags, aes(x=date, y=name, color=nesting)) +
   geom_line() +
   ggtitle("Nesting history of tagged turtles") + 
   labs(x="Date", y ="Primary flipper tag label") +
+  theme_minimal() +
   ggsave(file="data/nesting_history.pdf", height = 20, width =7)
 ```
 # Nesting effort
@@ -684,36 +690,46 @@ steff_cm <- ordisurf(
 # text(Xs, labels=Xs.id$id, cex=1)
 ```
 
+## Does nesting happen in the tagging area?
+
+### Data
 
 ```{r}
 nests <- tracks %>% 
-  filter(hatching_success>-1) %>% 
-  mutate(
-    hatching_success = as.numeric(hatching_success),
-    emergence_success = as.numeric(emergence_success)
-  ) %>%
+  filter(hatching_success>-1) %>%
   select(datetime, date, longitude, latitude, species, hatching_success, emergence_success)
 DT::datatable(nests)
 ```
 
-```{r}
-ggplot(nests) + 
-  geom_boxplot(aes(group=date, x=date, y=as.numeric(hatching_success)), color="black") +
-  geom_boxplot(aes(group=date, x=date, y=as.numeric(emergence_success)), color="gray") +
-  xlab("Date") + ylab("Success rate in percent") + ggtitle("Hatching and emergence success") +
-  theme_minimal()
-```
+### Hatching and emergence success over time
 
 ```{r}
+ggplot(tracks) + 
+  geom_boxplot(aes(group=date, x=date, y=as.numeric(hatching_success)), na.rm=TRUE, show.legend=TRUE, color="black") +
+  geom_boxplot(aes(group=date, x=date, y=as.numeric(emergence_success)), na.rm=TRUE, show.legend=TRUE, color="gray") +
+  ggtitle("Hatching (black) and emergence (grey) success") +
+  xlab("Date") + ylab("Success rate in percent") + theme_minimal()
+```
+
+### Spatial distribution of excavated nests
+
+```{r}
+popIcons <- awesomeIconList(
+  "cheloniidae-fam" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'black'),
+  "chelonia-mydas" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'green'),
+  "eretmochelys-imbricata" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'blue'),
+  "natator-depressus" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'red')
+  )
+
 leaflet(nests) %>% 
   addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
   addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
   setView(lng=115.0, lat=-21.45, zoom=12) %>%
   addAwesomeMarkers(~longitude, ~latitude,
-                    # data = filter(tracks19, nest_type != "hatched-nest"), 
-                    data=nests, label = ~species,
-                    icon = makeAwesomeIcon(icon = "home", markerColor = "green"),
-                    popup = ~paste(species, datetime, "HS", hatching_success, "ES", emergence_success),
+                    data = nests, 
+                    icon = ~popIcons[species],
+                    label = ~paste(date, species),
+                    popup = ~paste(date, species, "HS", hatching_success, "%, ES", emergence_success, "%"),
                     group = "Nests") %>%
   addLayersControl(baseGroups = c("Aerial", "Place names"),
                    overlayGroups = c("Nests"))

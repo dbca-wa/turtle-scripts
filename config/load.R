@@ -188,7 +188,7 @@ as_turtle_date <- . %>% utc_as_gmt08 %>% -hours(12) %>% as_date
 #'     es =  properties.observation_set %>% map(get_num_field, "emergence_success")
 #' )
 #' }
-get_num_field <- function(ds, field, na.value=-1) {
+get_num_field <- function(ds, field, na.value=NA_real_) {
   require(purrr)
   require(magrittr)
 
@@ -202,5 +202,8 @@ get_num_field <- function(ds, field, na.value=-1) {
         ),
       ~ na.value) %>%
     as.numeric
-  val
+
+    val
 }
+
+
