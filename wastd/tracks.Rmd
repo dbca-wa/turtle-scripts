@@ -14,7 +14,7 @@ if (file.exists("../config/load.R")) source("../config/load.R")
 
 # Data
 
-## Tracks and nests
+### Tracks and nests
 
 * Tracks were recorded on Android tablets using digital data capture software ODK Collect
 * Forms "TrackCount 0.10" (Nov-Dec 2016), "Track or Treat 0.26" (Feb 2017) and v0.31 (Feb 2017)
@@ -22,7 +22,7 @@ if (file.exists("../config/load.R")) source("../config/load.R")
 * Data exported (through GUI) from dpaw-data as JSON and ingested (scripted) into
   [WAStD](https://strandings.dpaw.wa.gov.au/) after each field trip
   
-## Tagging of nesting turtles
+### Tagging of nesting turtles
 
 * Nesting turtles recorded on paper data sheets, entered and QA'd in WAMTRAM
 * Data exported from WAMTRAM master db (scripted) into CSV and saved to 
@@ -50,8 +50,6 @@ nest_json <- wastd_api("turtle-nest-encounters",
                                         format="json", 
                                         nest_type="hatched-nest"),
                             simplify=FALSE)
-
-
 # listviewer::jsonedit(nest_json$content)
 ```
 
@@ -74,24 +72,16 @@ as_turtle_date <- . %>% utc_as_gmt08 %>% -hours(12) %>% as_date
 #' Filter a data.frame to records collected at THV after 19 Dec 2016
 #' TODO replace with filtering for THV 2016/2017 field trips at API
 thv_filter <- . %>% filter(
-    latitude < -21.44,
-    latitude > -21.47,
+    latitude < -21.43,
+    latitude > -21.48,
     longitude > 114.96,
-    longitude < 115.03,
+    longitude < 115.05,
     date > dmy("17/11/2016"))
 
 #' O Lord of Darkness, accept this our functional sacrifice of three days and three nights
 #' From a list of unnamed lists, or the data.frame equivalent, extract a field or NA
-extract_possibly <- possibly(extract, otherwise = NA_real_)
+extract_possibly <- possibly(extract, otherwise = -1)
 get_f <- function(lol, field) lol %>% unlist %>% extract_possibly(field) %>% unlist %>% as.numeric
-
-get_ff <- function(lol, field) {
-  purrr::when(
-    length(lol) == 0 ~ NA_real_,
-    ~ lol %>% unlist %>% extract_possibly(field) %>% unlist %>% as.numeric
-  )
-  # TODO replace numeric(0) with NA_real_
-  }
 
 # Flatten nested JSON, parse field formats and rename columns
 tracks <- track_records$content %>% 
@@ -104,8 +94,9 @@ tracks <- track_records$content %>%
     nest_age = properties.nest_age,
     nest_type = properties.nest_type,
     obs = properties.observation_set,
-    hatching_success =  obs %>% map(get_ff, "hatching_success"),
-    emergence_success = obs %>% map(get_ff, "emergence_success")
+    hatching_success =  obs %>% map(get_f, "hatching_success") %>% as.numeric,
+    emergence_success = obs %>% map(get_f, "emergence_success") %>% as.numeric,
+    clutch_size = obs %>% map(get_f, "egg_count_calculated") %>% as.numeric
   ) %>% thv_filter 
 save(tracks, file = "data/tracks.Rda")
 load("data/tracks.Rda")
@@ -130,15 +121,18 @@ nests <- nest_json$content %>% {
     datetime = map_chr(., c("properties", "when")) %>% utc_as_gmt08,
     longitude = map_dbl(., c("properties", "longitude")),
     latitude = map_dbl(., c("properties", "latitude")),
-    turtle_date = map_chr(., c("properties", "when")) %>% as_turtle_date,
+    date = map_chr(., c("properties", "when")) %>% as_turtle_date,
     species = map_chr(., c("properties", "species")),
     obs = map(., c("properties", "observation_set")),
-    hatching_success = obs %>% map(get_ff, "hatching_success"),
-    emergence_success = obs %>% map(get_ff, "emergence_success")
+    hatching_success = obs %>% map(get_f, "hatching_success") %>% as.numeric,
+    emergence_success = obs %>% map(get_f, "emergence_success") %>% as.numeric,
+    clutch_size = obs %>% map(get_f, "egg_count_calculated") %>% as.numeric
     )
-} 
+} %>% thv_filter
+save(nests, file = "data/nests.Rda")
+load("data/nests.Rda")
 
-unique(nests$hatching_success)
+# unique(nests$hatching_success)
 # listviewer::jsonedit(nests)
 ```
 
@@ -202,10 +196,10 @@ Be patient when scrolling, your browser is earning its salary right now.
 grd = readOGR("thv_grid.geojson", "OGRGeoJSON")
 
 trackIcons <- awesomeIconList(
-  "cheloniidae-fam" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'black'),
-  "chelonia-mydas" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'green'),
-  "eretmochelys-imbricata" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'blue'),
-  "natator-depressus" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'red')
+  "cheloniidae-fam" = makeAwesomeIcon(icon='align-center', library='glyphicon', markerColor = 'black'),
+  "chelonia-mydas" = makeAwesomeIcon(icon='align-center', library='glyphicon', markerColor = 'green'),
+  "eretmochelys-imbricata" = makeAwesomeIcon(icon='align-center', library='glyphicon', markerColor = 'blue'),
+  "natator-depressus" = makeAwesomeIcon(icon='align-center', library='glyphicon', markerColor = 'red')
   )
 tagIcons <- awesomeIconList(
   "cheloniidae-fam" = makeAwesomeIcon(icon='tag', library='glyphicon', markerColor = 'black'),
@@ -213,7 +207,12 @@ tagIcons <- awesomeIconList(
   "eretmochelys-imbricata" = makeAwesomeIcon(icon='tag', library='glyphicon', markerColor = 'blue'),
   "natator-depressus" = makeAwesomeIcon(icon='tag', library='glyphicon', markerColor = 'red')
   )
-
+nestIcons <- awesomeIconList(
+  "cheloniidae-fam" = makeAwesomeIcon(icon='baby-formula', library='glyphicon', markerColor = 'black'),
+  "chelonia-mydas" = makeAwesomeIcon(icon='baby-formula', library='glyphicon', markerColor = 'green'),
+  "eretmochelys-imbricata" = makeAwesomeIcon(icon='baby-formula', library='glyphicon', markerColor = 'blue'),
+  "natator-depressus" = makeAwesomeIcon(icon='baby-formula', library='glyphicon', markerColor = 'red')
+  )
 
 leaflet(tracks) %>% 
   addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
@@ -222,27 +221,57 @@ leaflet(tracks) %>%
   addPolygons(data = grd, weight = 1, color = "orange", opacity = 0.5, 
               label = ~paste(id), group = "Grid") %>%
   addAwesomeMarkers(~longitude, ~latitude,
-                    # data = filter(tracks19, nest_type != "hatched-nest"), 
-                    data=tracks, label = ~species,
+                    data = filter(tracks, nest_type != "hatched-nest"), 
+                    # data=tracks, 
                     icon = ~trackIcons[species],
-                    popup = ~paste(nest_age, species, nest_type, datetime),
+                    label = ~paste("Track", date, nest_age, species, nest_type),
+                    popup = ~paste("Track", date, nest_age, species, nest_type),
                     group = "Tracks") %>%
-  addAwesomeMarkers(~longitude, ~latitude, data = tags, label = ~paste(name, date),
+  addAwesomeMarkers(~longitude, ~latitude, data = tags,
                     icon = ~tagIcons[species],
-                    popup = ~paste(name, datetime, species, "nesting:", nesting),
+                    label = ~paste("Tag", date, species, name, "nesting:", nesting),
+                    popup = ~paste("Tag", date, species, name, "nesting:", nesting),
                     group = "Tags") %>%
   # addHeatmap(data=tags, lng = ~longitude, lat = ~latitude, 
   #            blur = 20, max = 1, radius = 15) %>%
-  # addAwesomeMarkers(~longitude, ~latitude,
-  #                   data = nests, label = ~species,
-  #                   icon = makeAwesomeIcon(icon = "home", markerColor = "yellow"),
-  #                   popup = ~paste(nest_age, species, nest_type, datetime),
-  #                   group = "Nests") %>%
+  addAwesomeMarkers(~longitude, ~latitude,
+                    data = nests,
+                    icon = ~nestIcons[species],
+                    label = ~paste("Nest", date, species, "HS", as.numeric(hatching_success), "%, ES", as.numeric(emergence_success), "%"),
+                    popup = ~paste("Nest", date, species, "HS", as.numeric(hatching_success), "%, ES", as.numeric(emergence_success), "%"),
+                    group = "Nests") %>%
   addLayersControl(baseGroups = c("Aerial", "Place names"),
-                   overlayGroups = c("Grid", "Tracks", "Tags"))
+                   overlayGroups = c("Grid", "Tracks", "Tags", "Nests"))
 
 
 ```
+
+# Tagging
+A total of `r nrow(tags)` turtles were processed (captured new or resighted) in total. 
+This number excludes records in WAMTRAM with missing coordinates or time stamps. 
+Re-sightings are counted as separate handling events.
+
+```{r}
+tags_by_date <- tags %>% group_by(date) %>% tally() %>% ungroup()
+animals_by_date <- tags %>% group_by(date, name) %>% tally() %>% ungroup()
+```
+
+On average, `r mean(tags_by_date$n)` turtles were processed per surveyed day.
+
+```{r}
+datatable(tags_by_date, caption="Number of turtles handled per day")
+```
+```{r}
+datatable(animals_by_date, caption="Number of individual turtles handled per day")
+```
+
+
+```{r fig_turtles_processed_per_day}
+datatable(tags_by_date)
+ggplot(tags_by_date, aes(x=date, y=n)) + geom_bar(stat="identity") +
+  ggtitle("Turtles processed per day") + theme_minimal()
+```
+
 
 ## Nesting history
 ```{r, fig.width=7,fig.height=20}
@@ -254,6 +283,55 @@ ggplot(data=tags, aes(x=date, y=name, color=nesting)) +
   theme_minimal() +
   ggsave(file="data/nesting_history.pdf", height = 20, width =7)
 ```
+## Questions to tagging data
+
+* How many days to first resighting?
+* (Sabrina to add)
+
+
+
+
+# Hatching success
+From `r nrow(filter(nests, hatching_success>=0))` conclusive nest excavations,
+the calculated hatching and emergence success are shown summarised per day.
+
+```{r}
+nests_with_hs <- filter(nests, hatching_success>=0, species=="natator-depressus")
+ggplot(nests_with_hs) + 
+  geom_boxplot(aes(group=date, x=date, y=as.numeric(hatching_success)), na.rm=TRUE, show.legend=TRUE, color="black") +
+  geom_boxplot(aes(group=date, x=date, y=as.numeric(emergence_success)), na.rm=TRUE, show.legend=TRUE, color="gray") +
+  ggtitle("Flatback hatching (black) and emergence (grey) success") +
+  xlab("Date") + ylab("Success rate in percent") + theme_minimal()
+```
+
+TODO
+
+* The mean, SD and range for HS and ES and clutch size per species.
+* Frequency distribution of hatching success per species as 
+  proportion of nests (% of total) over hatching success binned into 10% buckets.
+* Heatmap / marker points of hatching success. Bin or grade clutch size into colour.
+
+
+
+# Turtle tracks
+
+TODO
+
+* No days surveyed: `r length(unique(tracks$date))`
+* Table, per species (rows): 
+  Total number of tracks, 
+  mean number of tracks per day, 
+  min and max number of tracks per day (cols),
+  total nesting success as number of tracks with nest / all tracks,
+  mean clutch size from excavated nests
+
+```{r}
+tracks_by_species <- tracks %>% filter(nest_age=="fresh") %>% group_by(species, date) %>% tally() %>% group_by(species) %>% dplyr::summarize("mean"=mean(n))
+## TODO
+datatable(tracks_by_species)
+```
+
+
 # Nesting effort
 To visualise and analyse nesting effort, data from track counts is combined with
 data from tagging and missed turtles. 
@@ -315,8 +393,7 @@ d.spdf.grd <- spCbind(d.spdf, over(d.spdf, grd))
 Nesting encounters are tallied by date, species and type.
 ```{r plot_nesting_type_by_date}
 nesting_type_by_date <- nesting_encounters %>%
-  group_by(date, species, type) %>% tally(sort=F) %>% ungroup() %>%
-  rename(all=n)
+  group_by(date, species, type) %>% tally(sort=F) %>% ungroup() %>% rename(all=n)
 
 ggplot(nesting_type_by_date, aes(x=date, y=all, colour=type)) + 
   geom_point() + 
@@ -339,7 +416,7 @@ all_nesting_by_date <- nesting_encounters %>%
   group_by(date, species) %>% tally() %>% ungroup() %>% rename(all=n)
 
 successful_nesting_by_date <- nesting_encounters %>% 
-  filter(type == 'successful-crawl' | type == "hatched-nest" | type == "present") %>%
+  filter(type == 'successful-crawl' | type == "present") %>%
   group_by(date, species) %>% tally() %>% ungroup() %>%
   mutate(n = ifelse(is.na(n), 0, n)) %>%
   transmute(date=date, species=species, successful=n)
@@ -352,18 +429,21 @@ nesting_success <- all_nesting_by_date %>%
 ggplot(nesting_success, aes(x=date)) +
   geom_bar(aes(y=all), stat="identity", color="black", fill="black") +
   geom_bar(aes(y=successful), stat="identity", color="green", fill="green") +
-  ggtitle("Nesting effort at Thevenard Island") +
+  ggtitle("Nesting effort at Thevenard Island", 
+          subtitle="Green: tracks with nest, hatched nests, nesting turtles\nBlack: all nesting") +
   labs(x="Date", y="Number of all and successful nesting emergences") +
   facet_wrap("species", ncol=1) +
   ggsave(file="data/nesting_abundance.pdf", width=7, height=7)
 ```
 
+TODO: above figure from only fresh tracks with successful = "successful-crawl" and all, one figure per species
+TODO: fit GAM
 
 ```{r plot_nesting_success}
 ggplot(nesting_success, aes(x=date, y=nesting_success)) +
   ggtitle("Nesting success at Thevenard Is") +
   geom_bar(stat="identity") +
-  labs(x="Date", y ="Success rate of nesting emergences") +
+  labs(x="Date", y ="Success rate of nesting events") +
   facet_wrap("species", ncol = 1) +
   ggsave("data/nesting_success.pdf", width=7, height=7)
 ```
@@ -486,9 +566,22 @@ ggplot(site_summary, aes(xmin, ymin, z=n)) +
   labs(x="Longitude", y="Latitude") + 
   ggsave(file="data/nesting_distribution_all_time.pdf", width=7, height=5)
 ```
+
 Green turtles seem to concentrate on the NW corner and avoid the SE corner,
 where as Flatbacks seem to occur all around the island with a focus on the stretch
 between west of the Jetty and the Chevron property on the East end.
+
+TODO 
+* split up by species, one figure per species, show only FB  and GN, overlay over THV aerial imagery
+* same for only successful tracks ("successful-crawl") and tags (nesting "present")
+* same for only unsuccessful tracks ("false-crawl", "track-unsure", "track-not-assessed") and tags (nesting not "present")
+* same for only successful nesting (nesting "present"), only FB
+* same for only unsuccessful nesting (nesting not "present"), only FB
+
+Are 
+
+* Get nesting area form WAStD
+* count all nesting (tracks & tags, both succ and unsuccc) inside / outside nesting area for FB
 
 ### Correlations between variables
 ```{r plot_pairs_Y}
@@ -707,50 +800,6 @@ steff_cm <- ordisurf(
 # text(Xs, labels=Xs.id$id, cex=1)
 ```
 
-## Does nesting happen in the tagging area?
-
-### Data
-
-```{r}
-nests <- tracks %>% 
-  filter(hatching_success>-1) %>%
-  select(datetime, date, longitude, latitude, species, hatching_success, emergence_success)
-DT::datatable(nests)
-```
-
-### Hatching and emergence success over time
-
-```{r}
-ggplot(tracks) + 
-  geom_boxplot(aes(group=date, x=date, y=as.numeric(hatching_success)), na.rm=TRUE, show.legend=TRUE, color="black") +
-  geom_boxplot(aes(group=date, x=date, y=as.numeric(emergence_success)), na.rm=TRUE, show.legend=TRUE, color="gray") +
-  ggtitle("Hatching (black) and emergence (grey) success") +
-  xlab("Date") + ylab("Success rate in percent") + theme_minimal()
-```
-
-### Spatial distribution of excavated nests
-
-```{r}
-popIcons <- awesomeIconList(
-  "cheloniidae-fam" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'black'),
-  "chelonia-mydas" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'green'),
-  "eretmochelys-imbricata" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'blue'),
-  "natator-depressus" = makeAwesomeIcon(icon='home', library='glyphicon', markerColor = 'red')
-  )
-
-leaflet(nests) %>% 
-  addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
-  addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
-  setView(lng=115.0, lat=-21.45, zoom=12) %>%
-  addAwesomeMarkers(~longitude, ~latitude,
-                    data = nests, 
-                    icon = ~popIcons[species],
-                    label = ~paste(date, species),
-                    popup = ~paste(date, species, "HS", hatching_success, "%, ES", emergence_success, "%"),
-                    group = "Nests") %>%
-  addLayersControl(baseGroups = c("Aerial", "Place names"),
-                   overlayGroups = c("Nests"))
-```
 
 
 
