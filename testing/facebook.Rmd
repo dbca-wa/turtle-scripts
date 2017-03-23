@@ -10,12 +10,198 @@ knitr::opts_chunk$set(echo = TRUE)
 setwd("~/projects/turtle-scripts/testing")
 if (file.exists("../config/setup.R")) source("../config/setup.R")
 if (file.exists("../config/load.R")) source("../config/load.R")
-library(Rfacebook)
+require (Rfacebook)
+# fb_oauth <- fbOAuth(app_id=Sys.getenv("FB_APPID"), 
+#                     app_secret=Sys.getenv("FB_SECRET"), 
+#                     extended_permissions = TRUE)
+load("fb_oauth.Rda")
+
+# install.packages("fitdistrplus")
+library(fitdistrplus)
 ```
+
+
 ```{r}
-fb_oauth <- fbOAuth(app_id=Sys.getenv("FB_APPID"), 
-                    app_secret=Sys.getenv("FB_SECRET"), 
-                    extended_permissions = TRUE)
+# me <- getUsers("584266338", token = fb_oauth)
+# pd_id <- searchGroup(name="perthdrummerscommunity", token = fb_oauth)
+# pd <- getGroup(pd_id$id, since='2013/01/01', n=10000, token = fb_oauth)
+# save(pd, file="perth_drummers.Rda")
+load("perth_drummers.Rda")
+
+utc_as_gmt08 <- . %>% 
+  parse_date_time(orders = c("YmdHMSz", "adbYHMS")) %>% 
+  with_tz(tzone="Australia/Perth")
+
+p <- pd %>% 
+  tbl_df %>%
+  mutate(
+    created_time = created_time %>% utc_as_gmt08,
+    date = created_time %>% as_date) 
 
 save(fb_oauth, file="fb_oauth.Rda")
 ```
+
+# Perth Drummers
+Drum shed hangouts:
+
+* Sunday 02/08/2015
+* Sunday 07/02/2016
+* Sunday 06/11/2016
+
+## Top posters
+
+```{r}
+pnames <- p %>% group_by(from_name) %>% tally(sort=T) %>% filter(n > 2)
+datatable(pnames, caption = "Total contributions")
+```
+
+## Top impact
+How are likes on posts distributed?
+
+```{r}
+post_likes <- p %>% group_by(likes_count) %>% tally %>% ungroup()
+
+ggplot(post_likes, aes(x=n, y=likes_count)) + 
+  geom_point() +
+  ggtitle("Distribution of likes per post") +
+  ylab("Likes") +
+  xlab("Number of posts with given likes count") +
+  theme_minimal() +
+  geom_smooth(method="loess", aes(color="Model"), formula= (y ~ (1/x)), se=T, linetype = 1)
+
+```
+Most posts get no (1500+ posts) or few likes, heaps get some, few get heaps of likes.
+The red line is an inverse relationship model.
+
+
+How are posts liked over time? Did major events cause more likes?
+```{r}
+min_likes <- 20
+p_liked <- p %>% filter(likes_count>=min_likes)
+
+ggplot(p_liked, aes(x=date, y=likes_count, color=from_name)) +
+  geom_point() + 
+  geom_vline(xintercept =  as.numeric(dmy("02/08/2015"))) +
+  annotate("text", x = dmy("02/08/2015"), y = 15, label="Hangout 1") +
+  geom_vline(xintercept =  as.numeric(dmy("07/02/2016"))) +
+  annotate("text", x = dmy("07/02/2016"), y = 15, label="Hangout 2") +
+  geom_vline(xintercept =  as.numeric(dmy("06/11/2016"))) +
+  annotate("text", x = dmy("06/11/2016"), y = 15, label="Hangout 3") +  
+  ggtitle("Favourite posts", 
+          subtitle=paste("Posts with more than", min_likes ,"likes")) +
+  scale_x_date(date_breaks="2 months", date_labels = "%b %y") +
+  xlab("") + ylab("Number of likes") +
+  theme_minimal() + 
+  theme(
+    legend.position="None",
+    axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+Especially the first two hangouts have a few (three after the first, six after 
+the second hangout) highly acknowledged posts (above the usual stratosphere of 
+just over 100 likes). This figure does not tell whether these highly liked posts 
+were related to the hangout.
+
+## Sentiment of posts
+Following [Gaston Sanchez](https://sites.google.com/site/miningtwitter/questions/sentiment/sentiment)
+
+Clean up the messages by discarding:
+
+* multi-byte strings,
+* punctuation,
+* numbers,
+* URLs,
+* whitespace, and
+* linebreaks.
+
+```{r}
+pem <- p %>% 
+  dplyr::mutate(
+    msg = message %>% 
+      iconv(., "UTF-8", "ASCII", sub = "") %>%
+      gsub("[[:punct:]]", "", .) %>%
+      gsub("[[:digit:]]", "", .) %>%
+      gsub("http\\w+", "", .) %>%
+      gsub("[ \t]{2,}", "", .) %>%
+      gsub("^\\s+|\\s+$", "", .)
+  )
+
+```
+
+Next, classify emotion and polarity. These steps run for a while.
+
+```{r}
+class_emo = classify_emotion(pem$msg, algorithm="bayes", prior=1.0)
+# get emotion best fit
+emotion = class_emo[,7]
+# substitute NA's by "unknown"
+emotion[is.na(emotion)] = "unknown"
+
+# classify polarity
+class_pol = classify_polarity(pem$msg, algorithm="bayes")
+# get polarity best fit
+polarity = class_pol[,4]
+
+# data frame with results
+sent_df = data.frame(text=pem$msg, 
+                     date=pem$date,
+                     from_name=pem$from_name,
+                     likes_count=pem$likes_count,
+                     emotion=emotion,
+                     polarity=polarity, 
+                     stringsAsFactors=FALSE)
+
+# sort data frame
+sent_df = within(sent_df,
+  emotion <- factor(emotion, levels = names(sort(table(emotion), decreasing=TRUE))))
+
+# plot distribution of emotions
+ggplot(sent_df, aes(x=emotion)) +
+  geom_bar(aes(y=..count.., fill=emotion)) +
+  scale_fill_brewer(palette="Dark2") +
+  labs(x="Emotion categories", y="Number of posts") +
+  ggtitle("Sentiment Analysis of posts in Perth Drummers", 
+          subtitle="\n(classification by emotion)")
+
+# plot distribution of polarity
+ggplot(sent_df, aes(x=polarity)) +
+  geom_bar(aes(y=..count.., fill=polarity)) +
+  scale_fill_brewer(palette="RdGy") +
+  labs(x="Polarity categories", y="Number of posts") +
+  ggtitle("Sentiment Analysis of posts in Perth Drummers", 
+          subtitle="classification by polarity")
+
+# separating text by emotion
+emos = levels(factor(sent_df$emotion))
+nemo = length(emos)
+emo.docs = rep("", nemo)
+for (i in 1:nemo)
+{
+   tmp = pem$msg[emotion == emos[i]]
+   emo.docs[i] = paste(tmp, collapse=" ")
+}
+
+# remove stopwords
+emo.docs = removeWords(emo.docs, stopwords("english"))
+# create corpus
+corpus = Corpus(VectorSource(emo.docs))
+tdm = TermDocumentMatrix(corpus)
+tdm = as.matrix(tdm)
+colnames(tdm) = emos
+
+# comparison word cloud
+comparison.cloud(tdm, colors = brewer.pal(nemo, "Dark2"),
+   scale = c(3,.5), random.order = FALSE, title.size = 1.5)
+```
+The model needs some tuning, and to learn some of PD's vocabulary.
+
+Zildjian is mentioned in posts classified as mainly disgusted.
+
+Sabian is mentioned in posts classified as fearful.
+
+Pulmac is mentioned in posts classfied as angry.
+
+Take this with a grain of salt.
+
+
+Next: try [tidytext](https://rpubs.com/pparacch/235472).

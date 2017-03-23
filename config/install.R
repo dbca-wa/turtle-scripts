@@ -11,6 +11,10 @@ install.packages("spacemakeR", repos="http://R-Forge.R-project.org", lib = lib)
 # install.packages("packfor", repos="http://R-Forge.R-project.org") ## superceded by adespatial
 # install.packages("adespatial", repos="http://R-Forge.R-project.org") # offline, use github
 
+install.packages("tm")
+install.packages("~/projects/turtle-scripts/data/Rstem_0.4-1.tar.gz", repos = NULL, type = "source", lib = lib)
+install.packages("~/projects/turtle-scripts/data/sentiment_0.2.tar.gz", repos = NULL, type = "source", lib = lib)
+
 ## Install from Github
 require(devtools)
 # adespatial replaces packfor::forward.sel
@@ -45,6 +49,8 @@ install.packages(c(
   "datadr",
   "trelliscope",
   "listviewer",
-  "leaflet.extras"
+  "leaflet.extras",
+  "wordcloud"
+
   ),
   lib = lib)
