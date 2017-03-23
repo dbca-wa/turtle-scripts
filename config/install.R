@@ -20,6 +20,7 @@ devtools::install_github("rstudio/leaflet", lib = lib)
 devtools::install_github('bhaskarvk/leaflet.extras', lib)
 devtools::install_github("tidyverse/ggplot2", lib = lib)
 devtools::install_github("r-pkgs/gh", lib = lib)
+devtools::install_github("Rfacebook", "pablobarbera", subdir="Rfacebook", lib=lib)
 
 ## Install packages from CRAN
 install.packages(c(
