@@ -1,7 +1,7 @@
 ---
 title: "Turtle nesting effort"
 author: "Turtle Conservation Program, Dept Parks & Wildlife WA"
-date: "13/03/2017"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 ---
 
@@ -269,7 +269,8 @@ datatable(animals_by_date, caption="Number of individual turtles handled per day
 ```{r fig_turtles_processed_per_day}
 datatable(tags_by_date)
 ggplot(tags_by_date, aes(x=date, y=n)) + geom_bar(stat="identity") +
-  ggtitle("Turtles processed per day") + theme_minimal()
+  ggtitle("Turtles processed per day") + theme_minimal() +
+  ggsave("data/turtles_processed_per_day.pdf", width = 7, height =5)
 ```
 
 
@@ -296,10 +297,10 @@ From `r nrow(filter(nests, hatching_success>=0))` conclusive nest excavations,
 the calculated hatching and emergence success are shown summarised per day.
 
 ```{r}
-nests_with_hs <- filter(nests, hatching_success>=0, species=="natator-depressus")
-ggplot(nests_with_hs) + 
-  geom_boxplot(aes(group=date, x=date, y=as.numeric(hatching_success)), na.rm=TRUE, show.legend=TRUE, color="black") +
-  geom_boxplot(aes(group=date, x=date, y=as.numeric(emergence_success)), na.rm=TRUE, show.legend=TRUE, color="gray") +
+nests_with_hs <- filter(nests, hatching_success >= 0, species == "natator-depressus")
+ggplot(nests_with_hs, aes(group=date, x=date)) + 
+  geom_boxplot(aes(y=as.numeric(hatching_success)), na.rm=TRUE, show.legend=TRUE, color="black") +
+  geom_boxplot(aes(y=as.numeric(emergence_success)), na.rm=TRUE, show.legend=TRUE, color="gray") +
   ggtitle("Flatback hatching (black) and emergence (grey) success") +
   xlab("Date") + ylab("Success rate in percent") + theme_minimal()
 ```
@@ -326,9 +327,17 @@ TODO
   mean clutch size from excavated nests
 
 ```{r}
-tracks_by_species <- tracks %>% filter(nest_age=="fresh") %>% group_by(species, date) %>% tally() %>% group_by(species) %>% dplyr::summarize("mean"=mean(n))
+tracks_by_species <- tracks %>% 
+  filter(nest_age=="fresh") %>% 
+  group_by(species, date) %>% 
+  tally() %>% 
+  group_by(species) %>% 
+  dplyr::summarize("mean" = mean(n),
+                   "SD" = sd(n),
+                   "min" = min(n),
+                   "max" = max(n))
 ## TODO
-datatable(tracks_by_species)
+datatable(tracks_by_species, caption = "Tracks per day")
 ```
 
 
@@ -572,14 +581,12 @@ where as Flatbacks seem to occur all around the island with a focus on the stret
 between west of the Jetty and the Chevron property on the East end.
 
 TODO 
+
 * split up by species, one figure per species, show only FB  and GN, overlay over THV aerial imagery
 * same for only successful tracks ("successful-crawl") and tags (nesting "present")
 * same for only unsuccessful tracks ("false-crawl", "track-unsure", "track-not-assessed") and tags (nesting not "present")
 * same for only successful nesting (nesting "present"), only FB
 * same for only unsuccessful nesting (nesting not "present"), only FB
-
-Are 
-
 * Get nesting area form WAStD
 * count all nesting (tracks & tags, both succ and unsuccc) inside / outside nesting area for FB
 
