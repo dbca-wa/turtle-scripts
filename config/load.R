@@ -1,5 +1,6 @@
 library(ckanr)
 library(gh)
+require (Rfacebook)
 
 # Spatial analysis
 library(rgdal)

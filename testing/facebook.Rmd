@@ -10,7 +10,6 @@ knitr::opts_chunk$set(echo = TRUE)
 setwd("~/projects/turtle-scripts/testing")
 if (file.exists("../config/setup.R")) source("../config/setup.R")
 if (file.exists("../config/load.R")) source("../config/load.R")
-
 require (Rfacebook)
 # fb_oauth <- fbOAuth(app_id=Sys.getenv("FB_APPID"), 
 #                     app_secret=Sys.getenv("FB_SECRET"), 
@@ -39,6 +38,7 @@ p <- pd %>%
     created_time = created_time %>% utc_as_gmt08,
     date = created_time %>% as_date) 
 
+save(fb_oauth, file="fb_oauth.Rda")
 ```
 
 # Perth Drummers
