@@ -20,6 +20,7 @@ require(devtools)
 # adespatial replaces packfor::forward.sel
 devtools::install_github("sdray/adespatial", lib = lib)
 devtools::install_github("ropensci/ckanr", lib = lib)
+devtools::install_github("ropensci/geojsonio", lib = lib)
 devtools::install_github("rstudio/leaflet", lib = lib)
 devtools::install_github('bhaskarvk/leaflet.extras', lib)
 devtools::install_github("tidyverse/ggplot2", lib = lib)

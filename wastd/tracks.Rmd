@@ -14,6 +14,20 @@ if (file.exists("../config/load.R")) source("../config/load.R")
 
 # Data
 
+WAMTRAM requirement:
+for Animal ethics:
+The number of turtles per species: 
+
+basic handling: sighted and measured, not tagged or biopsied
+other study: sat tag
+other method on conscious animal:
+
+* any tag applied-new or re-clinched, 
+* biopsy taken if not already in flipper-tagged
+
+add to tag types:
+
+
 ### Tracks and nests
 
 * Tracks were recorded on Android tablets using digital data capture software ODK Collect
@@ -50,6 +64,9 @@ nest_json <- wastd_api("turtle-nest-encounters",
                                         nest_type="hatched-nest"),
                             simplify=FALSE)
 # listviewer::jsonedit(nest_json$content)
+# area_json <- wastd_api("areas", simplify=FALSE)
+grd <- readOGR("thv_grid.geojson", "OGRGeoJSON")
+tagging_area <- readOGR("thv_tagging.geojson", "OGRGeoJSON")
 ```
 
 ### Formatting the API response
@@ -192,8 +209,6 @@ Hover-scroll to zoom, click features to inspect. Hold mouse outside map to scrol
 
 Be patient when scrolling, your browser is earning its salary right now.
 ```{r map}
-grd = readOGR("thv_grid.geojson", "OGRGeoJSON")
-
 trackIcons <- awesomeIconList(
   "cheloniidae-fam" = makeAwesomeIcon(icon='align-center', library='glyphicon', markerColor = 'black'),
   "chelonia-mydas" = makeAwesomeIcon(icon='align-center', library='glyphicon', markerColor = 'green'),
@@ -392,11 +407,18 @@ There may be a [tidier](https://github.com/tidyverse/ggplot2/wiki/plotting-polyg
 way of manipulating and displaying spatial data using `ggplot2`.
 
 ```{r make_spdf}
-wgs84 = CRS('+proj=longlat +datum=WGS84 +no_defs')
-d.sp <- SpatialPoints(coords = select(nesting_encounters, longitude, latitude), proj4string = wgs84)
+wgs84 <- CRS('+proj=longlat +datum=WGS84 +no_defs')
+d.xy <- select(nesting_encounters, longitude, latitude)
+d.sp <- SpatialPoints(coords = d.xy, proj4string = wgs84)
 d.spdf <- SpatialPointsDataFrame(d.sp, data = nesting_encounters, proj4string = wgs84)
-d.spdf.grd <- spCbind(d.spdf, over(d.spdf, grd))
+# d.spdf.grd <- spCbind(d.spdf, over(d.spdf, grd))
+
+d.spdf.grd <- d.spdf %>%
+  spCbind(over(d.spdf, grd)) %>% spCbind(over(d.spdf, tagging_area))
+
 # qplot(longitude, latitude, data = d.spdf.grd@data, facets = ~species, color=date)
+
+
 ```
 
 ## Nesting effort by species
@@ -446,7 +468,7 @@ ggplot(nesting_success, aes(x=date)) +
   ggsave(file="data/nesting_abundance.pdf", width=7, height=7)
 ```
 
-TODO: above figure from only fresh tracks with successful = "successful-crawl" and all, one figure per species
+TODO: above as one figure per species
 TODO: fit GAM
 
 ```{r plot_nesting_success}
@@ -563,7 +585,7 @@ whole season (all observed dates) and plot by species.
 ```{r plot_nesting_distribution}
 site_summary <- d.spdf.grd@data %>% 
   filter(!is.na(id)) %>%
-  group_by(id, species) %>% 
+  group_by(id, species, name) %>% 
   tally(sort=F) %>% 
   ungroup() %>%
   left_join(Xs.id,by = "id")
@@ -591,6 +613,38 @@ TODO
 * same for only unsuccessful nesting (nesting not "present"), only FB
 * Get nesting area form WAStD
 * count all nesting (tracks & tags, both succ and unsuccc) inside / outside nesting area for FB
+
+
+ 
+* 36 days surveyed
+* Flatbacks: 35.8  31.8 tracks.day-1 (range 1- 119) – Green : 26.7  15.8 tracks.day-1 (1-65) – Hawksbill : 1.8  1.7 tracks.day-1 (1-6)
+* Nesting success: nb of successful tracks/total nb of tracks (excluding tagging data)
+* Proportion of tracks in the tagging area compared to the rest of the island for flatbacks
+* Graph: Temporal distribution of tracks (all and successful) per species (flat and green)
+* Graph: Spatial distribution of tracks around the island, per species (flat and green)
+* Graph: Spatial distribution of nests around the island for flatbacks (kernel density?)
+* Graph: Spatial distribution of false crawls around the island for flatbacks (kernel density?)
+
+
+```{r}
+totals_all <- site_summary %>% 
+  group_by(species) %>% 
+  tally %>% 
+  dplyr::rename(all = nn)
+
+totals_tagging_area <- site_summary %>% 
+  filter(!is.na(name)) %>% 
+  group_by(species) %>% 
+  tally %>% 
+  dplyr::rename(in_tagging_area = nn)
+
+encounters_all_vs_tagging <- totals_all %>% 
+  join(totals_tagging_area, by="species") %>%
+  mutate(percent_in_tagging_area = round(100 * in_tagging_area / all, digits=3))
+
+DT::datatable(encounters_all_vs_tagging)
+```
+
 
 ### Correlations between variables
 ```{r plot_pairs_Y}

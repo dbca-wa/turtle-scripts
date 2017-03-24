@@ -436,9 +436,14 @@ load("data/encounters.Rda")
 enc <- o %>%
     filter(!is.na(LONGITUDE) & !is.na(observation_datetime_utc)) %>%
     filter(PLACE_CODE == "THEE" | PLACE_CODE == "THNB")
+enc2 <- o %>%
+    filter(is.na(LONGITUDE) | is.na(observation_datetime_utc)) %>%
+    filter(PLACE_CODE == "THEE" | PLACE_CODE == "THNB")
 
 # write.csv(o, file="data/wamtram_encounters.csv", row.names=F)
 write.csv(enc, file="data/wamtram_encounters.csv", row.names=F)
+write.csv(enc2, file="data/wamtram_encounters_missing.csv", row.names=F)
+
 ckanr::resource_update(Sys.getenv("W2_ENC_CSV_RID"), "data/wamtram_encounters.csv")
 ```
 
