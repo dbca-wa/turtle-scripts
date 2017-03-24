@@ -108,7 +108,7 @@ wastd_api <- function(serializer,
          call. = FALSE)
   }
 
-  text <- content(res, as = "text", encoding = "UTF-8")
+  text <- httr::content(res, as = "text", encoding = "UTF-8")
 
   if (identical(text, "")) {
     stop("The response did not return any content.", call. = FALSE)

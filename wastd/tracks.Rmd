@@ -41,7 +41,6 @@ a wrapper function `wastd_api` encapsulates the WAStD API:
   structure is flattened into a data.table.
 
 ```{r api}
-# conn <- vdbConn("vdb", name = "trelliscopedb")
 track_records <- wastd_api("turtle-nest-encounters")
 tag_records <- wastd_api("animal-encounters")
 nest_json <- wastd_api("turtle-nest-encounters", 
@@ -267,7 +266,6 @@ datatable(animals_by_date, caption="Number of individual turtles handled per day
 
 
 ```{r fig_turtles_processed_per_day}
-datatable(tags_by_date)
 ggplot(tags_by_date, aes(x=date, y=n)) + geom_bar(stat="identity") +
   ggtitle("Turtles processed per day") + theme_minimal() +
   ggsave("data/turtles_processed_per_day.pdf", width = 7, height =5)
@@ -296,7 +294,7 @@ ggplot(data=tags, aes(x=date, y=name, color=nesting)) +
 From `r nrow(filter(nests, hatching_success>=0))` conclusive nest excavations,
 the calculated hatching and emergence success are shown summarised per day.
 
-```{r}
+```{r fig_fb_hs_es, fig.width=7,fig.height=5}
 nests_with_hs <- filter(nests, hatching_success >= 0, species == "natator-depressus")
 ggplot(nests_with_hs, aes(group=date, x=date)) + 
   geom_boxplot(aes(y=as.numeric(hatching_success)), na.rm=TRUE, show.legend=TRUE, color="black") +
@@ -316,15 +314,18 @@ TODO
 
 # Turtle tracks
 
-TODO
+`r length(unique(tracks$date))` days were surveyed.
 
-* No days surveyed: `r length(unique(tracks$date))`
-* Table, per species (rows): 
-  Total number of tracks, 
-  mean number of tracks per day, 
-  min and max number of tracks per day (cols),
-  total nesting success as number of tracks with nest / all tracks,
-  mean clutch size from excavated nests
+The following Table shows per species (including unknown shown as "Cheloniidae fam."):
+
+* Total number of tracks, 
+* mean number of tracks per day, 
+* min and max number of tracks per day (cols)
+
+TODO:
+
+* total nesting success as number of tracks with nest / all tracks,
+* mean clutch size from excavated nests
 
 ```{r}
 tracks_by_species <- tracks %>% 
@@ -336,7 +337,7 @@ tracks_by_species <- tracks %>%
                    "SD" = sd(n),
                    "min" = min(n),
                    "max" = max(n))
-## TODO
+
 datatable(tracks_by_species, caption = "Tracks per day")
 ```
 
@@ -418,9 +419,9 @@ As successful nesting events are counted (this is negotiable):
 
 * fresh tracks with nests (`successful-crawl`),
 * hatched nests,
-* tagged turtles with nesting `present`.
+* tagged turtles with successful nesting (`present`).
 
-```{r plot_nesting_abundance}
+```{r plot_nesting_abundance, fig.height=7, fig.width=7}
 all_nesting_by_date <- nesting_encounters %>%
   group_by(date, species) %>% tally() %>% ungroup() %>% rename(all=n)
 
@@ -439,8 +440,8 @@ ggplot(nesting_success, aes(x=date)) +
   geom_bar(aes(y=all), stat="identity", color="black", fill="black") +
   geom_bar(aes(y=successful), stat="identity", color="green", fill="green") +
   ggtitle("Nesting effort at Thevenard Island", 
-          subtitle="Green: tracks with nest, hatched nests, nesting turtles\nBlack: all nesting") +
-  labs(x="Date", y="Number of all and successful nesting emergences") +
+          subtitle="Green: tracks with nest, nesting turtles\nBlack: all nesting") +
+  labs(x="Date", y="Number of all and successful nesting events") +
   facet_wrap("species", ncol=1) +
   ggsave(file="data/nesting_abundance.pdf", width=7, height=7)
 ```
@@ -459,6 +460,7 @@ ggplot(nesting_success, aes(x=date, y=nesting_success)) +
 
 ```{r, eval=F}
 # # Trelliscope example
+# conn <- vdbConn("vdb", name = "trelliscopedb")
 # byST <- divide(nesting_success, by = c("species"))
 # # byST
 # timePanel <- function(x){xyplot(successful + all ~ date, 
