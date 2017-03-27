@@ -14,20 +14,6 @@ if (file.exists("../config/load.R")) source("../config/load.R")
 
 # Data
 
-WAMTRAM requirement:
-for Animal ethics:
-The number of turtles per species: 
-
-basic handling: sighted and measured, not tagged or biopsied
-other study: sat tag
-other method on conscious animal:
-
-* any tag applied-new or re-clinched, 
-* biopsy taken if not already in flipper-tagged
-
-add to tag types:
-
-
 ### Tracks and nests
 
 * Tracks were recorded on Android tablets using digital data capture software ODK Collect
@@ -72,7 +58,7 @@ tagging_area <- readOGR("thv_tagging.geojson", "OGRGeoJSON")
 ### Formatting the API response
 Using [purrr magic](https://www.rstudio.com/resources/videos/happy-r-users-purrr/)
 
-* data types are parsed into native types (e.g. dates and numbers),
+* data is parsed into native types (e.g. dates and numbers),
 * records are filtered to a location (THV) and date range (from Dec 20), and
 * the resulting R objects are saved locally to form a restore point.
 
@@ -276,14 +262,14 @@ On average, `r mean(tags_by_date$n)` turtles were processed per surveyed day.
 datatable(tags_by_date, caption="Number of turtles handled per day")
 ```
 ```{r}
-datatable(animals_by_date, caption="Number of individual turtles handled per day")
+datatable(animals_by_date, caption = "Number of individual turtles handled per day")
 ```
 
 
 ```{r fig_turtles_processed_per_day}
-ggplot(tags_by_date, aes(x=date, y=n)) + geom_bar(stat="identity") +
+ggplot(tags_by_date, aes(x = date, y = n)) + geom_bar(stat = "identity") +
   ggtitle("Turtles processed per day") + theme_minimal() +
-  ggsave("data/turtles_processed_per_day.pdf", width = 7, height =5)
+  ggsave("data/turtles_processed_per_day.pdf", width = 7, height = 5)
 ```
 
 
@@ -300,10 +286,7 @@ ggplot(data=tags, aes(x=date, y=name, color=nesting)) +
 ## Questions to tagging data
 
 * How many days to first resighting?
-* (Sabrina to add)
-
-
-
+* (Sabrina to add more questions)
 
 # Hatching success
 From `r nrow(filter(nests, hatching_success>=0))` conclusive nest excavations,
@@ -318,14 +301,72 @@ ggplot(nests_with_hs, aes(group=date, x=date)) +
   xlab("Date") + ylab("Success rate in percent") + theme_minimal()
 ```
 
-TODO
 
-* The mean, SD and range for HS and ES and clutch size per species.
-* Frequency distribution of hatching success per species as 
-  proportion of nests (% of total) over hatching success binned into 10% buckets.
-* Heatmap / marker points of hatching success. Bin or grade clutch size into colour.
+Mean, SD and range for HS and ES and clutch size per species:
 
 
+```{r}
+success_summary <- nests %>%
+  filter(hatching_success >= 0) %>% 
+  group_by(species) %>%
+  dplyr::summarize(
+    "count" = n(),
+    "clutch_size_mean" = mean(clutch_size),
+    "clutch_size_sd" = sd(clutch_size),
+    "clutch_size_min" = min(clutch_size),
+    "clutch_size_max" = max(clutch_size),
+    "hatching_success_mean" = mean(hatching_success),
+    "hatching_success_sd" = sd(hatching_success),
+    "hatching_success_min" = min(hatching_success),
+    "hatching_success_max" = max(hatching_success),
+    "emergence_success_mean" = mean(emergence_success),
+    "emergence_success_sd" = sd(emergence_success),
+    "emergence_success_min" = min(emergence_success),
+    "emergence_success_max" = max(emergence_success)
+               )
+DT::datatable(success_summary, caption = "Nesting success summary")
+```
+
+### Spatial distribution of hatching success
+
+Size correlates to clutch size, colour to hatching success.
+
+```{r}
+nestIcons <- awesomeIconList(
+  "cheloniidae-fam" = makeAwesomeIcon(icon='baby-formula', library='glyphicon', markerColor = 'black'),
+  "chelonia-mydas" = makeAwesomeIcon(icon='baby-formula', library='glyphicon', markerColor = 'green'),
+  "eretmochelys-imbricata" = makeAwesomeIcon(icon='baby-formula', library='glyphicon', markerColor = 'blue'),
+  "natator-depressus" = makeAwesomeIcon(icon='baby-formula', library='glyphicon', markerColor = 'red')
+  )
+
+# Create a palette that maps factor levels to colors
+palette = rainbow(10, start=rgb2hsv(col2rgb('red'))[1], end=rgb2hsv(col2rgb('green'))[1])
+
+pal <- colorBin(palette, nests_with_hs$hatching_success, 10, pretty = FALSE)
+
+leaflet(filter(nests, hatching_success >= 0)) %>% 
+  addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+  addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+  setView(lng=115.0, lat=-21.45, zoom=12) %>%
+  addCircleMarkers(~longitude, ~latitude,
+    radius = ~clutch_size/5,
+    color = ~pal(hatching_success),
+    label = ~paste("Nest", date, species, 
+                   "CS", as.numeric(clutch_size), 
+                   "HS", as.numeric(hatching_success), 
+                   "%, ES", as.numeric(emergence_success), "%"),
+    stroke = FALSE, 
+    fillOpacity = 0.8,
+    group = "Nests") %>%
+  addLegend("bottomright", 
+    pal = pal, 
+    values = ~hatching_success,
+    title = "Hatching success",
+    opacity = 1) %>%
+  addLayersControl(
+    baseGroups = c("Aerial", "Place names"),
+    overlayGroups = c("Nests"))
+```
 
 # Turtle tracks
 
@@ -337,10 +378,6 @@ The following Table shows per species (including unknown shown as "Cheloniidae f
 * mean number of tracks per day, 
 * min and max number of tracks per day (cols)
 
-TODO:
-
-* total nesting success as number of tracks with nest / all tracks,
-* mean clutch size from excavated nests
 
 ```{r}
 tracks_by_species <- tracks %>% 

@@ -282,11 +282,13 @@ load("data/persons.Rda")
 person_names <- persons %>%
     transmute(
         PERSON_ID=PERSON_ID,
-        name=paste(FIRST_NAME, SURNAME) %>% str_replace_all("[<>()*=?]", "") %>% str_trim(),
+        name=paste(FIRST_NAME, SURNAME) %>% 
+          str_replace_all("[<>()*=?]", "") %>% str_trim(),
         email=EMAIL %>% str_replace("NA", "") %>% str_trim())
 person_details <- persons %>%
     mutate(
-        name=paste(FIRST_NAME, SURNAME) %>% str_replace_all("[<>()*=?]", "") %>% str_trim(),
+        name=paste(FIRST_NAME, SURNAME) %>% 
+          str_replace_all("[<>()*=?]", "") %>% str_trim(),
         email=EMAIL %>% str_replace("NA", "") %>% str_trim())
 write.csv(person_details, file="data/wamtram_users.csv", row.names=F)
 

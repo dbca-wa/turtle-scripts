@@ -1,7 +1,7 @@
 ---
 title: "Ningaloo Turtle Program Data Extraction, Transformation and Loading"
 author: "Florian Mayer"
-date: "14 July 2016"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 ---
 This workbook executes and documents the extraction, transformation and loading
@@ -43,7 +43,7 @@ Download, unzip and open the Access mdb file from the data catalogue.
 ```{r, echo=T, message=FALSE}
 if (refresh_data) {
   tmp <- tempfile()
-  download.file(resource_show(MDB_RID)$url, tmp)
+  download.file(resource_show(Sys.getenv("MDB_RID"))$url, tmp)
   dbfile <- unzip(tmp, "ningaloov6.mdb", exdir="data")
   unlink(tmp)
 } else {
@@ -425,14 +425,14 @@ DT::datatable(filter(cr, is.na(species_name))[,1:8])
 # Load
 Upload outputs to CKAN.
 ```{r}
-# ckanr::resource_update(SITES_RID, path="data/sites.geojson")
-# ckanr::resource_update(SITES_CSV_RID, path="data/sites.csv")
-# ckanr::resource_update(SURVEYS_RID, path="data/surveys.csv")
-# ckanr::resource_update(CRAWL_RID, "data/crawls.csv")
-# ckanr::resource_update(NEST_RID, "data/nests.csv")
-# ckanr::resource_update(NEW_NEST_RID, "data/summary_nests.csv")
-# ckanr::resource_update(NEST_SEASON_RID, "data/summary_nests_seasons.csv")
-# ckanr::resource_update(FALSE_CRAWL_RID, "data/summary_crawls.csv")
+# ckanr::resource_update(Sys.getenv("SITES_RID"), path="data/sites.geojson")
+# ckanr::resource_update(Sys.getenv("SITES_CSV_RID"), path="data/sites.csv")
+# ckanr::resource_update(Sys.getenv("SURVEYS_RID"), path="data/surveys.csv")
+# ckanr::resource_update(Sys.getenv("CRAWL_RID"), "data/crawls.csv")
+# ckanr::resource_update(Sys.getenv("NEST_RID"), "data/nests.csv")
+# ckanr::resource_update(Sys.getenv("NEW_NEST_RID"), "data/summary_nests.csv")
+# ckanr::resource_update(Sys.getenv("NEST_SEASON_RID"), "data/summary_nests_seasons.csv")
+# ckanr::resource_update(Sys.getenv("FALSE_CRAWL_RID"), "data/summary_crawls.csv")
 ```
 
 # Selecting data
