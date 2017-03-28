@@ -242,8 +242,6 @@ leaflet(tracks) %>%
                     group = "Nests") %>%
   addLayersControl(baseGroups = c("Aerial", "Place names"),
                    overlayGroups = c("Grid", "Tracks", "Tags", "Nests"))
-
-
 ```
 
 # Tagging
@@ -311,16 +309,16 @@ success_summary <- nests %>%
   group_by(species) %>%
   dplyr::summarize(
     "count" = n(),
-    "clutch_size_mean" = mean(clutch_size),
-    "clutch_size_sd" = sd(clutch_size),
+    "clutch_size_mean" = mean(clutch_size) %>% round(digits = 2),
+    "clutch_size_sd" = sd(clutch_size) %>% round(digits = 2),
     "clutch_size_min" = min(clutch_size),
     "clutch_size_max" = max(clutch_size),
-    "hatching_success_mean" = mean(hatching_success),
-    "hatching_success_sd" = sd(hatching_success),
+    "hatching_success_mean" = mean(hatching_success) %>% round(digits = 2),
+    "hatching_success_sd" = sd(hatching_success) %>% round(digits = 2),
     "hatching_success_min" = min(hatching_success),
     "hatching_success_max" = max(hatching_success),
-    "emergence_success_mean" = mean(emergence_success),
-    "emergence_success_sd" = sd(emergence_success),
+    "emergence_success_mean" = mean(emergence_success) %>% round(digits = 2),
+    "emergence_success_sd" = sd(emergence_success) %>% round(digits = 2),
     "emergence_success_min" = min(emergence_success),
     "emergence_success_max" = max(emergence_success)
                )
@@ -359,10 +357,10 @@ leaflet(filter(nests, hatching_success >= 0)) %>%
     fillOpacity = 0.8,
     group = "Nests") %>%
   addLegend("bottomright", 
-    pal = pal, 
-    values = ~hatching_success,
-    title = "Hatching success",
-    opacity = 1) %>%
+             pal = pal, 
+             values = ~hatching_success,
+             title = "Hatching success",
+             opacity = 1) %>%
   addLayersControl(
     baseGroups = c("Aerial", "Place names"),
     overlayGroups = c("Nests"))
@@ -385,8 +383,8 @@ tracks_by_species <- tracks %>%
   group_by(species, date) %>% 
   tally() %>% 
   group_by(species) %>% 
-  dplyr::summarize("mean" = mean(n),
-                   "SD" = sd(n),
+  dplyr::summarize("mean" = mean(n) %>% round(digits = 2),
+                   "SD" = sd(n) %>% round(digits = 2),
                    "min" = min(n),
                    "max" = max(n))
 
@@ -654,7 +652,9 @@ TODO
 
  
 * 36 days surveyed
-* Flatbacks: 35.8  31.8 tracks.day-1 (range 1- 119) – Green : 26.7  15.8 tracks.day-1 (1-65) – Hawksbill : 1.8  1.7 tracks.day-1 (1-6)
+* Flatbacks: 35.8  31.8 tracks.day-1 (range 1- 119) – 
+* Green : 26.7  15.8 tracks.day-1 (1-65) – 
+* Hawksbill : 1.8  1.7 tracks.day-1 (1-6)
 * Nesting success: nb of successful tracks/total nb of tracks (excluding tagging data)
 * Proportion of tracks in the tagging area compared to the rest of the island for flatbacks
 * Graph: Temporal distribution of tracks (all and successful) per species (flat and green)
