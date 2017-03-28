@@ -1,6 +1,6 @@
 ---
 title: "Turtle Tagging ETL"
-author: "Florian Mayer"
+author: "Turtle Conservation Program, Dept Parks & Wildlife WA"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 ---

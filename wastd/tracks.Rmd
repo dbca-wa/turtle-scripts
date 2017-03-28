@@ -220,6 +220,8 @@ leaflet(tracks) %>%
   setView(lng=115.0, lat=-21.45, zoom=12) %>%
   addPolygons(data = grd, weight = 1, color = "orange", opacity = 0.5, 
               label = ~paste(id), group = "Grid") %>%
+  addPolygons(data = tagging_area, weight = 1, color = "blue", opacity = 0.5, 
+              group = "Tagging area") %>%
   addAwesomeMarkers(~longitude, ~latitude,
                     data = filter(tracks, nest_type != "hatched-nest"), 
                     # data=tracks, 
@@ -241,7 +243,7 @@ leaflet(tracks) %>%
                     popup = ~paste("Nest", date, species, "HS", as.numeric(hatching_success), "%, ES", as.numeric(emergence_success), "%"),
                     group = "Nests") %>%
   addLayersControl(baseGroups = c("Aerial", "Place names"),
-                   overlayGroups = c("Grid", "Tracks", "Tags", "Nests"))
+                   overlayGroups = c("Grid", "Tagging area", "Tracks", "Tags", "Nests"))
 ```
 
 # Tagging
@@ -346,6 +348,8 @@ leaflet(filter(nests, hatching_success >= 0)) %>%
   addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
   addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
   setView(lng=115.0, lat=-21.45, zoom=12) %>%
+  addPolygons(data = tagging_area, weight = 1, color = "blue", opacity = 0.5, 
+              group = "Tagging area") %>%
   addCircleMarkers(~longitude, ~latitude,
     radius = ~clutch_size/5,
     color = ~pal(hatching_success),
@@ -446,14 +450,8 @@ wgs84 <- CRS('+proj=longlat +datum=WGS84 +no_defs')
 d.xy <- select(nesting_encounters, longitude, latitude)
 d.sp <- SpatialPoints(coords = d.xy, proj4string = wgs84)
 d.spdf <- SpatialPointsDataFrame(d.sp, data = nesting_encounters, proj4string = wgs84)
-# d.spdf.grd <- spCbind(d.spdf, over(d.spdf, grd))
-
-d.spdf.grd <- d.spdf %>%
-  spCbind(over(d.spdf, grd)) %>% spCbind(over(d.spdf, tagging_area))
-
+d.spdf.grd <- d.spdf %>% spCbind(over(d.spdf, grd)) %>% spCbind(over(d.spdf, tagging_area))
 # qplot(longitude, latitude, data = d.spdf.grd@data, facets = ~species, color=date)
-
-
 ```
 
 ## Nesting effort by species
@@ -503,8 +501,28 @@ ggplot(nesting_success, aes(x=date)) +
   ggsave(file="data/nesting_abundance.pdf", width=7, height=7)
 ```
 
-TODO: above as one figure per species
-TODO: fit GAM
+```{r nesting_success_fb}
+ggplot(nesting_success %>% filter(species=="natator-depressus"), aes(x=date)) +
+  geom_bar(aes(y=all), stat="identity", color="black", fill="black") +
+  geom_bar(aes(y=successful), stat="identity", color="green", fill="green") +
+  ggtitle("Nesting effort at Thevenard Island: Flatbacks", 
+          subtitle="Green: tracks with nest, nesting turtles\nBlack: all nesting") +
+  labs(x="Date", y="Number of all and successful nesting events") +
+  facet_wrap("species", ncol=1) +
+  ggsave(file="data/nesting_abundance_fb.pdf", width=7, height=7)
+```
+```{r nesting_success_gn}
+ggplot(nesting_success %>% filter(species=="chelonia-mydas"), aes(x=date)) +
+  geom_bar(aes(y=all), stat="identity", color="black", fill="black") +
+  geom_bar(aes(y=successful), stat="identity", color="green", fill="green") +
+  ggtitle("Nesting effort at Thevenard Island: Greens", 
+          subtitle="Green: tracks with nest, nesting turtles\nBlack: all nesting") +
+  labs(x="Date", y="Number of all and successful nesting events") +
+  facet_wrap("species", ncol=1) +
+  ggsave(file="data/nesting_abundance_gn.pdf", width=7, height=7)
+```
+
+TODO: Fitting a GAM to the nesting activity curves would model the nesting season.
 
 ```{r plot_nesting_success}
 ggplot(nesting_success, aes(x=date, y=nesting_success)) +
@@ -614,6 +632,8 @@ Xt <- unique(species_profiles$diffdate) %>% tbl_df()
 colnames(Xt) <- "diffdate"
 ```
 
+### Where does the nesting happen?
+
 Now we can summarise all nesting events (successful and non-successful) over the
 whole season (all observed dates) and plot by species.
 
@@ -631,31 +651,111 @@ ggplot(site_summary, aes(xmin, ymin, z=n)) +
   geom_raster(aes(fill=n)) +
   scale_fill_gradientn(colours=c("blue","green","yellow","orange","red")) +
   ggtitle("Observed nesting events over whole season") + 
-  labs(x="Longitude", y="Latitude") + 
+  labs(x="Longitude", y="Latitude") + coord_fixed() +
   ggsave(file="data/nesting_distribution_all_time.pdf", width=7, height=5)
+
+ggplot(site_summary %>% filter(species=="natator-depressus"), aes(xmin, ymin, z=n)) + 
+  facet_wrap("species") + 
+  geom_density2d(color="grey") + 
+  geom_raster(aes(fill=n)) +
+  scale_fill_gradientn(colours=c("blue","green","yellow","orange","red")) +
+  ggtitle("Observed nesting events over whole season: Flatbacks") + 
+  labs(x="Longitude", y="Latitude") + coord_fixed() +
+  ggsave(file="data/nesting_distribution_all_time_fb.pdf", width=7, height=5)
+
+ggplot(site_summary %>% filter(species=="chelonia-mydas"), aes(xmin, ymin, z=n)) + 
+  facet_wrap("species") + 
+  geom_density2d(color="grey") + 
+  geom_raster(aes(fill=n)) +
+  scale_fill_gradientn(colours=c("blue","green","yellow","orange","red")) +
+  ggtitle("Observed nesting events over whole season: Greens") + 
+  labs(x="Longitude", y="Latitude") + coord_fixed() +
+  ggsave(file="data/nesting_distribution_all_time_gn.pdf", width=7, height=5)
+
+
+# same for only successful tracks ("successful-crawl") and tags (nesting "present")
+site_summary_successful_nesting <- d.spdf.grd@data %>% 
+  filter(!is.na(id), type %in% c("successful-crawl", "present")) %>%
+  group_by(id, species, name) %>% 
+  tally(sort=F) %>% 
+  ungroup() %>%
+  left_join(Xs.id,by = "id")
+
+ggplot(site_summary_successful_nesting %>% filter(species=="natator-depressus"), aes(xmin, ymin, z=n)) + 
+  facet_wrap("species") + 
+  geom_density2d(color="grey") + 
+  geom_raster(aes(fill=n)) +
+  scale_fill_gradientn(colours=c("blue","green","yellow","orange","red")) +
+  ggtitle("Observed successful nesting events over whole season: Flatbacks") + 
+  labs(x="Longitude", y="Latitude") + coord_fixed() +
+  ggsave(file="data/nesting_distribution_all_time_fb_successful.pdf", width=7, height=5)
+
+
+ggplot(site_summary_successful_nesting %>% filter(species=="chelonia-mydas"), aes(xmin, ymin, z=n)) + 
+  facet_wrap("species") + 
+  geom_density2d(color="grey") + 
+  geom_raster(aes(fill=n)) +
+  scale_fill_gradientn(colours=c("blue","green","yellow","orange","red")) +
+  ggtitle("Observed successful nesting events over whole season: Greens") + 
+  labs(x="Longitude", y="Latitude") + coord_fixed() +
+  ggsave(file="data/nesting_distribution_all_time_gn_successful.pdf", width=7, height=5)
+
+# same for only unsuccessful tracks ("false-crawl", "track-unsure", "track-not-assessed") and tags (nesting not "present")
+# same for only successful tracks ("successful-crawl") and tags (nesting "present")
+site_summary_unsuccessful_nesting <- d.spdf.grd@data %>% 
+  filter(!is.na(id), type %in% c("false-crawl", "track-unsure", "track-not-assessed", "absent")) %>%
+  group_by(id, species, name) %>% 
+  tally(sort=F) %>% 
+  ungroup() %>%
+  left_join(Xs.id,by = "id")
+
+ggplot(site_summary_unsuccessful_nesting %>% filter(species=="natator-depressus"), aes(xmin, ymin, z=n)) + 
+  facet_wrap("species") + 
+  geom_density2d(color="grey") + 
+  geom_raster(aes(fill=n)) +
+  scale_fill_gradientn(colours=c("blue","green","yellow","orange","red")) +
+  ggtitle("Observed unsuccessful nesting events over whole season: Flatbacks") + 
+  labs(x="Longitude", y="Latitude") + coord_fixed() +
+  ggsave(file="data/nesting_distribution_all_time_fb_unsuccessful.pdf", width=7, height=5)
+
+
+ggplot(site_summary_unsuccessful_nesting %>% filter(species=="chelonia-mydas"), aes(xmin, ymin, z=n)) + 
+  facet_wrap("species") + 
+  geom_density2d(color="grey") + 
+  geom_raster(aes(fill=n)) +
+  scale_fill_gradientn(colours=c("blue","green","yellow","orange","red")) +
+  ggtitle("Observed unsuccessful nesting events over whole season: Greens") + 
+  labs(x="Longitude", y="Latitude") + coord_fixed() +
+  ggsave(file="data/nesting_distribution_all_time_gn_unsuccessful.pdf", width=7, height=5)
+
+
+# same for only successful nesting (nesting "present"), only FB
+# same for only unsuccessful nesting (nesting not "present"), only FB
+
 ```
 
 Green turtles seem to concentrate on the NW corner and avoid the SE corner,
-where as Flatbacks seem to occur all around the island with a focus on the stretch
+whereas Flatbacks seem to occur all around the island with a focus on the stretch
 between west of the Jetty and the Chevron property on the East end.
 
-TODO 
+### How much nesting happens in the tagging area?
 
-* split up by species, one figure per species, show only FB  and GN, overlay over THV aerial imagery
-* same for only successful tracks ("successful-crawl") and tags (nesting "present")
-* same for only unsuccessful tracks ("false-crawl", "track-unsure", "track-not-assessed") and tags (nesting not "present")
-* same for only successful nesting (nesting "present"), only FB
-* same for only unsuccessful nesting (nesting not "present"), only FB
-* Get nesting area form WAStD
-* count all nesting (tracks & tags, both succ and unsuccc) inside / outside nesting area for FB
+```{r}
+species_profiles_areas <- d.spdf.grd@data %>% 
+  filter(!is.na(id)) %>%
+  group_by(species, name) %>% 
+  tally(sort=F) %>% 
+  ungroup() %>% 
+  spread(name, n, fill=0) %>%
+  set_colnames(c("Species", "tagging_area", "outside")) %>%
+  mutate(
+    all = tagging_area + outside,
+    percent_in_tagging_area = (tagging_area / (tagging_area + outside)) %>% round(digits = 2)
+  )
+datatable(species_profiles_areas, caption = "Number of tracks and taggings in tagging area vs all")
+```
 
 
- 
-* 36 days surveyed
-* Flatbacks: 35.8  31.8 tracks.day-1 (range 1- 119) – 
-* Green : 26.7  15.8 tracks.day-1 (1-65) – 
-* Hawksbill : 1.8  1.7 tracks.day-1 (1-6)
-* Nesting success: nb of successful tracks/total nb of tracks (excluding tagging data)
 * Proportion of tracks in the tagging area compared to the rest of the island for flatbacks
 * Graph: Temporal distribution of tracks (all and successful) per species (flat and green)
 * Graph: Spatial distribution of tracks around the island, per species (flat and green)
