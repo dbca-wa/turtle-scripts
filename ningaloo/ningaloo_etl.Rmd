@@ -425,14 +425,14 @@ DT::datatable(filter(cr, is.na(species_name))[,1:8])
 # Load
 Upload outputs to CKAN.
 ```{r}
-# ckanr::resource_update(Sys.getenv("SITES_RID"), path="data/sites.geojson")
-# ckanr::resource_update(Sys.getenv("SITES_CSV_RID"), path="data/sites.csv")
-# ckanr::resource_update(Sys.getenv("SURVEYS_RID"), path="data/surveys.csv")
-# ckanr::resource_update(Sys.getenv("CRAWL_RID"), "data/crawls.csv")
-# ckanr::resource_update(Sys.getenv("NEST_RID"), "data/nests.csv")
-# ckanr::resource_update(Sys.getenv("NEW_NEST_RID"), "data/summary_nests.csv")
-# ckanr::resource_update(Sys.getenv("NEST_SEASON_RID"), "data/summary_nests_seasons.csv")
-# ckanr::resource_update(Sys.getenv("FALSE_CRAWL_RID"), "data/summary_crawls.csv")
+ckanr::resource_update(Sys.getenv("SITES_RID"), path="data/sites.geojson")
+ckanr::resource_update(Sys.getenv("SITES_CSV_RID"), path="data/sites.csv")
+ckanr::resource_update(Sys.getenv("SURVEYS_RID"), path="data/surveys.csv")
+ckanr::resource_update(Sys.getenv("CRAWL_RID"), "data/crawls.csv")
+ckanr::resource_update(Sys.getenv("NEST_RID"), "data/nests.csv")
+ckanr::resource_update(Sys.getenv("NEW_NEST_RID"), "data/summary_nests.csv")
+ckanr::resource_update(Sys.getenv("NEST_SEASON_RID"), "data/summary_nests_seasons.csv")
+ckanr::resource_update(Sys.getenv("FALSE_CRAWL_RID"), "data/summary_crawls.csv")
 ```
 
 # Selecting data
