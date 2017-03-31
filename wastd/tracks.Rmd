@@ -59,7 +59,12 @@ nest_json <- wastd_api("turtle-nest-encounters",
 # listviewer::jsonedit(nest_json$content)
 # area_json <- wastd_api("areas", simplify=FALSE)
 grd <- readOGR("thv_grid.geojson", "OGRGeoJSON")
+save(grd, file = "data/grid.Rda")
+load("data/grid.Rda")
+
 tagging_area <- readOGR("thv_tagging.geojson", "OGRGeoJSON")
+save(tagging_area, file = "data/tagging_area.Rda")
+load("data/tagging_area.Rda")
 ```
 
 ### Formatting the API response
@@ -145,7 +150,6 @@ nests <- nest_json$content %>% {
 save(nests, file = "data/nests.Rda")
 load("data/nests.Rda")
 
-# unique(nests$hatching_success)
 # listviewer::jsonedit(nests)
 ```
 
