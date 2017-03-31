@@ -1011,16 +1011,18 @@ in hiding the strong seasonality in nesting abundance from the analysis.
 
 ```{r plot_xs_pcnm}
 plot.xs <- function(nr, coords, scores, fs){
-  
-  fig <- ordisurf(coords, scores[,nr], bubble=3,
+  pdf(paste0("data/spatial_pattern_", nr, ".pdf"), width = 7, height = 5)
+  ordisurf(coords, scores[,nr], bubble = 3,
                   main=paste("Spatial pattern", fs[nr,2]), 
                   sub=paste("explains", 
                             round(as.numeric(fs[nr,3]), digits = 3) * 100, 
                             "% variance"))
-  pdf(paste0("data/spatial_pattern_", nr, ".pdf"), width = 6, height = 6)
-  fig
   dev.off()
-  fig
+  ordisurf(coords, scores[,nr], bubble = 3,
+                  main=paste("Spatial pattern", fs[nr,2]), 
+                  sub=paste("explains", 
+                            round(as.numeric(fs[nr,3]), digits = 3) * 100, 
+                            "% variance"))
 }
 
 lapply(seq_len(nrow(Xs.sel)), 
