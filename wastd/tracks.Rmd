@@ -327,6 +327,15 @@ This number relates to new animals, but contains the tag "NA" and resightings.
 This number also omits the invalid records from WAMTRAM with missing coordinates 
 or dates.
 
+**TODO**
+
+* For each tag with nesting `present`, count number of of sightings before.
+* For each tag without nesting `present`, count number of sightings within 7 days 
+  from each other.
+* Mean number of nests per night, sd, range
+* Equivalent to ~ 600 nests over 1 km of beach in 4 months
+* Nesting density as number of nests per km coastline
+* Per species: CCL and CCW, mean, sd, min, max
 
 ```{r}
 datatable(tags_by_date, 
@@ -501,27 +510,28 @@ data from tagging and missed turtles.
 Location and species are shared, while track / nest type (from track count) and
 turtle nesting (from tagging) are combined into one column.
 
-The column `date` is the "turtle date".
+The column `date` is the "turtle date"; `diffdate` is the number of days since 1970,
+which represents the date as integer number for analytic purposes.
 
 ```{r nesting_encounters}
 nesting_encounters <- bind_rows(
   tracks %>% 
     filter(nest_age == "fresh") %>% 
-    transmute(latitude = latitude, 
-              longitude = longitude, 
-              date = date, 
-              species = species, 
-              type = nest_type),
+    transmute(
+      latitude = latitude, 
+      longitude = longitude, 
+      date = date, 
+      species = species, 
+      type = nest_type),
   tags %>% 
-    transmute(latitude = latitude, 
-              longitude = longitude, 
-              date = date, 
-              species = species, 
-              type = nesting)
+    transmute(
+      latitude = latitude, 
+      longitude = longitude, 
+      date = date, 
+      species = species, 
+      type = nesting)
   ) %>%
-  mutate(
-    diffdate=difftime(date, origin)
-  )
+  mutate(diffdate=difftime(date, origin))
 ```
 
 ### Species profiles
@@ -587,6 +597,12 @@ ggplot_nesting_type_by_date <- function(data, species_name) {
 ggplot_nesting_type_by_date(nesting_encounters, "natator-depressus")
 ggplot_nesting_type_by_date(nesting_encounters, "chelonia-mydas")
 ```
+
+
+### Nesting effort by species over time (tracks and tags)
+
+**TODO** Tally `nesting_encounters` per day and species, plot n over date
+
 
 ### Nesting success by species (tracks and tags)
 
