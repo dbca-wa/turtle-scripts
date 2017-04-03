@@ -670,18 +670,22 @@ As successful nesting events are counted (this is negotiable):
 
 ```{r plot_nesting_abundance, fig.height=5, fig.width=7, warning = F}
 all_nesting_by_date <- nesting_encounters %>%
-  group_by(date, species) %>% tally() %>% ungroup() %>% rename(all=n)
+  filter(type != "hatched-nest" & type != "nest") %>%
+  group_by(date, species) %>% tally() %>% ungroup() %>% 
+  rename(all = n)
 
 successful_nesting_by_date <- nesting_encounters %>% 
   filter(type == 'successful-crawl' | type == "present") %>%
   group_by(date, species) %>% tally() %>% ungroup() %>%
-  mutate(n = ifelse(is.na(n), 0, n)) %>%
-  transmute(date=date, species=species, successful=n)
+  transmute(date = date, 
+            species = species, 
+            successful = n)
 
 # Join nesting emergences with nesting success or 0
 nesting_success <- all_nesting_by_date %>%
   left_join(successful_nesting_by_date, by = c('date','species')) %>%
-  mutate(nesting_success=successful/all)
+  mutate(successful = ifelse(is.na(successful), 0, successful)) %>%
+  mutate(nesting_success_rate = 100 * successful/all)
 
 ggplot_nesting_all_by_date <- function(data, species_name) {
   data %>%
@@ -697,11 +701,29 @@ ggplot_nesting_all_by_date <- function(data, species_name) {
   labs(x="Date", y="Number of all and successful nesting events") +
     theme_light() +
     ggsave(paste0("data/nesting_abundance_", species_name, ".pdf"), 
-           width=7, height=5)
+           width = 7, height = 5)
 }
 
 ggplot_nesting_all_by_date(nesting_success, "natator-depressus")
 ggplot_nesting_all_by_date(nesting_success, "chelonia-mydas")
+
+nesting_success_summary <- nesting_success %>%
+  group_by(species) %>%
+  dplyr::summarize(
+    "observed_days" = n(),
+    "nesting_events_mean" = mean(all) %>% round(digits = 2),
+    "nesting_events_sd" = sd(all) %>% round(digits = 2),
+    "nesting_events_min" = min(all),
+    "nesting_events_max" = max(all),
+    "nesting_success_rate_mean" = mean(nesting_success_rate) %>% round(digits = 2),
+    "nesting_success_rate_sd" = sd(nesting_success_rate) %>% round(digits = 2),
+    "nesting_success_rate_min" = min(nesting_success_rate) %>% round(digits = 2),
+    "nesting_success_rate_max" = max(nesting_success_rate) %>% round(digits = 2)
+    )
+
+DT::datatable(nesting_success_summary, 
+              caption = "Nesting event totals and success rate from tracks (excl. old nests) and tags")
+
 ```
 
 
@@ -820,59 +842,6 @@ datatable(track_success_summary,
           caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)")
 
 ```
-
-## Nesting success by species (tracks and tags excl old nests)
-
-```{r}
-fresh_nesting <- nesting_encounters %>%
-  filter(type %in% c("successful-crawl", 
-                     "false-crawl", 
-                     "track-unsure", 
-                     "track-not-assessed"))
-
-fresh_nesting_by_date <- fresh_nesting %>%
-  group_by(species, date) %>% tally %>% ungroup %>% rename(all = n)
-
-successful_nesting_by_date <- fresh_nesting %>% 
-  filter(type %in% c("successful-crawl", "present")) %>%
-  group_by(date, species) %>% tally() %>% ungroup() %>% rename(successful = n)
-
-# Join nesting emergences with nesting success or 0
-tt_nesting_success <- fresh_nesting_by_date %>%
-  left_join(successful_nesting_by_date, by = c('date','species')) %>%
-  mutate(successful = ifelse(is.na(successful), 0, successful),
-         nesting_success = 100 * successful/all)
-
-ggplot(tt_nesting_success, aes(date, nesting_success)) + 
-  geom_bar(stat = "identity") + 
-  facet_wrap(~species) +
-  scale_x_date(breaks = scales::pretty_breaks(),
-                 labels = scales::date_format("%d %b %Y")) +
-    labs(x = "Date", y = "Success rate") +
-    ggtitle(paste("Nesting success rate"),
-            subtitle = "Fraction of successful over total nesting tracks and taggings") +
-    theme_light() +
-    ggsave(paste0("data/track_and_tag_nesting_success_rate.pdf"), 
-           width = 7, height = 5)
-
-tt_nesting_success_summary <- tt_nesting_success %>%
-  group_by(species) %>%
-  dplyr::summarize(
-    "observed_days" = n(),
-    "nesting_events_mean" = mean(all) %>% round(digits = 2),
-    "nesting_events_sd" = sd(all) %>% round(digits = 2),
-    "nesting_events_min" = min(all),
-    "nesting_events_max" = max(all),
-    "nesting_success_rate_mean" = mean(nesting_success) %>% round(digits = 2),
-    "nesting_success_rate_sd" = sd(nesting_success) %>% round(digits = 2),
-    "nesting_success_rate_min" = min(nesting_success) %>% round(digits = 2),
-    "nesting_success_rate_max" = max(nesting_success) %>% round(digits = 2)
-    )
-
-DT::datatable(tt_nesting_success_summary, 
-              caption = "Nesting event totals and success rate from tracks (excl. old nests) and tags")
-```
-
 
 The total number of fresh tracks was `r nrow(fresh_tracks)`.
 
