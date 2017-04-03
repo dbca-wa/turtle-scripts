@@ -1,43 +1,35 @@
 ---
 title: "Turtle Tagging ETL"
-author: "Florian Mayer"
-date: "18 July 2016"
+author: "Turtle Conservation Program, Dept Parks & Wildlife WA"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 ---
-```{r, message=F}
-require(Hmisc)
-require(tidyr)
-require(dplyr)
-require(lubridate)
-require(ckanr)
-require(DT)
-require(rgdal)
-require(mapview)
-library(leaflet)
-require(vegan)
-require(RODBC)
-source("setup.R")
+```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/projects/turtle-scripts/wamtram")
+if (file.exists("../config/setup.R")) source("../config/setup.R")
+if (file.exists("../config/load.R")) source("../config/load.R")
+library(RODBC)
 ```
 
 This document describes and executes the Extraction, Transformation and (up)Loading
 of data from the Turtle Tagging database WAMTRAM 2 to the data catalogue.
 
-It is based on technical documentation provided by Simon Woodman.
+It is based on technical documentation provided by WAMTRAM 1 developer Simon Woodman.
 
 # Installation
 Setup RODBC as per
 [the instructions](http://itsalocke.com/install-sql-server-odbc-drivers-travis-ci/)
 and configure an ODBC data source for the tagging database, e.g.
 
-* in Windows: crying, curling up into a ball and ask an experienced user to
-  configure the ODBC data source in Control Panel > ODBC Data Sources,
-* Apple: going to the Apple store and buying a new MacBook Pro, or
-* Linux: writing three lines to a file `~/.odbc.ini`:
+* in Windows: Control Panel > ODBC Data Sources,
+* Linux: create `~/.odbc.ini`:
 
 ```{r, eval=F}
 [turtle_tagging]
-Driver = ODBC Driver 13 for SQL Server
-Server = THE_MSSQL_SERVER_DNSNAME
+Driver = FreeTDS
+Server = kensmssql001pro.corporateict.domain
+Port = 1433
 ```
 
 See also the
@@ -56,11 +48,7 @@ atabase prompted a re-development of the process, which is described in this doc
 # Field data ingestion
 
 ```{r}
-# libary(RSQLServer)
-# con <- RSQLServer::dbConnect(RSQLServer::SQLServer(), SRV, database=DB, properties=list(user=UN, password=PW))
-# dbListTables(con)
-# RODBC:
-con <- odbcConnect("turtle_tagging", uid=UN, pwd=PW)
+con <- odbcConnect("turtle_tagging", uid=Sys.getenv("W2_UN"), pwd=Sys.getenv("W2_PW"))
 entry_batches <- sqlQuery(con, 'select * from dbo.TRT_ENTRY_BATCHES')
 data_entry <- sqlQuery(con, 'select * from dbo.TRT_DATA_ENTRY')
 data_entry_operators <- sqlQuery(con, 'select * from TRT_DATA_ENTRY_PERSONS')
@@ -127,13 +115,15 @@ continues on to the next record.
 If the record is successfully processed then the resulting values for `TURLTE_ID`
 and `OBSERVATION_ID` are stored in the record.
 
-The stored procedure can be run multiple times on the same batch, as records that have the `TURTLE_ID` and `OBSERVATION_ID` set are skipped. Records that have previously failed are reprocessed.
+The stored procedure can be run multiple times on the same batch, as records with 
+existing `TURTLE_ID` and `OBSERVATION_ID` are skipped. 
+Records that have previously failed are reprocessed.
 
 This stored procedure is run from a button in the main WA Marine Turtles application.
 
 ## `dbo.ValidateDataEntryBatch`
-This routine loops through all the records in the `TRT_DATA_ENTRY` table for a specified batch
-and attempts to validate each record.
+This routine loops through all the records in the `TRT_DATA_ENTRY` table for a 
+specified batch and attempts to validate each record.
 
 Data is not transferred into the main application tables; however the
 `ERROR_NUMBER` and `ERROR_MESSAGE` fields are populated for problem records.
@@ -141,34 +131,35 @@ Data is not transferred into the main application tables; however the
 In this way the user can check all the records in the batch before deciding to
 load any data in the main application tables.
 
-
 ## `dbo.ValidateDataEntryRecord`
-This routine validates the values entered for a single record in the `TRT_DATA_ENTRY` table,
-and is called by the dbo.ValidateDataEntryBatch stored procedure.
+This routine validates the values entered for a single record in the 
+`TRT_DATA_ENTRY` table, and is called by the dbo.ValidateDataEntryBatch stored 
+procedure.
 
 ## `dbo.CheckPerson`
 This routine checks the `TRT_PERSONS` table for an existing record and returns
 the value of the primary key (`PERSON_ID)`.
 
-## `dbo.EntryBatchAddExistingTag`
-A helper routine for the dbo.EntryBatch stored procedure that adds a single record
+## `dbo.EntryBatchAddExistingTag`: apply a new flipper tag during capture
+A helper routine for the stored procedure `dbo.EntryBatch` that adds a single record
 to the `TRT_RECORDED_TAGS` table, and updates the status of the respective
 record in the `TRT_TAGS` table.
 
-This is used for an observation when a new flipper tag has been attached to a turtle.
+This is run when a new flipper tag has been attached to a turtle.
 
-## `dbo.EntryBatchAddNewTag`
-A helper routine for the `dbo.EntryBatch` stored procedure that adds a single record
+## `dbo.EntryBatchAddNewTag`: re-sight an attached flipper tag during re-capture
+A helper routine for the stored procedure `dbo.EntryBatch` that adds a single record
 to the `TRT_RECORDED_TAGS` table.
 
-This is used for an observation when a previously attached flipper tag is recorded.
+This is run when a previously attached flipper tag is recorded.
 
 ## `dbo.ValidateIdentification`
 A helper routine for the `dbo.EntryBatch` stored procedure that validates other
 turtle identification types (i.e. identification other than flipper or pit tags).
 
 ## `dbo.ValidateMeasurement`
-Validates measurements against minimum and maximum values stored in the `dbo.TRT_MEASUREMENT_TYPES` table.
+Validates measurements against minimum and maximum values stored in the 
+`dbo.TRT_MEASUREMENT_TYPES` table.
 
 ## `dbo.ValidateFloatRange`
 A generic function for validating that the FLOAT value falls within an acceptable range.
@@ -204,13 +195,14 @@ This is a summary function that displays the history of inter-season remigration
 for each turtle recorded in the system. It is used by the view `TRV_INTERSEASON_MIGRATION`.
 
 ### `dbo.ObservationTags`
-This is a summary function that returns a list of tags recorded for a turtle for a given observation.
+This is a summary function that returns a list of tags recorded for a turtle for 
+a given observation.
 It is not currently used.
 
 ## Other Functionality: Stored Procedures
 
 ### `dbo.TransferObservationsByFlipperTag`
-Changes in the database structure for version 2 of the WA Marine Turtles application
+Changes in the database structure between WAMTRAM v1 and v2
 introduced modified referential integrity constraints between the tables
 `TRT_OBSERVATIONS`, `TRT_TAGS` and `TRT_RECORDED_TAGS` table.
 This had the benefit of ensuring valid data between these tables,
@@ -230,9 +222,10 @@ so a stored procedure was developed to handle this.
 # Data
 This section aims to extract the raw data from the database.
 
-Note: WAMTRAM 1 has uppercase named tables `TRT_*`,  WAMTRAM 2
-(Pendoley-Rawcliffe) added lowercased `tbl*` tables.
-
+Note: WAMTRAM 1 tables are prefixed with `TRT_*` following departmental naming 
+conventions, whereas Pendoley-Rawcliffe tables are prefixed with `tbl*` as per
+common MS Access naming convention.
+There exists duplication of records between the two sets of tables.
 
 ## Sites
 Nesting beaches are stored in table `TRT_PLACES`.
@@ -245,31 +238,38 @@ sites <- sqlQuery(con, "select * from dbo.TRT_PLACES;") %>%
     is_rookery=ROOKERY,
     beach_approach=BEACH_APPROACH,
     beach_aspect=ASPECT,
-    datum=DATUM_CODE,
-    latitude=LATITUDE,
-    longitude=LONGITUDE,
+    site_datum=DATUM_CODE,
+    site_latitude=LATITUDE,
+    site_longitude=LONGITUDE,
     comments=COMMENTS
   )
 
-sites_with_coordinates <- sites %>% filter(!is.na(latitude))
-ico <- makeAwesomeIcon(icon="cog", lib="glyphicon")
+sites_with_coordinates <- sites %>% filter(!is.na(site_latitude))
+ico <- makeAwesomeIcon(icon="cog", library="glyphicon")
 leaflet(sites_with_coordinates) %>%
   addProviderTiles("Esri.WorldImagery") %>%
   setView(lng=120, lat=-20, zoom=5) %>%
-  addAwesomeMarkers(~longitude, ~latitude, label=~label, icon=ico)
+  addAwesomeMarkers(~site_longitude, ~site_latitude, label=~label, icon=ico)
 ```
 
 Some sites are missing coordinates and need to be fixed in `TRT_PLACES`:
 
 ```{r}
-badsites <- sites %>% filter(is.na(latitude) | is.na(longitude))
+badsites <- sites %>% filter(is.na(site_latitude) | is.na(site_longitude))
 DT::datatable(badsites)
 ```
 
 Most of these are offshore, in-water captures/releases.
 
-**Task** The database custodian needs to sit with a GIS analyst to
-digitise all `r nrow(sites)` sites as polygons.
+**TODO** The database custodian (BP) needs to sit with a GIS analyst to
+digitise all `r nrow(sites)` sites as polygons. 
+The site polygons shall be delineated by:
+
+* The exact extent of the location as a segment of the high water mark.
+* A well-chosen buffer of the high water mark to accommodate observations 
+  both at low tide (buffer seawards) and encounters with nesting turtles.
+* The polygons shall be simplified to consist of exactly one polygon ring and 
+  not overlap with each other.
 
 ## Observations
 Ancillary lookup tables are sanitised and joined to the observations.
@@ -277,11 +277,20 @@ Ancillary lookup tables are sanitised and joined to the observations.
 ```{r}
 # Sensitive information!
 persons <- sqlQuery(con, "select * from dbo.TRT_PERSONS;")
+save(persons, file = "data/persons.Rda")
+load("data/persons.Rda")
 person_names <- persons %>%
-  transmute(
-    PERSON_ID=PERSON_ID,
-    name=paste(FIRST_NAME, SURNAME, EMAIL)
-  )
+    transmute(
+        PERSON_ID=PERSON_ID,
+        name=paste(FIRST_NAME, SURNAME) %>% 
+          str_replace_all("[<>()*=?]", "") %>% str_trim(),
+        email=EMAIL %>% str_replace("NA", "") %>% str_trim())
+person_details <- persons %>%
+    mutate(
+        name=paste(FIRST_NAME, SURNAME) %>% 
+          str_replace_all("[<>()*=?]", "") %>% str_trim(),
+        email=EMAIL %>% str_replace("NA", "") %>% str_trim())
+write.csv(person_details, file="data/wamtram_users.csv", row.names=F)
 
 activities <- sqlQuery(
     con, "select * from dbo.TRT_ACTIVITIES;") %>%
@@ -341,6 +350,9 @@ recorded_tags <- sqlQuery(
     tag_position=TAG_POSITION,
     comments=COMMENTS
   )
+save(recorded_tags, file="data/tag_observations.Rda")
+load("data/tag_observations.Rda")
+write.csv(recorded_tags, file="data/wamtram_tagobservations.csv", row.names=F)
 
 # 51k inferred turtle identities
 turtles <- sqlQuery(con, "select * from dbo.TRT_TURTLES;")
@@ -381,36 +393,70 @@ damage_codes <- sqlQuery(con, "select * from dbo.TRT_DAMAGE_CODES;")
 damage_causes <- sqlQuery(con, "select * from dbo.TRT_DAMAGE_CAUSE_CODES;")
 damages <- sqlQuery(con, "select * from dbo.TRT_DAMAGE;")
 
-
+# 128k
 obs <- sqlQuery(con, "select * from dbo.TRT_OBSERVATIONS;")
+
+# save all objects
+# save.image("data/wamtram_all.RData")
+# resume
+# load("data/wamtram_all.RData")
 
 ord <- c("YmdHMS", "Ymd")
 utc <- "UTC"
 gmt08 <- "Australia/Perth"
 
 o <- obs %>%
-  mutate(
-    o_date=parse_date_time(CORRECTED_DATE, orders=ord, tz=gmt08),
-    o_time=parse_date_time(OBSERVATION_TIME, orders=ord, tz=gmt08),
-    observation_datetime_gmt08=o_date + hours(hour(o_time)) + minutes(minute(o_time)),
-    observation_datetime_utc=with_tz(observation_datetime_gmt08, tz=utc)
-  ) %>%
-  rename(
-    activity_code=ACTIVITY_CODE
-  ) %>%
-  left_join(activities, by="activity_code") %>%
-  # left_join(sites, by="PLACE_CODE") %>%
-  select(
-    -OBSERVATION_DATE, -OBSERVATION_TIME, -OBSERVATION_DATE_OLD, -CORRECTED_DATE,
-    -DATE_CONVENTION, -o_date, -o_time
-  )
+    mutate(
+        o_date=parse_date_time(CORRECTED_DATE, orders=ord, tz=gmt08),
+        o_time=parse_date_time(OBSERVATION_TIME, orders=ord, tz=gmt08),
+        observation_datetime_gmt08=o_date - days(1) + hours(hour(o_time)) + minutes(minute(o_time)),
+        observation_datetime_utc=with_tz(observation_datetime_gmt08, tz=utc)
+    ) %>%
+    dplyr::select(
+        -OBSERVATION_DATE, -OBSERVATION_DATE_OLD, -DATE_CONVENTION,
+        -CORRECTED_DATE, -OBSERVATION_TIME, -o_date, -o_time
+    ) %>%
+    rename(
+        activity_code=ACTIVITY_CODE
+    ) %>%
+    left_join(activities, by="activity_code") %>%
+    # left_join(person_names, by=c("MEASURER_PERSON_ID" = "PERSON_ID")) %>%
+    # rename(measured_by=name) %>%
+    # left_join(person_names, by=c("MEASURER_REPORTER_PERSON_ID" = "PERSON_ID")) %>%
+    # rename(measurements_reported_by=name) %>%
+    # left_join(person_names, by=c("TAGGER_PERSON_ID" = "PERSON_ID")) %>%
+    # rename(tagged_by=name) %>%
+    # left_join(person_names, by=c("REPORTER_PERSON_ID" = "PERSON_ID")) %>%
+    # rename(reported_by=name) %>%
+    left_join(sites, by=c("PLACE_CODE" = "name")) %>%
+    left_join(turtles, by="TURTLE_ID") 
 
-head(o)
-DT::datatable(head(o))
+save(o, file="data/encounters.Rda")
+load("data/encounters.Rda")
+
+# TODO reconstruct empty DD from DMS or UTM or site coords
+enc <- o %>%
+    filter(!is.na(LONGITUDE) & !is.na(observation_datetime_utc)) %>%
+    filter(PLACE_CODE == "THEE" | PLACE_CODE == "THNB")
+enc2 <- o %>%
+    filter(is.na(LONGITUDE) | is.na(observation_datetime_utc)) %>%
+    filter(PLACE_CODE == "THEE" | PLACE_CODE == "THNB")
+
+# write.csv(o, file="data/wamtram_encounters.csv", row.names=F)
+write.csv(enc, file="data/wamtram_encounters.csv", row.names=F)
+write.csv(enc2, file="data/wamtram_encounters_missing.csv", row.names=F)
+
+ckanr::resource_update(Sys.getenv("W2_ENC_CSV_RID"), "data/wamtram_encounters.csv")
 ```
+
 
 * obs with OTHER_TAGS_IDENTIFICATION_TYPE == "STRAND/SAL" are untagged strandings
 * TRT_IDENTIFICATION_TYPES = TAG_TYPE
+
+```{r}
+datatable(sites)
+
+```
 
 
 # Products
@@ -436,6 +482,9 @@ For tags (tag IDs = rows), one column per year, value 0 (not encountered) or 1 (
 plus columns for location and species.
 
 
-
 # Upload
 This section uploads the extracted data to the data catalogue.
+
+```{r}
+setwd("~/projects/turtle-scripts/wamtram")
+```

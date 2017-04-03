@@ -1,3 +1,7 @@
 rsconnect
-tracks.html
 data
+*.html
+vdb
+wastd-figure
+wastd.md
+nesting_success_map.png

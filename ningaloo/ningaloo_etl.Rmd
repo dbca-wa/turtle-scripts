@@ -1,7 +1,7 @@
 ---
 title: "Ningaloo Turtle Program Data Extraction, Transformation and Loading"
-author: "Florian Mayer"
-date: "14 July 2016"
+author: "Turtle Conservation Program, Dept Parks & Wildlife WA"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 ---
 This workbook executes and documents the extraction, transformation and loading
@@ -27,32 +27,27 @@ the owner's write permissions: `ckanr::ckanr_setup(url=CKAN, key=APIKEY)`.
 
 Create your own `setup.R` from the template `setup_template.R`.
 Then, load required libraries and source `setup.R`.
-```{r, warning=FALSE, message=FALSE}
+
+```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 setwd("~/projects/turtle-scripts/ningaloo")
-library(Hmisc)
-library(htmlTable)
-library(tidyr)
-library(dplyr)
-library(lubridate)
-library(ckanr)
-library(DT)
-library(rgdal)
-library(mapview)
-library(leaflet)
 if (file.exists("../config/setup.R")) source("../config/setup.R")
+if (file.exists("../config/load.R")) source("../config/load.R")
+library(RODBC)
 refresh_data <- TRUE # download fresh database snapshot or use local copy
 ```
+
 
 # Extract data
 Download, unzip and open the Access mdb file from the data catalogue.
 ```{r, echo=T, message=FALSE}
 if (refresh_data) {
   tmp <- tempfile()
-  download.file(resource_show(MDB_RID)$url, tmp)
-  dbfile <- unzip(tmp, "ningaloov4.mdb", exdir="data")
+  download.file(resource_show(Sys.getenv("MDB_RID"))$url, tmp)
+  dbfile <- unzip(tmp, "ningaloov6.mdb", exdir="data")
   unlink(tmp)
 } else {
-  dbfile <- "data/ningaloov4.mdb"
+  dbfile <- "data/ningaloov6.mdb"
 }
 con <- mdb.get(dbfile, dateformat='%Y-%m-%d', as.is=T)
 contents(con)
@@ -81,10 +76,10 @@ sites <- con$tblSections %>%
     x_min=as.numeric(SubSect.SW.long))
 row.names(sites) <- sites$id
 
-# Manually fix mising NE corner of Red Bluff
+# Example: fix missing NE corner of Red Bluff
 # Note: this is a temporary measure until the Access db is updated
-sites[which(sites$subsection=="Red Bluff"),]$x_max <- 113.458
-sites[which(sites$subsection=="Red Bluff"),]$y_max <- -24.016
+# sites[which(sites$subsection=="Red Bluff"),]$x_max <- 113.458
+# sites[which(sites$subsection=="Red Bluff"),]$y_max <- -24.016
 
 write.csv(sites, file = "data/sites.csv", row.names=F)
 ```
@@ -430,14 +425,14 @@ DT::datatable(filter(cr, is.na(species_name))[,1:8])
 # Load
 Upload outputs to CKAN.
 ```{r}
-# ckanr::resource_update(SITES_RID, path="data/sites.geojson")
-# ckanr::resource_update(SITES_CSV_RID, path="data/sites.csv")
-# ckanr::resource_update(SURVEYS_RID, path="data/surveys.csv")
-# ckanr::resource_update(CRAWL_RID, "data/crawls.csv")
-# ckanr::resource_update(NEST_RID, "data/nests.csv")
-# ckanr::resource_update(NEW_NEST_RID, "data/summary_nests.csv")
-# ckanr::resource_update(NEST_SEASON_RID, "data/summary_nests_seasons.csv")
-# ckanr::resource_update(FALSE_CRAWL_RID, "data/summary_crawls.csv")
+ckanr::resource_update(Sys.getenv("SITES_RID"), path="data/sites.geojson")
+ckanr::resource_update(Sys.getenv("SITES_CSV_RID"), path="data/sites.csv")
+ckanr::resource_update(Sys.getenv("SURVEYS_RID"), path="data/surveys.csv")
+ckanr::resource_update(Sys.getenv("CRAWL_RID"), "data/crawls.csv")
+ckanr::resource_update(Sys.getenv("NEST_RID"), "data/nests.csv")
+ckanr::resource_update(Sys.getenv("NEW_NEST_RID"), "data/summary_nests.csv")
+ckanr::resource_update(Sys.getenv("NEST_SEASON_RID"), "data/summary_nests_seasons.csv")
+ckanr::resource_update(Sys.getenv("FALSE_CRAWL_RID"), "data/summary_crawls.csv")
 ```
 
 # Selecting data

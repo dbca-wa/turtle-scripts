@@ -43,18 +43,11 @@ in preceding surveys. These gaps are filled with `NA` values, which the analyses
 we use here cannot handle. Therefore, there is little environmental data to model
 with.
 
-```{r, echo=F, message=F, warning=F}
-require(Hmisc)
-library(tidyr)
-require(dplyr)
-require(lubridate)
-require(ckanr)
-require(DT)
-require(mapview)
-require(vegan)
-require(scales)
-require(packfor)
-source("setup.R")
+```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/projects/turtle-scripts/ningaloo")
+if (file.exists("../config/setup.R")) source("../config/setup.R")
+if (file.exists("../config/load.R")) source("../config/load.R")
 ```
 
 # Data
