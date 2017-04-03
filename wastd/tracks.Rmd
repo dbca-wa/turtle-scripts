@@ -441,10 +441,10 @@ palette = rainbow(10,
                   end = rgb2hsv(col2rgb('green'))[1])
 pal <- colorBin(palette, nests_with_hs$hatching_success, 10, pretty = FALSE)
 
-leaflet(filter(nests, hatching_success >= 0, species == "natator-depressus")) %>% 
+nesting_success_map <- leaflet(filter(nests, hatching_success >= 0, species == "natator-depressus")) %>% 
   addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
   addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
-  setView(lng=115.0, lat=-21.45, zoom=12) %>%
+  setView(lng=115.02, lat=-21.463, zoom=16) %>%
   addPolygons(data = tagging_area, 
               weight = 1, 
               color = "blue", 
@@ -468,6 +468,8 @@ leaflet(filter(nests, hatching_success >= 0, species == "natator-depressus")) %>
   addLayersControl(
     baseGroups = c("Aerial", "Place names"),
     overlayGroups = c("Tagging area", "Flatback nests"))
+nesting_success_map
+mapshot(nesting_success_map, file = "nesting_success_map.png")
 ```
 
 # Turtle tracks
