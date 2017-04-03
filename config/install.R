@@ -21,12 +21,13 @@ devtools::install_github("sdray/adespatial")
 devtools::install_github("ropensci/ckanr")
 devtools::install_github("ropensci/geojsonio")
 devtools::install_github("rstudio/leaflet")
-devtools::install_github('bhaskarvk/leaflet.extras')
+devtools::install_github("bhaskarvk/leaflet.extras")
 devtools::install_github("tidyverse/ggplot2")
 devtools::install_github("r-pkgs/gh")
 devtools::install_github("Rfacebook", "pablobarbera", subdir="Rfacebook")
 
 install.packages("data/AEM_0.6.tar.gz", repos = NULL, type = "source")
+install.packages("data/packfor_0.0-8.tar.gz", repos = NULL, type= "source")
 install.packages("data/PCNM_2.1-4.tgz", repos = NULL, type = "source")
 
 ## Install packages from CRAN
