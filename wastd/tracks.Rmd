@@ -1,7 +1,7 @@
 ---
 title: "Turtle nesting effort"
 author: "Turtle Conservation Program, Dept Parks & Wildlife WA"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+date: "`r format(Sys.time(), '%d %B, %Y %H:%M')`"
 output:
   html_document:
     toc: true
@@ -156,7 +156,7 @@ load("data/nests.Rda")
 # listviewer::jsonedit(nests)
 ```
 
-* Track observations span **`r min(tracks$datetime)` - `r max(tracks$datetime)`"**
+* Track observations span **`r min(tracks$datetime)` - `r max(tracks$datetime)`**
 * Tag observations span **`r min(tags$datetime)` - `r max(tags$datetime)`**
 
 ## Turtle dates

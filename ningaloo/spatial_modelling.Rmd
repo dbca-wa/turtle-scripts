@@ -1,7 +1,7 @@
 ---
 title: "Distribution and change of Ningaloo turtle nesting"
 author: "Florian Mayer"
-date: "15 July 2016"
+date: "`r format(Sys.time(), '%d %B, %Y %H:%M')`"
 output: html_document
 ---
 

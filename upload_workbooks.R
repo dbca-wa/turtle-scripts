@@ -1,5 +1,5 @@
-source("config/setup.R")
 setwd("~/projects/turtle-scripts")
+source("config/setup.R")
 ckanr::resource_update(Sys.getenv("ETL_RID"), "ningaloo/ningaloo_etl.html")
 ckanr::resource_update(Sys.getenv("SPM_RID"), "ningaloo/spatial_modelling.html")
 ckanr::resource_update(Sys.getenv("W2_ETL_RID"), "wamtram/wamtram_etl.html")
