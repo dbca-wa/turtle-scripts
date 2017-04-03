@@ -307,7 +307,7 @@ tags_by_date <- tags %>% group_by(date) %>% tally() %>% ungroup()
 animals_by_date <- tags %>% group_by(date, name) %>% tally() %>% ungroup()
 ```
 
-A total of `r nrow(tags)` turtles were processed (captured new or resighted) 
+A total of `r nrow(tags)` turtles were processed (captured new or resighted)
 during the `r length(unique(tags_by_date$date))` days of field work on which
 tagging took place.
 
