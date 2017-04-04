@@ -59,6 +59,7 @@ install.packages(c(
   # "leaflet.extras",
   "wordcloud",
 
+  "lme4",
   "rstan",
   "rstanarm",
   "shinystan",
