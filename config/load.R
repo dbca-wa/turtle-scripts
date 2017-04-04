@@ -32,7 +32,7 @@ library(magrittr)
 library(DT)
 library(mapview)
 library(leaflet)
-library(leaflet.extras)
+require(leaflet.extras)
 library(trelliscope)
 library(RColorBrewer)
 
