@@ -23,7 +23,7 @@ devtools::install_github("ropensci/ckanr")
 devtools::install_github("ropensci/geojsonio")
 devtools::install_github("rstudio/leaflet")
 # devtools::install_github("bhaskarvk/leaflet.extras")
-# leaflet.extras is cloned to ~/projects/leaflet.extras and built there
+# leaflet.extras is cloned to ~/projects/leaflet.extras and built from source
 devtools::install_github("tidyverse/ggplot2")
 devtools::install_github("r-pkgs/gh")
 devtools::install_github("pablobarbera/Rfacebook", subdir="Rfacebook")
@@ -57,5 +57,12 @@ install.packages(c(
   "trelliscope",
   "listviewer",
   # "leaflet.extras",
-  "wordcloud"
+  "wordcloud",
+
+  "rstan",
+  "rstanarm",
+  "shinystan",
+  "bayesplot",
+  "rstantools",
+  "loo"
   ))

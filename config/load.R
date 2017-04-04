@@ -36,6 +36,13 @@ require(leaflet.extras)
 library(trelliscope)
 library(RColorBrewer)
 
+library("rstan")
+library("rstanarm")
+library("shinystan")
+library("bayesplot")
+library("rstantools")
+library("loo")
+
 #' Return GeoJSON features from a WAStD API endpoint as data.table or list
 #'
 #' @param serializer (character) WAStD API serializer name (required)
