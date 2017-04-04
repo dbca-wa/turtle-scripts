@@ -37,6 +37,8 @@ library(trelliscope)
 library(RColorBrewer)
 
 library("rstan")
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
 library("rstanarm")
 library("shinystan")
 library("bayesplot")
