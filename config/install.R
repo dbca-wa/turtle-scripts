@@ -27,9 +27,11 @@ devtools::install_github("rstudio/leaflet")
 devtools::install_github("tidyverse/ggplot2")
 devtools::install_github("r-pkgs/gh")
 devtools::install_github("pablobarbera/Rfacebook", subdir="Rfacebook")
+devtools::install_github("parksandwildlife/wastdr")
+
 
 install.packages("data/AEM_0.6.tar.gz", repos = NULL, type = "source")
-install.packages("data/packfor_0.0-8.tar.gz", repos = NULL, type= "source")
+install.packages("data/packfor_0.0-8.tar.gz", repos = NULL, type = "source")
 install.packages("data/PCNM_2.1-4.tgz", repos = NULL, type = "source")
 
 ## Install packages from CRAN
@@ -45,11 +47,13 @@ install.packages(c(
   "ade4",
 
   "Hmisc",
+  "dygraphs",
   "httr",
   "plyr",
   "tidyverse",
   "magrittr",
   "tidyjson",
+  "xts",
 
   "DT",
   "mapview",

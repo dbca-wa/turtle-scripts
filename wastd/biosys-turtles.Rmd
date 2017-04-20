@@ -1,7 +1,20 @@
+---
+title: "Biosys Turtles Requirements"
+author: "Dept Parks & Wildlife"
+date: "20/04/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
 setwd("~/projects/turtle-scripts/wastd")
 if (file.exists("../config/setup.R")) source("../config/setup.R")
 if (file.exists("../config/load.R")) source("../config/load.R")
+```
 
+# Data
+
+```{r prepare_data}
 #------------------------------------------------------------------------------#
 # Helper functions
 #
@@ -21,8 +34,8 @@ gh_milestones_url <- "/repos/parksandwildlife/biosys-turtles/milestones"
 # Load data
 # Following https://github.com/jennybc/analyze-github-stuff-with-r
 issue_list <- gh(gh_issues_url, state = "all", .limit = Inf)
-str(issue_list)
-listviewer::jsonedit(issue_list)
+# str(issue_list)
+# listviewer::jsonedit(issue_list)
 
 # https://developer.github.com/v3/projects/
 # Requires custom Accept header
@@ -32,7 +45,7 @@ listviewer::jsonedit(issue_list)
 #listviewer::jsonedit(project_list)
 
 milestone_list <- gh(gh_milestones_url, state = "all", .limit = Inf)
-listviewer::jsonedit(milestone_list)
+# listviewer::jsonedit(milestone_list)
 
 #------------------------------------------------------------------------------#
 # Transform data
@@ -56,8 +69,8 @@ issues <- issue_list %>% {
     )
   }
 
-str(issues)
-View(issues)
+# str(issues)
+# View(issues)
 
 milestones <- milestone_list %>% {
   tibble::tibble(
@@ -75,4 +88,18 @@ milestones <- milestone_list %>% {
     closed_at = map_chr_hack(., "closed_at") %>% as.Date()
   )
 }
-View(milestones)
+# str(milestones)
+# View(milestones)
+```
+
+## Business needs
+
+```{r business_needs_table, echo=FALSE}
+DT::datatable(milestones)
+```
+
+## Requirements
+
+```{r requirements_table, echo=FALSE}
+DT::datatable(issues)
+```

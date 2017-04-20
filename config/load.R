@@ -16,6 +16,7 @@ library(wordcloud)
 
 # Data management goes last to mask shared functions
 library(Hmisc)
+library(dygraphs)
 library(htmlTable)
 library(httr)
 library(plyr)
@@ -37,13 +38,15 @@ library(trelliscope)
 library(RColorBrewer)
 
 library("rstan")
-rstan_options(auto_write = TRUE)
+rstan::rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 library("rstanarm")
 library("shinystan")
 library("bayesplot")
 library("rstantools")
 library("loo")
+
+library(wastdr)
 
 #' Return GeoJSON features from a WAStD API endpoint as data.table or list
 #'
