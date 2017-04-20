@@ -59,7 +59,17 @@ server <- function(input, output) {
     )
   })
 
-  output$business_needs <- renderDataTable(milestones())
+  business_needs <- reactive(
+    milestones() %>%
+      transmute(
+        ID = id,
+        Date = due_at,
+        Source = created_by,
+        Requirements = title
+      )
+  )
+
+  output$business_needs <- renderDataTable(business_needs())
   output$requirements <- renderDataTable(issues())
 
 }
