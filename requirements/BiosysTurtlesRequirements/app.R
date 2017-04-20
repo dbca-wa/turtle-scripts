@@ -22,7 +22,8 @@ server <- function(input, output) {
   issue_list <- reactive(gh(gh_issues_url, state = "all", .limit = Inf))
   milestone_list <- reactive(gh(gh_milestones_url, state = "all", .limit = Inf))
 
-  issues <- reactive(issue_list() %>% {
+  issues <- reactive(
+    issue_list() %>% {
     tibble::tibble(
       id = map_int(., "id"),
       number = map_int(., "number"),
@@ -42,7 +43,8 @@ server <- function(input, output) {
     )
   })
 
-  milestones <- reactive(milestone_list() %>% {
+  milestones <- reactive(
+    milestone_list() %>% {
     tibble::tibble(
       id = map_int(., "id"),
       number = map_int(., "number"),
@@ -69,8 +71,18 @@ server <- function(input, output) {
       )
   )
 
+  requirements <- reactive(
+    issues() %>%
+      transmute(
+        ID = id,
+        Date = due_at,
+        Title = title,
+        KanboardItem = html_url
+      )
+  )
+
   output$business_needs <- renderDataTable(business_needs())
-  output$requirements <- renderDataTable(issues())
+  output$requirements <- renderDataTable(requirements())
 
 }
 
