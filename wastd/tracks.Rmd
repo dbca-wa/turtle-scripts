@@ -358,6 +358,13 @@ ggplot(tags_by_date, aes(x = date, y = n)) +
   ggtitle("Turtles processed per day (new and recaptured)") +
   theme_light() +
   ggsave(paste0("data/turtles_processed_per_day.pdf"), width = 7, height = 5)
+
+
+# lungDeaths <- cbind(mdeaths, fdeaths)
+# dygraph(tags_by_date)
+# dygraph(lungDeaths)
+# library(xts)
+# tr <- as.xts(tags_by_date, tags_by_date$date)
 ```
 
 
