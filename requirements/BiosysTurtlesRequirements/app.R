@@ -15,22 +15,22 @@ as_url <- function(url, label) {
 }
 
 md_to_html <- function(md) {
-  if (is.null(md)) return("")
+  if (is.null(md) || is.na(md)) {md <- "no content"}
   markdown::markdownToHTML(file = NULL, text = md, fragment.only = TRUE)
 }
+
+extract_name <- function(x, n)sapply(x, `[[`, n)
 
 gh_issues_url <- "/repos/parksandwildlife/biosys-turtles/issues"
 gh_projects_url <- "/repos/parksandwildlife/biosys-turtles/projects"
 gh_milestones_url <- "/repos/parksandwildlife/biosys-turtles/milestones"
+gh_labels_url <- "/repos/parksandwildlife/biosys-turtles/labels"
 
 ui <- navbarPage(
   "Biosys Turtles Requirements",
-  tabPanel("Business Needs", dataTableOutput("business_needs")),
-  tabPanel("Requirements",
-           dataTableOutput("requirements"),
-           uiOutput("issue_selector")#,
-           #uiOutput("issue_detail")
-           )
+      tabPanel("Business Needs", dataTableOutput("business_needs")),
+      tabPanel("Requirement List",dataTableOutput("requirements")),
+      tabPanel("Requirement detail", uiOutput("issue_selector"), uiOutput("issue_detail"))
 )
 
 server <- function(input, output) {
@@ -43,17 +43,22 @@ server <- function(input, output) {
     withProgress(message = 'Loading business needs...',
                  {gh(gh_milestones_url, state = "all", .limit = Inf)}))
 
+  labels_list <- reactive(
+    withProgress(message = 'Loading requirement categories...',
+                 {gh(gh_labels_url, state = "all", .limit = Inf)}))
+
   issues <- reactive(
     issue_list() %>% {
     tibble::tibble(
       id = map_int(., "id"),
       number = map_int(., "number"),
       title = map_chr(., "title"),
-      body = map_chr_hack(., "body"), # %>% map(md_to_html),
+      body = map_chr_hack(., "body") %>% map(md_to_html),
       state = map_chr(., "state"),
-      html_url = map_chr(., "html_url") %>% map(as_url, "View"),
-      comments_url = map_chr(., "comments_url") %>% map(as_url, "View"),
-      labels_url = map_chr(., "labels_url") %>% map(as_url, "View"),
+      html_url = map_chr(., "html_url") %>% map(as_url, "View issue"),
+      comments_url = map_chr(., "comments_url") %>% map(as_url, "View comments"),
+      labels_url = map_chr(., "labels_url") %>% map(as_url, "View labels"),
+      labels = map(., "labels") %>% map(extract_name, "name"),
       created_by = map_chr(., c("user", "login")),
       assignee = map_chr(., c("assignee", "login")),
       milestone = map_chr(., c("milestone", "title")),
@@ -82,6 +87,17 @@ server <- function(input, output) {
     )
   })
 
+
+  labels <- reactive(
+    labels_list() %>% {
+    tibble::tibble(
+      id = map_int(., "id"),
+      url = map_chr(., "url") %>% map(as_url, "View requirements"),
+      name = map_chr(., "name"),
+      colour = map_chr(., "color")
+    )
+  })
+
   business_needs <- reactive(
     milestones() %>%
       transmute(
@@ -92,33 +108,51 @@ server <- function(input, output) {
       )
   )
 
-  requirements <- reactive(
-    issues() %>%
+  output$label_selector <- renderUI({
+    d <- labels()
+    if (is.null(d)) return(NULL)
+    selectizeInput(
+      "selected_labels",
+      "Show categories",
+      setNames(d$name, d$name),
+      multiple = TRUE)
+  })
+
+  requirements <- reactive({
+    d <- issues()
+    if (is.null(d)) return(NULL)
+    d %>%
       transmute(
         ID = id,
         Date = due_at,
         Title = title,
-        KanboardItem = html_url
+        KanboardItem = html_url,
+        Categories = labels
         # Requirement = body
-      )
-  )
+      ) #%>% filter(d, Categories %in% input$selected_labels)
+  })
 
   output$business_needs <- shiny::renderDataTable(business_needs(), escape = FALSE)
 
   output$requirements <- shiny::renderDataTable(requirements(), escape = FALSE)
 
-  output$issue_selector <- renderUI(
-    selectizeInput("selected_issue",
-    "Show details for requirement",
-    setNames(rownames(issues()), issues()$title),
-    selected = NULL, multiple = FALSE, options = NULL))
+  output$issue_selector <- renderUI({
+    d <- issues()
+    if (is.null(d)) return(NULL)
+    selectizeInput(
+      "selected_issue",
+      "Show details for requirement",
+      setNames(rownames(d), d$title))
+  })
 
-  issue_body <- reactive({
-    if (is.na(issues())) return("<p>Loading...</p>")
-    issues()[input$selected_issue,]$body
-    })
-
-  #output$issue_detail <- reactive(renderMarkdown(file=NULL, text=issue_body()))
+  output$issue_detail <- renderUI({
+    d <- issues()
+    if (is.null(d)) return(NULL)
+    sel <- input$selected_issue
+    print(sel)
+    print(d$body[[as.integer(sel)]])
+    HTML(d$body[[as.integer(sel)]])
+  })
 
 }
 

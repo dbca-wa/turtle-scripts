@@ -23,12 +23,24 @@ map_chr_hack <- function(.x, .f, ...) {
   map(.x, .f, ...) %>% map_if(is.null, ~ NA_character_) %>% flatten_chr()
 }
 
+as_url <- function(url, label) {
+  paste0("<a href=\"", url, "\" target=\"_\">", label, "</a>")
+}
+
+md_to_html <- function(md) {
+  if (is.null(md) || is.na(md)) md <- "no content"
+  markdown::markdownToHTML(file = NULL, text = md, fragment.only = TRUE)
+}
+
+extract_name <- function(x, n)sapply(x, `[[`, n)
+
 #------------------------------------------------------------------------------#
 # Settings
 #
 gh_issues_url <- "/repos/parksandwildlife/biosys-turtles/issues"
 gh_projects_url <- "/repos/parksandwildlife/biosys-turtles/projects"
 gh_milestones_url <- "/repos/parksandwildlife/biosys-turtles/milestones"
+gh_labels_url <- "/repos/parksandwildlife/biosys-turtles/labels"
 
 #------------------------------------------------------------------------------#
 # Load data
@@ -47,6 +59,9 @@ issue_list <- gh(gh_issues_url, state = "all", .limit = Inf)
 milestone_list <- gh(gh_milestones_url, state = "all", .limit = Inf)
 # listviewer::jsonedit(milestone_list)
 
+labels_list <- gh(gh_labels_url, state = "all", .limit = Inf)
+
+
 #------------------------------------------------------------------------------#
 # Transform data
 issues <- issue_list %>% {
@@ -54,11 +69,12 @@ issues <- issue_list %>% {
       id = map_int(., "id"),
       number = map_int(., "number"),
       title = map_chr(., "title"),
-      body = map_chr_hack(., "body"),
+      body = map_chr_hack(., "body") %>% map(md_to_html),
       state = map_chr(., "state"),
-      html_url = map_chr(., "html_url"),
-      comments_url = map_chr(., "comments_url"),
-      labels_url = map_chr(., "labels_url"),
+      html_url = map_chr(., "html_url") %>% map(as_url, "View"),
+      comments_url = map_chr(., "comments_url") %>% map(as_url, "View"),
+      labels_url = map_chr(., "labels_url") %>% map(as_url, "View"),
+      labels = map(., "labels") %>% map(extract_name, "name"),
       created_by = map_chr(., c("user", "login")),
       assignee = map_chr(., c("assignee", "login")),
       milestone = map_chr(., c("milestone", "title")),
@@ -69,27 +85,38 @@ issues <- issue_list %>% {
     )
   }
 
+library(purrr)
+
 # str(issues)
 # View(issues)
 
 milestones <- milestone_list %>% {
-  tibble::tibble(
-    id = map_int(., "id"),
-    number = map_int(., "number"),
-    title = map_chr(., "title"),
-    description = map_chr_hack(., "description"),
-    state = map_chr(., "state"),
-    html_url = map_chr(., "html_url"),
-    labels_url = map_chr(., "labels_url"),
-    created_by = map_chr(., c("creator", "login")),
-    created_at = map_chr(., "created_at") %>% as.Date(),
-    updated_at = map_chr_hack(., "updated_at") %>% as.Date(),
-    due_at = map_chr_hack(., "due_on") %>% as.Date(),
-    closed_at = map_chr_hack(., "closed_at") %>% as.Date()
-  )
-}
+    tibble::tibble(
+      id = map_int(., "id"),
+      number = map_int(., "number"),
+      title = map_chr(., "title"),
+      description = map_chr_hack(., "description"),
+      state = map_chr(., "state"),
+      html_url = map_chr(., "html_url"),
+      labels_url = map_chr(., "labels_url"),
+      created_by = map_chr(., c("creator", "login")),
+      created_at = map_chr(., "created_at") %>% as.Date(),
+      updated_at = map_chr_hack(., "updated_at") %>% as.Date(),
+      due_at = map_chr_hack(., "due_on") %>% as.Date(),
+      closed_at = map_chr_hack(., "closed_at") %>% as.Date()
+    )
+  }
 # str(milestones)
 # View(milestones)
+
+labels <- labels_list %>% {
+  tibble::tibble(
+    id = map_int(., "id"),
+    url = map_chr(., "url") %>% map(as_url, "View requirements"),
+    name = map_chr(., "name"),
+    colour = map_chr(., "color")
+  )
+}
 ```
 
 ## Business needs
@@ -102,4 +129,30 @@ DT::datatable(milestones)
 
 ```{r requirements_table, echo=FALSE}
 DT::datatable(issues)
+```
+
+
+
+```{r}
+library(networkD3)
+
+# Create fake data
+src <- c("A", "A", "A", "A",
+        "B", "B", "C", "C", "D")
+target <- c("B", "C", "D", "J",
+            "E", "F", "G", "H", "I")
+networkData <- data.frame(src, target)
+
+# Plot
+simpleNetwork(networkData)
+
+data(MisLinks)
+data(MisNodes)
+
+# Plot
+forceNetwork(Links = MisLinks, Nodes = MisNodes,
+            Source = "source", Target = "target",
+            Value = "value", NodeID = "name",
+            Group = "group", opacity = 0.8)
+
 ```

@@ -36,6 +36,8 @@ library(leaflet)
 require(leaflet.extras)
 library(trelliscope)
 library(RColorBrewer)
+library(networkD3)
+# install.packages("networkD3")
 
 library("rstan")
 rstan::rstan_options(auto_write = TRUE)
