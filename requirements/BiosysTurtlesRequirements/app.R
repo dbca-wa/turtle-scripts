@@ -21,6 +21,8 @@ md_to_html <- function(md) {
 
 extract_name <- function(x, n)sapply(x, `[[`, n)
 
+extract_related <- . %>% str_extract_all("(?<=#)\\d+(?=\\s)") %>% compact %>% unlist
+
 gh_issues_url <- "/repos/parksandwildlife/biosys-turtles/issues"
 gh_projects_url <- "/repos/parksandwildlife/biosys-turtles/projects"
 gh_milestones_url <- "/repos/parksandwildlife/biosys-turtles/milestones"
@@ -50,10 +52,10 @@ server <- function(input, output) {
   issues <- reactive(
     issue_list() %>% {
     tibble::tibble(
-      id = map_int(., "id"),
-      number = map_int(., "number"),
+      id = map_int(., "number"),
       title = map_chr(., "title"),
       body = map_chr_hack(., "body") %>% map(md_to_html),
+      related = body %>% map(extract_related),
       state = map_chr(., "state"),
       html_url = map_chr(., "html_url") %>% map(as_url, "View issue"),
       comments_url = map_chr(., "comments_url") %>% map(as_url, "View comments"),
@@ -124,7 +126,8 @@ server <- function(input, output) {
     d %>%
       transmute(
         ID = id,
-        Date = due_at,
+        # Date = due_at,
+        Related = related,
         Title = title,
         KanboardItem = html_url,
         Categories = labels
@@ -147,10 +150,8 @@ server <- function(input, output) {
 
   output$issue_detail <- renderUI({
     d <- issues()
-    if (is.null(d)) return(NULL)
     sel <- input$selected_issue
-    print(sel)
-    print(d$body[[as.integer(sel)]])
+    if (is.null(d) || is.null(sel)) return(NULL)
     HTML(d$body[[as.integer(sel)]])
   })
 

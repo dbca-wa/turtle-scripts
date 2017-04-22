@@ -34,6 +34,10 @@ md_to_html <- function(md) {
 
 extract_name <- function(x, n)sapply(x, `[[`, n)
 
+extract_related <- . %>% str_extract_all("(?<=#)\\d+(?=\\s)") %>% compact %>% unlist
+
+"#5 #65 #7# test ## " %>% extract_related
+
 #------------------------------------------------------------------------------#
 # Settings
 #
@@ -66,10 +70,10 @@ labels_list <- gh(gh_labels_url, state = "all", .limit = Inf)
 # Transform data
 issues <- issue_list %>% {
     tibble::tibble(
-      id = map_int(., "id"),
-      number = map_int(., "number"),
+      id = map_int(., "number"),
       title = map_chr(., "title"),
       body = map_chr_hack(., "body") %>% map(md_to_html),
+      related = body %>% map(extract_related),
       state = map_chr(., "state"),
       html_url = map_chr(., "html_url") %>% map(as_url, "View"),
       comments_url = map_chr(., "comments_url") %>% map(as_url, "View"),
@@ -85,15 +89,14 @@ issues <- issue_list %>% {
     )
   }
 
-library(purrr)
+
 
 # str(issues)
 # View(issues)
 
 milestones <- milestone_list %>% {
     tibble::tibble(
-      id = map_int(., "id"),
-      number = map_int(., "number"),
+      id = map_int(., "number"),
       title = map_chr(., "title"),
       description = map_chr_hack(., "description"),
       state = map_chr(., "state"),
@@ -117,6 +120,7 @@ labels <- labels_list %>% {
     colour = map_chr(., "color")
   )
 }
+
 ```
 
 ## Business needs
@@ -137,10 +141,8 @@ DT::datatable(issues)
 library(networkD3)
 
 # Create fake data
-src <- c("A", "A", "A", "A",
-        "B", "B", "C", "C", "D")
-target <- c("B", "C", "D", "J",
-            "E", "F", "G", "H", "I")
+src <- c("A", "A", "A", "A", "B", "B", "C", "C", "D")
+target <- c("B", "C", "D", "J", "E", "F", "G", "H", "I")
 networkData <- data.frame(src, target)
 
 # Plot

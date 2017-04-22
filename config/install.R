@@ -54,6 +54,7 @@ install.packages(c(
   "magrittr",
   "tidyjson",
   "xts",
+  "rvest",
 
   "DT",
   "mapview",
@@ -62,6 +63,7 @@ install.packages(c(
   "listviewer",
   # "leaflet.extras",
   "wordcloud",
+  "networkD3",
 
   "lme4",
   "rstan",
