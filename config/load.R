@@ -48,6 +48,8 @@ library("bayesplot")
 library("rstantools")
 library("loo")
 
+library(testthat)
+
 library(wastdr)
 
 #' Return GeoJSON features from a WAStD API endpoint as data.table or list

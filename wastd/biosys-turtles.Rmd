@@ -32,11 +32,23 @@ md_to_html <- function(md) {
   markdown::markdownToHTML(file = NULL, text = md, fragment.only = TRUE)
 }
 
-extract_name <- function(x, n)sapply(x, `[[`, n)
+extract_name <- function(x, n) sapply(x, `[[`, n)
 
-extract_related <- . %>% str_extract_all("(?<=#)\\d+(?=\\s)") %>% compact %>% unlist
+extract_related <- function (x) {
+  out <- x %>% 
+  str_extract_all("(?<=#)\\d+(?=\\s|\\n|\\<|$)") %>% 
+  compact %>% 
+  unlist %>% 
+  extract_name(1) %>% 
+  as.integer %>% 
+  compact
+  if (length(out) == 0) return(NA_integer_) else return(out)
+} 
+# extract_related("#5 #65 #123 #7# #test # test ## #8\n#9")
+testthat::expect_equal(extract_related("#5 #65 #123 #7# #test # test ## #8\n#9"), c(5, 65, 123, 8, 9))
+testthat::expect_equal(extract_related("#7# #test # test ## "), NA_integer_)
+testthat::expect_equal(extract_related(""), NA_integer_)
 
-"#5 #65 #7# test ## " %>% extract_related
 
 #------------------------------------------------------------------------------#
 # Settings
@@ -140,21 +152,25 @@ DT::datatable(issues)
 ```{r}
 library(networkD3)
 
-# Create fake data
-src <- c("A", "A", "A", "A", "B", "B", "C", "C", "D")
-target <- c("B", "C", "D", "J", "E", "F", "G", "H", "I")
-networkData <- data.frame(src, target)
+relations <- issues %>% 
+  select(id, related) %>% 
+  filter(!is.na(related)) %>% 
+  rowwise() %>% 
+  do(expand.grid(.$id, .$related)) %>%
+  rename(source = Var1, target = Var2)
 
-# Plot
-simpleNetwork(networkData)
-
-data(MisLinks)
-data(MisNodes)
-
-# Plot
-forceNetwork(Links = MisLinks, Nodes = MisNodes,
+forceNetwork(Links = relations, Nodes = issues,
             Source = "source", Target = "target",
-            Value = "value", NodeID = "name",
-            Group = "group", opacity = 0.8)
+            Value = 1, NodeID = "title",
+            Group = "milestone", 
+            opacity = 0.8,
+            fontSize = 10,
+            legend = TRUE, 
+            arrows = TRUE,
+            bounded = FALSE,
+            zoom = TRUE,
+            # clickAction = "window.open('url','the title','height=300,width=300');"
+            )
+
 
 ```

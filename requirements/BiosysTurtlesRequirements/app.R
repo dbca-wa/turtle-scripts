@@ -2,8 +2,10 @@ library(shiny)
 library(gh)
 library(tidyverse)
 library(magrittr)
+library(stringr)
 library(markdown)
 library(DT)
+library(networkD3)
 # TODO set Github access token
 
 map_chr_hack <- function(.x, .f, ...) {
@@ -21,7 +23,16 @@ md_to_html <- function(md) {
 
 extract_name <- function(x, n)sapply(x, `[[`, n)
 
-extract_related <- . %>% str_extract_all("(?<=#)\\d+(?=\\s)") %>% compact %>% unlist
+extract_related <- function (x) {
+  out <- x %>%
+    str_extract_all("(?<=#)\\d+(?=\\s|\\n|\\<|$)") %>%
+    compact %>%
+    unlist %>%
+    extract_name(1) %>%
+    as.integer %>%
+    compact
+  if (length(out) == 0) return(NA_integer_) else return(out)
+}
 
 gh_issues_url <- "/repos/parksandwildlife/biosys-turtles/issues"
 gh_projects_url <- "/repos/parksandwildlife/biosys-turtles/projects"
@@ -30,9 +41,11 @@ gh_labels_url <- "/repos/parksandwildlife/biosys-turtles/labels"
 
 ui <- navbarPage(
   "Biosys Turtles Requirements",
+      tabPanel("Explore",
+               column(7, forceNetworkOutput("force")),
+               column(5, uiOutput("issue_selector"), uiOutput("issue_detail"))),
       tabPanel("Business Needs", dataTableOutput("business_needs")),
-      tabPanel("Requirement List",dataTableOutput("requirements")),
-      tabPanel("Requirement detail", uiOutput("issue_selector"), uiOutput("issue_detail"))
+      tabPanel("Requirement List",dataTableOutput("requirements"))
 )
 
 server <- function(input, output) {
@@ -155,6 +168,39 @@ server <- function(input, output) {
     HTML(d$body[[as.integer(sel)]])
   })
 
-}
+
+  library(networkD3)
+
+  relations <- reactive({
+    d <- issues()
+    if (is.null(d)) return(NULL)
+    d %>%
+      select(id, related) %>%
+      filter(!is.na(related)) %>%
+      rowwise() %>%
+      do(expand.grid(.$id, .$related)) %>%
+      rename(source = Var1, target = Var2)
+  })
+
+  output$force <- renderForceNetwork({
+    forceNetwork(
+      Links = data.frame(relations()),
+      Nodes = data.frame(issues()),
+      Source = "source",
+      Target = "target",
+      Value = 2,
+      NodeID = "title",
+      Group = "milestone",
+      opacity = 0.8,
+      fontSize = 10,
+      legend = TRUE,
+      arrows = TRUE,
+      bounded = FALSE,
+      zoom = TRUE,
+      clickAction = 'Shiny.onInputChange("selected_issue", d.index)'
+    )
+  })
+
+  }
 
 shinyApp(ui = ui, server = server)
