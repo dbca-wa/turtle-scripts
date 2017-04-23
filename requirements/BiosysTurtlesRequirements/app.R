@@ -197,7 +197,7 @@ server <- function(input, output) {
       arrows = TRUE,
       bounded = FALSE,
       zoom = TRUE,
-      clickAction = 'Shiny.onInputChange("selected_issue", d.index)'
+      clickAction = 'Shiny.onInputChange("selected_issue", d.index + 1)'
     )
   })
 
