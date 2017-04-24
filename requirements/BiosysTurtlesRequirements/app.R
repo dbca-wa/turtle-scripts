@@ -114,7 +114,10 @@ server <- function(input, output) {
   # Transform primary data
   #
   issues <- reactive({
-    issue_list() %>% {
+    i <- issue_list()
+    if (is.null(i)) return(NULL)
+
+    i1 <- issue_list() %>% {
       tibble::tibble(
         id = map_int(., "number"),
         title = map_chr(., "title"),
@@ -133,7 +136,16 @@ server <- function(input, output) {
         due_at = map_chr_hack(., "due_on") %>% as.Date(),
         closed_at = map_chr_hack(., "closed_at") %>% as.Date()
       )
-    } %>% arrange(id)
+    } %>%
+    arrange(id)
+
+    # untangle labels, loses a few columns, hard-codes existing tags
+    i2 <- i1 %>% separate_rows(labels) %>% mutate(tagslog = TRUE) %>%
+      spread(labels, tagslog, fill = FALSE)  %>%
+      select(id, Stakeholder, Functional, Transition, must, should)
+
+    iss <- left_join(i1, i2, by = "id")
+    iss
   })
 
   milestones <- reactive({
@@ -179,6 +191,14 @@ server <- function(input, output) {
         # Date = due_at,
         Related = related,
         Title = title,
+        Stakeholder = Stakeholder,
+        Functional = Functional,
+        # # Nonfunctinoal = Nonfunctional,
+        Transition = Transition,
+        must_have = must,
+        should_have = should,
+        # could_have = could,
+        # wont_have = wont
         Categories = labels
         #, Requirement = body # too large to include
       )

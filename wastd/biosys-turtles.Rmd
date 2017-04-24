@@ -99,13 +99,21 @@ issues <- issue_list %>% {
       due_at = map_chr_hack(., "due_on") %>% as.Date(),
       closed_at = map_chr_hack(., "closed_at") %>% as.Date()
     )
-  } %>% arrange(id)
-
-
+  } %>% 
+    arrange(id) #%>%
+    # separate_rows(labels) %>%
+    # mutate(tagslog = TRUE) %>%
+    # spread(labels, tagslog, fill = FALSE) %>%
+    # select(-c, -ready, -have, -Requirement)
 
 # str(issues)
 # View(issues)
+i <- issues %>% separate_rows(labels) %>% mutate(tagslog = TRUE) %>%
+    spread(labels, tagslog, fill = FALSE)  %>%
+    select(id, Stakeholder, Functional, Transition, must, should)
 
+iss <- left_join(issues, i, by = "id")
+names(i)
 milestones <- milestone_list %>% {
     tibble::tibble(
       id = map_int(., "number"),
