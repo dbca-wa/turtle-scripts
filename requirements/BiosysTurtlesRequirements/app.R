@@ -41,9 +41,15 @@ gh_labels_url <- "/repos/parksandwildlife/biosys-turtles/labels"
 
 ui <- navbarPage(
   "Biosys Turtles Requirements",
-      tabPanel("Explore",
-               column(7, forceNetworkOutput("force")),
-               column(5, uiOutput("issue_selector"), uiOutput("issue_detail"))),
+      tabPanel(
+        "Explore",
+         column(
+           7,
+           forceNetworkOutput("force")),
+         column(
+           5,
+           uiOutput("issue_selector"),
+           uiOutput("issue_detail"))),
       tabPanel("Business Needs", dataTableOutput("business_needs")),
       tabPanel("Requirement List",dataTableOutput("requirements"))
 )
@@ -81,8 +87,8 @@ server <- function(input, output) {
       updated_at = map_chr_hack(., "updated_at") %>% as.Date(),
       due_at = map_chr_hack(., "due_on") %>% as.Date(),
       closed_at = map_chr_hack(., "closed_at") %>% as.Date()
-    )
-  })
+    )} %>% arrange(id)
+  )
 
   milestones <- reactive(
     milestone_list() %>% {
@@ -139,18 +145,26 @@ server <- function(input, output) {
     d %>%
       transmute(
         ID = id,
+        Source = html_url,
         # Date = due_at,
         Related = related,
         Title = title,
-        KanboardItem = html_url,
         Categories = labels
         # Requirement = body
       ) #%>% filter(d, Categories %in% input$selected_labels)
   })
 
-  output$business_needs <- shiny::renderDataTable(business_needs(), escape = FALSE)
+  output$business_needs <- shiny::renderDataTable(
+    business_needs(),
+    options = list(filter = 'top'),
+    escape = FALSE
+  )
 
-  output$requirements <- shiny::renderDataTable(requirements(), escape = FALSE)
+  output$requirements <- shiny::renderDataTable(
+    requirements(),
+    options = list(filter = 'top'),
+    escape = FALSE
+  )
 
   output$issue_selector <- renderUI({
     d <- issues()
@@ -158,7 +172,8 @@ server <- function(input, output) {
     selectizeInput(
       "selected_issue",
       "Show details for requirement",
-      setNames(rownames(d), d$title))
+      setNames(rownames(d), d$title),
+      width = '100%')
   })
 
   output$issue_detail <- renderUI({
@@ -179,7 +194,8 @@ server <- function(input, output) {
       filter(!is.na(related)) %>%
       rowwise() %>%
       do(expand.grid(.$id, .$related)) %>%
-      rename(source = Var1, target = Var2)
+      transmute(source = Var1 - 1,
+                target = Var2 - 1)
   })
 
   output$force <- renderForceNetwork({

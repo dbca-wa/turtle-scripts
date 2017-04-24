@@ -99,7 +99,7 @@ issues <- issue_list %>% {
       due_at = map_chr_hack(., "due_on") %>% as.Date(),
       closed_at = map_chr_hack(., "closed_at") %>% as.Date()
     )
-  }
+  } %>% arrange(id)
 
 
 
@@ -157,20 +157,29 @@ relations <- issues %>%
   filter(!is.na(related)) %>% 
   rowwise() %>% 
   do(expand.grid(.$id, .$related)) %>%
-  rename(source = Var1, target = Var2)
+  transmute(source = Var1 - 1, 
+            target = Var2 - 1)
+relations
 
-forceNetwork(Links = relations, Nodes = issues,
-            Source = "source", Target = "target",
-            Value = 1, NodeID = "title",
-            Group = "milestone", 
-            opacity = 0.8,
-            fontSize = 10,
-            legend = TRUE, 
-            arrows = TRUE,
-            bounded = FALSE,
-            zoom = TRUE,
-            # clickAction = "window.open('url','the title','height=300,width=300');"
-            )
+forceNetwork(
+  Links = data.frame(relations),
+  Nodes = data.frame(issues),
+  Source = "source", 
+  Target = "target",
+  Value = 1, 
+  NodeID = "id",
+  Group = "milestone", 
+  opacity = 0.8,
+  fontSize = 10,
+  legend = TRUE, 
+  arrows = TRUE,
+  bounded = FALSE,
+  zoom = TRUE)
 
+# Flare <- jsonlite::fromJSON(
+#   "https://cdn.rawgit.com/christophergandrud/networkD3/master/JSONdata/flare.json", 
+#   simplifyDataFrame = FALSE)
+# Flare$children = Flare$children[1:3]
+# diagonalNetwork(List = Flare, fontSize = 10, opacity = 0.9)
 
 ```
