@@ -14,32 +14,32 @@ Sys.setenv(GH_OWNER = "parksandwildlife")
 Sys.setenv(GH_REPO = "biosys-turtles")
 
 #------------------------------------------------------------------------------#
-# Helper functions
+# Helper functions and general witchcraft
 #
 #' Map given function, handle null as NA and flatten_chr()
 map_chr_hack <- function(.x, .f, ...) {
   map(.x, .f, ...) %>% map_if(is.null, ~ NA_character_) %>% flatten_chr()
 }
 
-# Format url and label as HTML hyperlink
+#' Format url and label as HTML hyperlink
 as_url <- function(url, label) {
   paste0("<a href=\"", url, "\" target=\"_\">", label, "</a>")
 }
 
-# Convert a string of markdown to HTML
+#' Convert a string of markdown to HTML
 md_to_html <- function(md) {
   if (is.null(md) || is.na(md)) {md <- "no content"}
   markdown::markdownToHTML(file = NULL, text = md, fragment.only = TRUE)
 }
 
-# Extract a element with name or number n from a list x
+#' Extract a element with name or number n from a list x
 extract_name <- function(x, n)sapply(x, `[[`, n)
 
-# Extract a list of mentioned GitHub issue numbers from text
-# require(testthat)
-# testthat::expect_equal(extract_related("#5 #65 #123 #7# #test # test ## #8\n#9"), c(5, 65, 123, 8, 9))
-# testthat::expect_equal(extract_related("#7# #test # test ## "), NA_integer_)
-# testthat::expect_equal(extract_related(""), NA_integer_)
+#' Extract a list of mentioned GitHub issue numbers from text
+#' require(testthat)
+#' testthat::expect_equal(extract_related("#5 #65 #123 #7# #test # test ## #8\n#9"), c(5, 65, 123, 8, 9))
+#' testthat::expect_equal(extract_related("#7# #test # test ## "), NA_integer_)
+#' testthat::expect_equal(extract_related(""), NA_integer_)
 extract_related <- function (x) {
   out <- x %>%
     str_extract_all("(?<=#)\\d+(?=\\s|\\n|\\<|$)") %>%
@@ -49,6 +49,19 @@ extract_related <- function (x) {
     as.integer %>%
     compact
   if (length(out) == 0) return(NA_integer_) else return(out)
+}
+
+#' Wrap gh::gh, use with "issues", "milestones", "labels"
+gethub <- function(what,
+                   owner = Sys.getenv("GH_OWNER"),
+                   repo = Sys.getenv("GH_REPO"),
+                   state = "all",
+                   .limit = Inf) {
+  gh(paste0("/repos/:owner/:repo/", what),
+     owner = owner,
+     repo = repo,
+     state = state,
+     .limit = .limit)
 }
 
 
@@ -87,28 +100,16 @@ ui <- navbarPage(
 server <- function(input, output) {
 
   #----------------------------------------------------------------------------#
-  # Load data from GitHub API
+  # Summon data from GitHub API
   #
   issue_list <- reactive(
-    withProgress(message = 'Loading requirements...',
-                 {gh("/repos/:owner/:repo/issues",
-                     owner = Sys.getenv("GH_OWNER"),
-                     repo = Sys.getenv("GH_REPO"),
-                     state = "all", .limit = Inf)}))
+    withProgress(message = 'Loading requirements...', {gethub("issues")}))
 
   milestone_list <- reactive(
-    withProgress(message = 'Loading business needs...',
-                 {gh("/repos/:owner/:repo/milestones",
-                     owner = Sys.getenv("GH_OWNER"),
-                     repo = Sys.getenv("GH_REPO"),
-                     state = "all", .limit = Inf)}))
+    withProgress(message = 'Loading business needs...', {gethub("milestones")}))
 
   labels_list <- reactive(
-    withProgress(message = 'Loading requirement categories...',
-                 {gh("/repos/:owner/:repo/labels",
-                     owner = Sys.getenv("GH_OWNER"),
-                     repo = Sys.getenv("GH_REPO"),
-                     state = "all", .limit = Inf)}))
+    withProgress(message = 'Loading categories...', {gethub("labels")}))
 
   #----------------------------------------------------------------------------#
   # Transform primary data
@@ -277,7 +278,10 @@ server <- function(input, output) {
     d <- issues()
     sel <- input$selected_issue
     if (is.null(d) || is.null(sel)) return(NULL)
-    HTML(d$body[[as.integer(sel)]])
+    HTML(paste(
+      d$html_url[[as.integer(sel)]],
+      d$body[[as.integer(sel)]]
+    ))
   })
 
   relations <- reactive({
@@ -300,13 +304,18 @@ server <- function(input, output) {
       Target = "target",
       Value = 2,
       NodeID = "title",
+      # Nodesize = calcNodesize(""),
       Group = "milestone",
       opacity = 0.8,
-      fontSize = 10,
+      fontSize = 14,
+      fontFamily = "sans",
+      charge = -50,
       legend = TRUE,
       arrows = TRUE,
-      bounded = FALSE,
+      bounded = TRUE,
       zoom = TRUE,
+      height = 800,
+      width = 600,
       clickAction = 'Shiny.onInputChange("selected_issue", d.index + 1)'
     )
   })
