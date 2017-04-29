@@ -91,6 +91,7 @@ ui <- navbarPage(
     "Requirement List",
     # uiOutput("category_selector"),
     # uiOutput("priority_selector"),
+    uiOutput("download_requirements"),
     dataTableOutput("requirements"))
 )
 
@@ -143,7 +144,7 @@ server <- function(input, output) {
     # untangle labels, loses a few columns, hard-codes existing tags
     i2 <- i1 %>% separate_rows(labels) %>% mutate(tagslog = TRUE) %>%
       spread(labels, tagslog, fill = FALSE)  %>%
-      select(id, Stakeholder, Functional, Transition, must, should)
+      select(id, Business, Stakeholder, Functional, Transition, must, should)
 
     iss <- left_join(i1, i2, by = "id")
     iss
@@ -192,6 +193,7 @@ server <- function(input, output) {
         # Date = due_at,
         Related = related,
         Title = title,
+        Business = Business,
         Stakeholder = Stakeholder,
         Functional = Functional,
         # # Nonfunctinoal = Nonfunctional,
@@ -318,6 +320,22 @@ server <- function(input, output) {
       width = 600,
       clickAction = 'Shiny.onInputChange("selected_issue", d.index + 1)'
     )
+  })
+
+  output$downloadData <- downloadHandler(
+      filename = function() {return("requirements.csv")},
+      content = function(file) {
+        d <- requirements()
+        if (is.null(d)) {return(NULL)}
+        write.csv(data.frame(lapply(d, as.character), stringsAsFactors = FALSE),
+                  file, sep = ",", row.names = FALSE, fileEncoding = "utf-8")
+      }
+    )
+
+  output$download_requirements <- renderUI({
+    d <- requirements()
+    if (is.null(d)) {return(NULL)}
+    downloadButton('downloadData', label = "Download CSV")
   })
 
   }
