@@ -1,0 +1,55 @@
+---
+title: "DKAN and ckanR"
+author: "ckanR contributors"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Setup
+Install latest ckanR, dplyr and DT.
+
+```{r, eval=FALSE, message=FALSE}
+install.packages("devtools")
+devtools::install_github("rstudio/DT")
+devtools::install_github("hadley/dplyr")
+devtools::install_github("ropensci/ckanr")
+```
+
+# Config
+Save yourself specifying the URL with each ckanR call by setting a default url.
+```{r}
+library(ckanr)
+ckanr::ckanr_setup(url="http://datos.imss.gob.mx/")
+```
+
+# Reading data
+Reading the first dataset and the first resource of IMSS.gov.mx:
+
+```{r}
+packages <- ckanr::package_list()
+p1 <- ckanr::package_show(packages[[1]])
+r1 <- ckanr::resource_show(p1$resources[[1]]$id)
+# did that work? print the resulting objects
+p1
+r1
+```
+
+Using the data retrieved by ckanR, you can now 
+[view the first dataset](`r p1$url`) or [download its first resource](`r r1$url`).
+
+Reading a specific dataset:
+```{r}
+p <- ckanr::package_show("asegurados-2013")
+r <- ckanr::resource_show("57f8e388-7cad-4105-a5b0-6eae49f1e96e")
+```
+
+
+You can now read data from the package `r p$name`, e.g. resource `r r$name` into R.
+Note: As the [CSV file](`r r1$url`) is `r r$size`, this may take a while, 
+so we only read in the first 100 lines.
+
+```{r}
+data <- read.csv(r$url, header=T, as.is=T, nrows = 100, sep="|")
+dplyr::glimpse(data)
+DT::datatable(data)
+```

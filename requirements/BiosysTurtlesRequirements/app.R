@@ -80,6 +80,7 @@ ui <- navbarPage(
 
     column(
       5,
+      uiOutput("download_requirements"),
       uiOutput("issue_selector"),
       uiOutput("issue_detail"))),
 
@@ -91,7 +92,6 @@ ui <- navbarPage(
     "Requirement List",
     # uiOutput("category_selector"),
     # uiOutput("priority_selector"),
-    uiOutput("download_requirements"),
     dataTableOutput("requirements"))
 )
 
@@ -335,7 +335,7 @@ server <- function(input, output) {
   output$download_requirements <- renderUI({
     d <- requirements()
     if (is.null(d)) {return(NULL)}
-    downloadButton('downloadData', label = "Download CSV")
+    downloadButton('downloadData', label = "Download all requirements")
   })
 
   }
