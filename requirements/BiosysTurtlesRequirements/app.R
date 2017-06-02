@@ -174,7 +174,7 @@ lookup_issue_index <- function(issue_lookup, issue_id){
 #' Extract related issues (0-indexed) if mentioned in issue body
 make_relations <- function(df){
   dd <- df %>%
-    mutate(zerorn = as.integer(rownames(issues)) - 1) %>%
+    mutate(zerorn = as.integer(rownames(df)) - 1) %>%
     select(id, zerorn)
 
   out <- df %>%
