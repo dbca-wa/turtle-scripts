@@ -72,6 +72,7 @@ make_issues <- function(ii){
       id = map_int(., "number"),
       title = map_chr(., "title"),
       body = map_chr_hack(., "body") %>% map(md_to_html),
+      body_md = map_chr_hack(., "body"),
       related = body %>% map(extract_related),
       state = map_chr(., "state"),
       url = map_chr(., "html_url"),
@@ -85,9 +86,12 @@ make_issues <- function(ii){
       created_at = map_chr(., "created_at") %>% as.Date(),
       updated_at = map_chr_hack(., "updated_at") %>% as.Date(),
       due_at = map_chr_hack(., "due_on") %>% as.Date(),
-      closed_at = map_chr_hack(., "closed_at") %>% as.Date()
+      closed_at = map_chr_hack(., "closed_at") %>% as.Date(),
+      tagging = milestone %in% c("Overarching requirements", "Turtle Tagging", "Turtle Tag Asset Management"),
+      tracks = milestone %in% c("Overarching requirements", "Turtle Tracks and Nests"),
+      strandings = milestone %in% c("Overarching requirements", "Marine Wildlife Strandings")
     )
-  } %>% arrange(id)
+  } %>% arrange(id) %>% mutate(labels_chr = map(labels, paste, collapse = ", "))
 
   # untangle labels, loses a few columns, hard-codes existing tags
   # This will blow up on multiple "... Requirements"
@@ -100,6 +104,51 @@ make_issues <- function(ii){
   iss <- left_join(i1, i2, by = "id")
   iss
 }
+
+# Issues in long form as MS Word document ------------------------------------#
+as_md <- function(id, title, milestone, body, url, labels){
+  paste0(
+    "# Requirement ", id, " ", title, "\n\n",
+    "[View #", id, " online](", url, ")\n\n",
+    "## Component\n", milestone, "\n\n",
+    "## Requirement type and priority\n", labels, "\n\n",
+    body, "\n\n"
+  )
+}
+
+write_md <- function(md, fname="issues.md"){
+  out <- paste0("---
+output:
+  word_document: default
+  html_document: default
+---
+", md)
+  write.table(out, file = fname, sep = "\n", quote = FALSE,
+              fileEncoding = "utf-8", row.names = FALSE, col.names = FALSE)
+}
+
+issues_md <- function(issue_tbl){
+  issue_tbl %>%
+    mutate(md = as_md(id, title, milestone, body_md, url, labels_chr)) %>%
+    select(md)
+}
+
+iss <- gethub("issues")
+issues <- make_issues(iss)
+write_issues_md <- function(issues_tbl){
+  issues_oa <- issues_tbl %>%
+    filter(milestone == "Overarching requirements") %>% issues_md
+  issues_tag <- issues_tbl %>%
+    filter(milestone %in% c("Turtle Tagging", "Turtle Tag Asset Management")) %>% issues_md
+  issues_track <- issues_tbl %>%
+    filter(milestone == "Turtle Tracks and Nests") %>% issues_md
+  issues_strand <- issues_tbl %>%
+    filter(milestone == "Marine Wildlife Strandings") %>% issues_md
+  issues_out <- rbind(issues_oa, issues_tag, issues_track, issues_strand)
+  write_md(issues_out$md, fname = "requirements.md")
+  rmarkdown::render("requirements.md")
+}
+write_issues_md(issues)
 
 #' Build a tbl_df of GH milestones from a GH API response
 make_milestones <- function(mm){
@@ -138,21 +187,25 @@ make_requirements <- function(ii){
   ii %>%
     transmute(
       ID = id,
-      Source = html_url,
+      Link = html_url,
       # Date = due_at,
-      Related = related,
-      Title = title,
-      Business = Business,
-      Stakeholder = Stakeholder,
-      Functional = Functional,
+      Related_IDs = related,
+      Requirement = title,
+      Tagging_MVP = tagging,
+      Tracks_MVP = tracks,
+      Strandings_MVP = strandings,
+      Business_Req = Business,
+      Stakeholder_Req = Stakeholder,
+      Functional_Req = Functional,
       # # Nonfunctional = Nonfunctional,
-      Transition = Transition,
-      must_have = must,
-      should_have = should,
+      Transition_Req = Transition,
+      Must_have = must,
+      Should_have = should,
       # could_have = could,
       # wont_have = wont
-      Categories = labels
+      Categories = labels,
       #, Requirement = body # too large to include
+      Source = url
     )
 }
 
@@ -345,15 +398,14 @@ server <- function(input, output) {
     sel <- input$selected_issue
     if (is.null(ii) || is.null(sel)) return(NULL)
     HTML(paste(
+      "<h2>",
       ii$title[[as.integer(sel)]],
+      "</h2>",
       ii$html_url[[as.integer(sel)]],
       ii$body[[as.integer(sel)]]
     ))
   })
 
-  # TODO there's a mix up in relations between row numbers and issue ID.
-  # the network won't render as relations target and source are issue IDs not
-  # issue row numbers.
   output$force <- renderForceNetwork({
     forceNetwork(
       Links = relations(),
@@ -381,10 +433,10 @@ server <- function(input, output) {
   output$downloadData <- downloadHandler(
     filename = function() {return("requirements.csv")},
     content = function(file) {
-      d <- requirements()
+      d <- requirements() %>% select(-Link)
       if (is.null(d)) {return(NULL)}
       dd <- data.frame(lapply(d, as.character), stringsAsFactors = FALSE)
-      write.csv(dd, file, sep = ",", row.names = FALSE, fileEncoding = "utf-8")
+      write.csv(dd, file, row.names = FALSE, fileEncoding = "utf-8")
     }
   )
 
