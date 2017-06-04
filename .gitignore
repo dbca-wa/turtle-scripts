@@ -24,3 +24,5 @@ vignettes/*.pdf
 *.knit.md
 .Rproj.user
 ningaloov4.mdb
+requirements.md
+requirements.docx
