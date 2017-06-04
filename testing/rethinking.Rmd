@@ -1,0 +1,8 @@
+---
+title: "Rethinking Statistics Exercises"
+output: html_notebook
+---
+
+```{r}
+require(rethinking) || devtools::install_github("rmcelreath/rethinking")
+```
