@@ -146,7 +146,8 @@ prepare_issues_md <- function(issues_tbl){
 }
 
 write_md <- function(md, fname="issues.md"){
-  out <- paste0("---
+  out <- paste0(
+"---
 output:
   word_document: default
   html_document: default
@@ -395,16 +396,19 @@ server <- function(input, output) {
   #----------------------------------------------------------------------------#
   # Build datatables
   #
+  opts = list(
+    autoWidth = TRUE,
+    lengthMenu = list(c(25, 50, 100, -1), c('25', '50', '100', 'All')),
+    pageLength = 100,
+    fixedHeader = TRUE
+  )
+
   output$business_needs_table <- shiny::renderDataTable(
-    business_needs(),
-    options = list(filter = 'top'),
-    escape = FALSE
+    business_needs(), options = opts, escape = FALSE
   )
 
   output$requirements_table <- shiny::renderDataTable(
-    requirements(),
-    options = list(filter = 'top'),
-    escape = FALSE
+    requirements(), options = opts, escape = FALSE
   )
 
   output$issue_detail <- renderUI({
@@ -443,7 +447,7 @@ server <- function(input, output) {
   })
 
   output$downloadRequirementsCSV <- downloadHandler(
-    filename = function() {return("requirements.csv")},
+    filename = "requirements.csv",
     content = function(file) {
       d <- requirements() %>% select(-Link)
       if (is.null(d)) {return(NULL)}
@@ -456,6 +460,32 @@ server <- function(input, output) {
     d <- requirements()
     if (is.null(d)) {return(NULL)}
     downloadButton('downloadRequirementsCSV', label = "Download requirements (CSV)")
+  })
+
+  output$downloadRequirementsDOCX <- downloadHandler(
+    filename = "requirements.docx",
+    content = function(file) {
+
+      # issues as tbl_df
+      d <- issues()
+      if (is.null(d)) {return(NULL)}
+
+      # issues as md
+      issues_md <- prepare_issues_md(d)
+
+      # write md to file
+      issues_md_file <- tempfile()
+      write_md(issues_md$md, fname = issues_md_file)
+
+      # render md file to docx file
+      rmarkdown::render(issues_md_file, output_file = file)
+    }
+  )
+
+  output$download_requirements_docx <- renderUI({
+    d <- issues()
+    if (is.null(d)) {return(NULL)}
+    downloadButton('downloadRequirementsDOCX', label = "Download requirements (DOCX)")
   })
 
 }
