@@ -116,6 +116,35 @@ as_md <- function(id, title, milestone, body, url, labels){
   )
 }
 
+issues_md <- function(issue_tbl){
+  issue_tbl %>%
+    mutate(md = as_md(id, title, milestone, body_md, url, labels_chr)) %>%
+    select(md)
+}
+
+prepare_issues_md <- function(issues_tbl){
+  issues_oa <- issues_tbl %>%
+    dplyr::filter(milestone == "Overarching requirements") %>%
+    issues_md
+
+  issues_tag <- issues_tbl %>%
+    dplyr::filter(milestone %in% c("Turtle Tagging",
+                                   "Turtle Tag Asset Management")) %>%
+    issues_md
+
+  issues_track <- issues_tbl %>%
+    dplyr::filter(milestone == "Turtle Tracks and Nests") %>%
+    issues_md
+
+  issues_strand <- issues_tbl %>%
+    dplyr::filter(milestone == "Marine Wildlife Strandings") %>%
+    issues_md
+
+  issues_out <- rbind(issues_oa, issues_tag, issues_track, issues_strand)
+
+  issues_out
+}
+
 write_md <- function(md, fname="issues.md"){
   out <- paste0("---
 output:
@@ -123,32 +152,15 @@ output:
   html_document: default
 ---
 ", md)
-  write.table(out, file = fname, sep = "\n", quote = FALSE,
-              fileEncoding = "utf-8", row.names = FALSE, col.names = FALSE)
+  write.table(out, file = fname, sep = "\n", fileEncoding = "utf-8",
+              quote = F, row.names = F, col.names = F)
 }
 
-issues_md <- function(issue_tbl){
-  issue_tbl %>%
-    mutate(md = as_md(id, title, milestone, body_md, url, labels_chr)) %>%
-    select(md)
-}
-
-iss <- gethub("issues")
-issues <- make_issues(iss)
-write_issues_md <- function(issues_tbl){
-  issues_oa <- issues_tbl %>%
-    filter(milestone == "Overarching requirements") %>% issues_md
-  issues_tag <- issues_tbl %>%
-    filter(milestone %in% c("Turtle Tagging", "Turtle Tag Asset Management")) %>% issues_md
-  issues_track <- issues_tbl %>%
-    filter(milestone == "Turtle Tracks and Nests") %>% issues_md
-  issues_strand <- issues_tbl %>%
-    filter(milestone == "Marine Wildlife Strandings") %>% issues_md
-  issues_out <- rbind(issues_oa, issues_tag, issues_track, issues_strand)
-  write_md(issues_out$md, fname = "requirements.md")
+write_docx <- function(issues_md){
+  write_md(issues_md$md, fname = "requirements.md")
   rmarkdown::render("requirements.md")
 }
-write_issues_md(issues)
+
 
 #' Build a tbl_df of GH milestones from a GH API response
 make_milestones <- function(mm){
@@ -259,7 +271,8 @@ ui <- navbarPage(
 
     column(
       5,
-      uiOutput("download_requirements"),
+      uiOutput("download_requirements_csv"),
+      uiOutput("download_requirements_docx"),
       uiOutput("issue_selector"),
       uiOutput("issue_detail"))),
 
@@ -332,6 +345,7 @@ server <- function(input, output) {
     make_relations(ii)
   })
 
+
   #----------------------------------------------------------------------------#
   # Build dropdowns
   #
@@ -398,9 +412,7 @@ server <- function(input, output) {
     sel <- input$selected_issue
     if (is.null(ii) || is.null(sel)) return(NULL)
     HTML(paste(
-      "<h2>",
-      ii$title[[as.integer(sel)]],
-      "</h2>",
+      "<h2>", ii$title[[as.integer(sel)]], "</h2>",
       ii$html_url[[as.integer(sel)]],
       ii$body[[as.integer(sel)]]
     ))
@@ -430,7 +442,7 @@ server <- function(input, output) {
     )
   })
 
-  output$downloadData <- downloadHandler(
+  output$downloadRequirementsCSV <- downloadHandler(
     filename = function() {return("requirements.csv")},
     content = function(file) {
       d <- requirements() %>% select(-Link)
@@ -440,12 +452,16 @@ server <- function(input, output) {
     }
   )
 
-  output$download_requirements <- renderUI({
+  output$download_requirements_csv <- renderUI({
     d <- requirements()
     if (is.null(d)) {return(NULL)}
-    downloadButton('downloadData', label = "Download all requirements")
+    downloadButton('downloadRequirementsCSV', label = "Download requirements (CSV)")
   })
 
 }
 
 shinyApp(ui = ui, server = server)
+
+# Export issues as DOCX:
+# gethub("issues") %>% make_issues %>% prepare_issues_md %>% write_docx
+
