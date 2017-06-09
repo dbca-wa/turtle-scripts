@@ -286,13 +286,17 @@ ui <- navbarPage(
 
     column(
       7,
-      forceNetworkOutput("force", width = "600px", height = "600px")
+      h1("Explore"),
+      p("Click to view details, drag to re-order"),
+      forceNetworkOutput("force", width = "100%", height = "800px")
       ),
 
     column(
       5,
+      h1("Download"),
       uiOutput("download_requirements_csv"),
       uiOutput("download_requirements_docx"),
+      h1("Details"),
       uiOutput("issue_selector"),
       uiOutput("issue_detail"))),
 
@@ -374,7 +378,7 @@ server <- function(input, output) {
     if (is.null(ii)) return(NULL)
     selectizeInput(
       "selected_issue",
-      "Show details for requirement",
+      "Backspace and type to search; select to view details",
       setNames(rownames(ii), ii$title),
       width = '100%')
   })
@@ -459,8 +463,8 @@ server <- function(input, output) {
       arrows = TRUE,
       bounded = TRUE,
       zoom = TRUE,
-      height = 800,
-      width = 600,
+      height = 900,
+      width = 900,
       clickAction = 'Shiny.onInputChange("selected_issue", d.index + 1)'
     )
   })
@@ -478,7 +482,7 @@ server <- function(input, output) {
   output$download_requirements_csv <- renderUI({
     d <- requirements()
     if (is.null(d)) {return(NULL)}
-    downloadButton('downloadRequirementsCSV', label = "Download requirements (CSV)")
+    downloadButton('downloadRequirementsCSV', label = "csv")
   })
 
   output$downloadRequirementsDOCX <- downloadHandler(
@@ -504,7 +508,7 @@ server <- function(input, output) {
   output$download_requirements_docx <- renderUI({
     d <- issues()
     if (is.null(d)) {return(NULL)}
-    downloadButton('downloadRequirementsDOCX', label = "Download requirements (DOCX)")
+    downloadButton('downloadRequirementsDOCX', label = "docx")
   })
 
 }
