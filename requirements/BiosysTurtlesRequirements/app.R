@@ -65,6 +65,9 @@ gethub <- function(what,
      .limit = .limit)
 }
 
+#' Substitute boolean values with "yes" or "no". Per popular request.
+bool2yn <- . %>% ifelse("yes", "no")
+
 #' Build a tbl_df of GH issues from a GH API response
 make_issues <- function(ii){
   i1 <- ii %>% {
@@ -80,6 +83,7 @@ make_issues <- function(ii){
       comments_url = map_chr(., "comments_url") %>% map(as_url, "View comments"),
       labels_url = map_chr(., "labels_url") %>% map(as_url, "View labels"),
       labels = map(., "labels") %>% map(extract_name, "name"),
+      labels_chr = map(labels, paste, collapse = ", "),
       created_by = map_chr(., c("user", "login")),
       assignee = map_chr(., c("assignee", "login")),
       milestone = map_chr(., c("milestone", "title")),
@@ -87,11 +91,19 @@ make_issues <- function(ii){
       updated_at = map_chr_hack(., "updated_at") %>% as.Date(),
       due_at = map_chr_hack(., "due_on") %>% as.Date(),
       closed_at = map_chr_hack(., "closed_at") %>% as.Date(),
-      tagging = milestone %in% c("Overarching requirements", "Turtle Tagging", "Turtle Tag Asset Management"),
-      tracks = milestone %in% c("Overarching requirements", "Turtle Tracks and Nests"),
-      strandings = milestone %in% c("Overarching requirements", "Marine Wildlife Strandings")
+      tagging = milestone %in% c(
+        "Overarching requirements",
+        "Turtle Tagging",
+        "Turtle Tag Asset Management") %>% bool2yn,
+      tracks = milestone %in% c(
+        "Overarching requirements",
+        "Turtle Tracks and Nests") %>% bool2yn,
+      strandings = milestone %in% c(
+        "Overarching requirements",
+        "Marine Wildlife Strandings") %>% bool2yn
     )
-  } %>% arrange(id) %>% mutate(labels_chr = map(labels, paste, collapse = ", "))
+  } %>% arrange(id)
+
 
   # untangle labels, loses a few columns, hard-codes existing tags
   # This will blow up on multiple "... Requirements"
@@ -99,7 +111,14 @@ make_issues <- function(ii){
     separate_rows(labels) %>%
     mutate(tagslog = TRUE) %>%
     spread(labels, tagslog, fill = FALSE)  %>%
-    select(id, Business, Stakeholder, Functional, Transition, must, should)
+    select(id, Business, Stakeholder, Functional, Transition, must, should) %>%
+    mutate(
+      Business = Business %>% bool2yn,
+      Stakeholder = Stakeholder %>% bool2yn,
+      Functional = Functional %>% bool2yn,
+      Transition = Transition %>% bool2yn,
+      must  = must %>% bool2yn,
+      should = should %>% bool2yn)
 
   iss <- left_join(i1, i2, by = "id")
   iss
@@ -216,9 +235,9 @@ make_requirements <- function(ii){
       Should_have = should,
       # could_have = could,
       # wont_have = wont
-      Categories = labels,
+      Categories = labels_chr
       #, Requirement = body # too large to include
-      Source = url
+      # Source = url
     )
 }
 
@@ -398,9 +417,9 @@ server <- function(input, output) {
   #
   opts = list(
     autoWidth = TRUE,
-    lengthMenu = list(c(25, 50, 100, -1), c('25', '50', '100', 'All')),
-    pageLength = 100,
-    fixedHeader = TRUE
+    lengthMenu = list(c(10, 25, 50, -1), c('10', '25', '50', 'All')),
+    pageLength = 10,
+    fixedHeader = list(header = TRUE, footer = TRUE)
   )
 
   output$business_needs_table <- shiny::renderDataTable(
