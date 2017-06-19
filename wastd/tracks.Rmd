@@ -50,14 +50,19 @@ a wrapper function `wastd_api` encapsulates the WAStD API:
   structure is flattened into a data.table.
 
 ```{r api}
-track_records <- wastd_api("turtle-nest-encounters")
-tag_records <- wastd_api("animal-encounters")
-nest_json <- wastd_api("turtle-nest-encounters", 
-                             query=list(taxon="Cheloniidae", 
-                                        limit=10000, 
-                                        format="json", 
-                                        nest_type="hatched-nest"),
-                            simplify=FALSE)
+track_records <- wastdr::get_wastd(
+  "turtle-nest-encounters", 
+  query = list(taxon = "Cheloniidae", limit = 10000, format = "json"))
+
+tag_records <- wastdr::get_wastd("animal-encounters")
+
+nest_json <- wastdr::get_wastd(
+  "turtle-nest-encounters", 
+  query = list(taxon = "Cheloniidae", 
+               limit = 10000, 
+               format = "json", 
+               nest_type = "hatched-nest"))
+
 # listviewer::jsonedit(nest_json$content)
 # area_json <- wastd_api("areas", simplify=FALSE)
 grd <- readOGR("thv_grid.geojson", "OGRGeoJSON")
@@ -71,87 +76,36 @@ load("data/tagging_area.Rda")
 
 ## Transformation
 
-Using [purrr magic](https://www.rstudio.com/resources/videos/happy-r-users-purrr/)
+Using [purrr magic](https://www.rstudio.com/resources/videos/happy-r-users-purrr/),
+`wastdr` provides helper methods to transform JSON into tibbles:
 
 * data is parsed into native types (e.g. dates and numbers),
 * records are filtered to a location (THV) and date range (from Dec 20), and
 * the resulting R objects are saved locally to form a restore point.
 
 ```{r data_munging}
-#' Return a UTC HTTP date as GMT+08
-utc_as_gmt08 <- . %>%
-  parse_date_time(orders = c("YmdHMSz", "adbYHMS")) %>%
-  with_tz(tzone="Australia/Perth")
-
-#' Calculate the "turtle date" from a given datetime
-as_turtle_date <- . %>% utc_as_gmt08 %>% -hours(12) %>% as_date
-
-#' Convert between url-safe dash-separated-names and Human Readable Title Case
-humanize <- . %>% stringr::str_to_title() %>% stringr::str_replace("-", " ")
-urlize <- . %>% stringr::str_to_lower() %>% stringr::str_replace(" ", "-")
-
 #' Filter a data.frame to records collected at THV after 19 Dec 2016
 #' TODO replace with filtering for THV 2016/2017 field trips at API
-thv_filter <- . %>% filter(
+thv_filter <- . %>% dplyr::filter(
     latitude < -21.43,
     latitude > -21.48,
     longitude > 114.96,
     longitude < 115.05,
     date > dmy("17/11/2016"))
 
-#' O Lord of Darkness, accept this our functional sacrifice of three days and three nights
-#' From a list of unnamed lists, or the data.frame equivalent, extract a field or -1
-extract_possibly <- possibly(extract, otherwise = -1)
-get_f <- function(lol, field) lol %>% unlist %>% extract_possibly(field) %>% unlist %>% as.numeric
-
-# Flatten nested JSON, parse field formats and rename columns
-tracks <- track_records$content %>% 
-  mutate(
-    datetime = properties.when %>% utc_as_gmt08,
-    longitude = properties.longitude %>% as.numeric,
-    latitude = properties.latitude %>% as.numeric,
-    date = properties.when %>% as_turtle_date,
-    species = properties.species,
-    nest_age = properties.nest_age,
-    nest_type = properties.nest_type,
-    obs = properties.observation_set,
-    hatching_success =  obs %>% map(get_f, "hatching_success") %>% as.numeric,
-    emergence_success = obs %>% map(get_f, "emergence_success") %>% as.numeric,
-    clutch_size = obs %>% map(get_f, "egg_count_calculated") %>% as.numeric
-  ) %>% thv_filter 
-save(tracks, file = "data/tracks.Rda")
-load("data/tracks.Rda")
-
-tags <- tag_records$content %>% 
-  mutate(
-    datetime = properties.when %>% utc_as_gmt08,
-    longitude = properties.longitude %>% as.numeric,
-    latitude = properties.latitude %>% as.numeric,
-    date = properties.when %>% as_turtle_date,
-    species = properties.species,
-    health = properties.health,
-    nesting = properties.nesting_event,
-    name=properties.name
-  ) %>% thv_filter
+tags <- wastdr::parse_animal_encounters(tag_records) %>% thv_filter
 save(tags, file = "data/tags.Rda")
 load("data/tags.Rda")
 
-# Hold my beer, we'll do it in JSON
-nests <- nest_json$content %>% {
-  tibble::tibble(
-    datetime = map_chr(., c("properties", "when")) %>% utc_as_gmt08,
-    longitude = map_dbl(., c("properties", "longitude")),
-    latitude = map_dbl(., c("properties", "latitude")),
-    date = map_chr(., c("properties", "when")) %>% as_turtle_date,
-    species = map_chr(., c("properties", "species")),
-    obs = map(., c("properties", "observation_set")),
-    hatching_success = obs %>% map(get_f, "hatching_success") %>% as.numeric,
-    emergence_success = obs %>% map(get_f, "emergence_success") %>% as.numeric,
-    clutch_size = obs %>% map(get_f, "egg_count_calculated") %>% as.numeric
-    )
-} %>% thv_filter
+tracks <- wastdr::parse_turtle_nest_encounters(track_records) %>% thv_filter
+save(tracks, file = "data/tracks.Rda")
+load("data/tracks.Rda")
+
+
+nests <- wastdr::parse_turtle_nest_encounters(nest_json)
 save(nests, file = "data/nests.Rda")
 load("data/nests.Rda")
+
 
 # listviewer::jsonedit(nests)
 ```
@@ -261,7 +215,7 @@ leaflet(tracks) %>%
   addPolygons(data = tagging_area, weight = 1, color = "blue", opacity = 0.5, 
               group = "Tagging area") %>%
   addAwesomeMarkers(~longitude, ~latitude,
-                    data = filter(tracks, nest_type != "hatched-nest"), 
+                    data = dplyr::filter(tracks, nest_type != "hatched-nest"), 
                     # data=tracks, 
                     icon = ~trackIcons[species],
                     label = ~paste("Track", date, nest_age, species, nest_type),
@@ -269,8 +223,8 @@ leaflet(tracks) %>%
                     group = "Tracks") %>%
   addAwesomeMarkers(~longitude, ~latitude, data = tags,
                     icon = ~tagIcons[species],
-                    label = ~paste("Tag", date, species, name, "nesting:", nesting),
-                    popup = ~paste("Tag", date, species, name, "nesting:", nesting),
+                    label = ~paste("Tag", date, species, name, "nesting:", nesting_event),
+                    popup = ~paste("Tag", date, species, name, "nesting:", nesting_event),
                     group = "Tags") %>%
   # addHeatmap(data=tags, lng = ~longitude, lat = ~latitude, 
   #            blur = 20, max = 1, radius = 15) %>%
@@ -371,7 +325,7 @@ ggplot(tags_by_date, aes(x = date, y = n)) +
 # Nesting intervals
 
 ```{r, fig.width=7, fig.height=20}
-ggplot(tags, aes(x = date, y = name, color = nesting)) + 
+ggplot(tags, aes(x = date, y = name, color = nesting_event)) + 
   geom_point() + 
   geom_line(aes(date, name)) +
   scale_x_date(breaks = scales::pretty_breaks(),
@@ -391,10 +345,12 @@ From `r nrow(filter(nests, hatching_success>=0))` conclusive nest excavations,
 the calculated hatching and emergence success are shown summarised per day.
 
 ```{r fig_fb_hs_es, fig.width=7,fig.height=5}
-nests_with_hs <- filter(nests, hatching_success >= 0, species == "natator-depressus")
-ggplot(nests_with_hs, aes(group=date, x=date)) + 
-  geom_boxplot(aes(y=as.numeric(hatching_success)), na.rm=TRUE, color="black") +
-  geom_boxplot(aes(y=as.numeric(emergence_success)), na.rm=TRUE, color="gray") +
+nests_with_hs <- dplyr::filter(nests, 
+                               hatching_success >= 0, 
+                               species == "natator-depressus")
+ggplot(nests_with_hs, aes(group = date, x = date)) + 
+  geom_boxplot(aes(y = as.numeric(hatching_success)), na.rm=TRUE, color = "black") +
+  geom_boxplot(aes(y = as.numeric(emergence_success)), na.rm=TRUE, color = "gray") +
   scale_x_date(breaks = scales::pretty_breaks(),
                labels = scales::date_format("%d %b %Y")) +
   xlab("Date") +
@@ -412,7 +368,7 @@ Mean, SD and range for HS and ES and clutch size per species are calculated:
 
 ```{r}
 success_summary <- nests %>%
-  filter(hatching_success >= 0) %>% 
+  dplyr::filter(hatching_success >= 0) %>% 
   group_by(species) %>%
   dplyr::summarize(
     "count" = n(),
@@ -449,7 +405,7 @@ palette = rainbow(10,
 pal <- colorBin(palette, nests_with_hs$hatching_success, 10, pretty = FALSE)
 
 leaflet(
-  filter(nests, hatching_success >= 0, species == "natator-depressus")) %>% 
+  dplyr::filter(nests, hatching_success >= 0, species == "natator-depressus")) %>% 
   addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
   addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
   setView(lng=115.02, lat=-21.463, zoom=16) %>%
@@ -471,7 +427,7 @@ leaflet(
   addLegend("bottomright",
             pal = pal,
             values = ~hatching_success,
-            title = "Hatching success", 
+            title = "Hatching success",
             opacity = 1) %>%
   addLayersControl(
     baseGroups = c("Aerial", "Place names"),
@@ -493,7 +449,7 @@ The following Table shows per species (including unknown shown as "Cheloniidae f
 
 ```{r}
 tracks_by_species <- tracks %>% 
-  filter(nest_age == "fresh", 
+  dplyr::filter(nest_age == "fresh", 
          nest_type %in% c("track-not-assessed", 
                      "track-unsure", 
                      "false-crawl", 
@@ -525,7 +481,7 @@ which represents the date as integer number for analytic purposes.
 ```{r nesting_encounters}
 nesting_encounters <- bind_rows(
   tracks %>% 
-    filter(nest_age == "fresh") %>% 
+    dplyr::filter(nest_age == "fresh") %>% 
     transmute(
       latitude = latitude, 
       longitude = longitude, 
@@ -538,7 +494,7 @@ nesting_encounters <- bind_rows(
       longitude = longitude, 
       date = date, 
       species = species, 
-      type = nesting)
+      type = nesting_event)
   ) %>%
   mutate(diffdate=difftime(date, origin))
 ```
@@ -594,8 +550,8 @@ The proportion of tracks in the tagging area compared to the rest of the island 
 
 ```{r}
 species_profiles_areas <- d.spdf.grd@data %>% 
-  filter(!is.na(id)) %>%
-  filter(type != "hatched-nest") %>%
+  dplyr::filter(!is.na(id), 
+                type != "hatched-nest") %>%
   group_by(species, name) %>% 
   tally(sort = F) %>% 
   ungroup() %>% 
@@ -633,7 +589,7 @@ between west of the Jetty and the Chevron property on the East end.
 ```{r plot_nesting_type_by_date, warning = F}
 ggplot_nesting_type_by_date <- function(data, species_name) {
   nesting_encounters %>%
-    filter(species == species_name) %>%
+    dplyr::filter(species == species_name) %>%
     group_by(date, type) %>% 
     tally() %>%
     rename(number_per_day = n) %>%
@@ -782,7 +738,7 @@ As successful nesting events are counted (this is negotiable):
 
 ```{r plot_track_effort, fig.height=5, fig.width=7, warning = F}
 fresh_tracks <- tracks %>%
-  filter(properties.nest_type %in% c("successful-crawl", 
+  dplyr::filter(nest_type %in% c("successful-crawl", 
                                      "false-crawl", 
                                      "track-unsure", 
                                      "track-not-assessed"))
@@ -791,7 +747,7 @@ all_tracks_by_date <- fresh_tracks %>%
   group_by(date, species) %>% tally() %>% ungroup() %>% rename(all = n)
 
 successful_tracks_by_date <- tracks %>% 
-  filter(properties.nest_type == 'successful-crawl') %>%
+  dplyr::filter(nest_type == 'successful-crawl') %>%
   group_by(date, species) %>% tally() %>% ungroup() %>% rename(successful = n)
 
 # Join nesting emergences with nesting success or 0
@@ -859,11 +815,12 @@ in the observed abundance.
 Create species profiles for species track abundance per grid cell id and encounter date.
 ```{r dt_species_profiles}
 species_profiles <- d.spdf.grd@data %>% 
-  filter(!is.na(id)) %>%
+  dplyr::filter(!is.na(id)) %>%
   group_by(diffdate, date, id, species) %>% 
   tally(sort=F) %>% 
   ungroup() %>%
-  spread(species, n, fill=0) %>% left_join(grd, by="id", copy=T) %>%
+  spread(species, n, fill=0) %>% 
+  left_join(grd@data, by="id", copy=T) %>%
   set_colnames(make.names(colnames(.)))
 
 DT::datatable(species_profiles, 
@@ -1102,10 +1059,10 @@ XTm <- as.matrix(XT)
 Y.rda <- rda(Y ~ XSm + XTm)
 fig <- ordiplot(Y.rda, 
                 main = "Constrained ordination (RDA) all species", 
-                type = "none")
-points(fig, "sites", pch = 21, col = "red", bg = "yellow")
-text(fig, "species", col = "blue", cex = 0.9)
-identify(fig, "spec")
+                type = "none") %T>% 
+  points("sites", pch = 21, col = "red", bg = "yellow") %T>% 
+  text("species", col = "blue", cex = 0.9) %T>%
+  identify("spec")
 ```
 
 ```{r, reset_workdir, echo=FALSE}

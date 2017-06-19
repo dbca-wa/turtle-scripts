@@ -15,16 +15,17 @@ install.packages("~/projects/turtle-scripts/data/Rstem_0.4-1.tar.gz", repos = NU
 install.packages("~/projects/turtle-scripts/data/sentiment_0.2.tar.gz", repos = NULL, type = "source")
 
 ## Install from Github
-install.packages(devtools)
-require(devtools)
+install.packages("devtools")
 # adespatial replaces packfor::forward.sel
 devtools::install_github("sdray/adespatial")
-devtools::install_github("ropensci/ckanr")
+# devtools::install_github("ropensci/ckanr")
+devtools::install_github("parksandwildlife/ckanr")
 devtools::install_github("ropensci/geojsonio")
 devtools::install_github("rstudio/leaflet")
 # devtools::install_github("bhaskarvk/leaflet.extras")
 # leaflet.extras is cloned to ~/projects/leaflet.extras and built from source
 devtools::install_github("tidyverse/ggplot2")
+devtools::install_github("tidyverse/dplyr")
 devtools::install_github("r-pkgs/gh")
 devtools::install_github("pablobarbera/Rfacebook", subdir="Rfacebook")
 devtools::install_github("parksandwildlife/wastdr")
