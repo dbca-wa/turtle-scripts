@@ -3,6 +3,19 @@ title: "Rethinking Statistics Exercises"
 output: html_notebook
 ---
 
-```{r}
+```{r libraries}
 require(rethinking) || devtools::install_github("rmcelreath/rethinking")
+```
+```{r setup}
+library(ckanr)
+if (file.exists("../config/setup.R")) source("../config/setup.R")
+```
+
+```{r}
+r <- ckanr::resource_show("d1e0cd1d-9fc0-4069-9781-eb4946d929c8")
+d <- ckanr::package_show(r$package_id)
+d
+data <- read.csv(r$url)
+glimpse(data)
+
 ```
