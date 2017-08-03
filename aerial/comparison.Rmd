@@ -90,23 +90,28 @@ leaflet(wastd) %>%
   addAwesomeMarkers(~longitude, ~latitude,
                     data = wastd, 
                     icon = ~trackIcons[species],
-                    label = ~paste("Track", nest_age, species),
+                    label = ~paste(observer, wastd_id, nest_age, species),
                     group = "WAStD") %>%
     addAwesomeMarkers(~longitude, ~latitude,
                     data = scott, 
                     icon = ~trackIcons[species],
-                    label = ~paste("Track", nest_age, species),
+                    label = ~paste(observer, wastd_id, nest_age, species),
                     group = "Scott") %>%
     addAwesomeMarkers(~longitude, ~latitude,
                     data = tony, 
                     icon = ~trackIcons[species],
-                    label = ~paste("Track", nest_age, species),
+                    label = ~paste(observer, wastd_id, nest_age, species),
                     group = "Tony") %>%
   addLayersControl(baseGroups = c("Aerial", "Place names"),
                    overlayGroups = c("WAStD", "Scott", "Tony"))
 ```
 
 # Comparison
+* Rename columns in `wastd` to be distinct from user columns.
+* Define and use helper function to create comparison table for agreements, 
+  where the operator found tracks which also exist in WAStD.
+* Define and use helper function to create comparison table for disagreements, 
+  where the operator found tracks not in WAStD.
 ```{r comparison_table}
 wastd_new <- wastd %>% 
   dplyr::transmute(
@@ -117,44 +122,40 @@ wastd_new <- wastd %>%
     w_nest_age = nest_age
   )
 
-scott_new <- scott %>% 
-  dplyr::transmute(
-    scott_species = species,
-    scott_nest_age = nest_age,
-    wastd_id = wastd_id
-  )
+#' Join all records of wastd_tbl with matching records from user_tbl
+compare_to_wastd <- function(wastd_tbl, user_tbl){
+  wastd_tbl %>% 
+    dplyr::left_join(
+      dplyr::select(user_tbl, species, nest_age, wastd_id), 
+      by = "wastd_id") %>%
+    dplyr::mutate(
+      agree_species = ifelse(w_species == species, 1, 0),
+      agree_nest_age = ifelse(w_nest_age == nest_age, 1, 0)
+    )
+}
 
-tony_new <- tony %>% 
-  dplyr::transmute(
-    tony_species = species,
-    tony_nest_age = nest_age,
-    wastd_id = wastd_id
-  )
+#' Join all records of user_tbl which are not in wastd_tbl
+not_in_wastd <- function(wastd_tbl, user_tbl){
+  user_tbl %>%
+    dplyr::anti_join(wastd_tbl, by = "wastd_id")
+}
 
-wastd_and_scott <- wastd_new %>% 
-  dplyr::left_join(scott_new, by = "wastd_id") %>%
-  dplyr::mutate(
-    scott_species_ok = ifelse(w_species == scott_species, 1, 0),
-    scott_nest_age_ok = ifelse(w_nest_age == scott_nest_age, 1, 0)
-  )
+wastd_and_scott <- compare_to_wastd(wastd_new, scott)
+scott_not_wastd <- not_in_wastd(wastd_new, scott)
+wastd_and_tony <- compare_to_wastd(wastd_new, tony)
+tony_not_wastd <- not_in_wastd(wastd_new, tony)
+```
+
+## Scott vs WAStD
+```{r}
 DT::datatable(wastd_and_scott, caption = "Tracks seen by Scott and WAStD")
 summary(wastd_and_scott[,8:9])
-
-scott_not_wastd <- scott %>%
-  dplyr::anti_join(wastd_new, by = "wastd_id")
 DT::datatable(scott_not_wastd, caption = "Tracks seen by Scott not in WAStD")
+```
 
-wastd_and_tony <- wastd_new %>% 
-  dplyr::full_join(tony_new, by = "wastd_id") %>%
-  dplyr::mutate(
-    tony_species_ok = ifelse(w_species == tony_species, 1, 0),
-    tony_nest_age_ok = ifelse(w_nest_age == tony_nest_age, 1, 0)
-  )
-
+## Tony vs WAStD
+```{r}
 DT::datatable(wastd_and_tony, caption = "Tracks seen by Tony and WAStD")
 summary(wastd_and_tony[,8:9])
-
-tony_not_wastd <- tony %>%
-  dplyr::anti_join(wastd_new, by = "wastd_id")
 DT::datatable(tony_not_wastd, caption = "Tracks seen by Tony not in WAStD")
 ```
