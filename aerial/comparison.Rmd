@@ -1,0 +1,121 @@
+---
+title: "Aerial track census comparison"
+author: "Marine Turtles WA"
+date: "03/08/2017"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    fig_width: 7
+    fig_height: 5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/projects/turtle-scripts/aerial")
+if (file.exists("../config/setup.R")) source("../config/setup.R")
+# if (file.exists("../config/load.R")) source("../config/load.R")
+library(geojsonio)
+library(magrittr)
+library(jsonlite)
+library(tidyverse)
+library(purrr)
+library(tibble)
+library(leaflet)
+library(DT)
+
+map_chr_hack <- function(.x, .f, ...) {
+    map(.x, .f, ...) %>%
+        purrr::map_if(is.null, ~ NA_character_) %>%
+        purrr::flatten_chr(.)
+}
+
+#' Convert a GeoJSON of aerial track counts to a tibble
+gj_attrs <- function(geojson_list){
+  geojson_list$features %>% {
+    tibble::tibble(
+      observer = purrr::map_chr(., c("properties", "observer")),
+      longitude = purrr::map(., c("geometry", "coordinates")) %>% purrr::map_dbl(magrittr::extract2, 1),
+      latitude = purrr::map(., c("geometry", "coordinates")) %>% purrr::map_dbl(magrittr::extract2, 2),
+      species = purrr::map_chr(., c("properties", "species")),
+      nest_age = purrr::map_chr(., c("properties", "nest_age")),
+      wastd_id = map_chr_hack(., c("properties", "WAStD_ID"))
+    )
+  }
+}
+
+wastd_attrs <- function(geojson_list){
+  geojson_list$features %>% {
+    tibble::tibble(
+      observer = "WAStD",
+      longitude = purrr::map(., c("geometry", "coordinates")) %>% purrr::map_dbl(extract2, 1),
+      latitude = purrr::map(., c("geometry", "coordinates")) %>% purrr::map_dbl(extract2, 2),
+      species = purrr::map_chr(., c("properties", "species")),
+      nest_age = purrr::map_chr(., c("properties", "nest_age")),
+      wastd_id = map_chr_hack(., c("properties", "pk"))
+    )
+  }
+}
+```
+
+# Data
+Background on location, project, data acquisition.
+Three operators (Sabrina, Tony, Scott) analyse aerial imagery.
+One team on the ground at the time of the aerial survey counted the tracks.
+
+```{r read_geojson}
+wastd <- geojsonio::geojson_read("data/wastd_tracks.geojson") %>% wastd_attrs
+# sab <- geojsonio::geojson_read("data/2017-03-01_sabrinafo.geojson") %>% gj_attrs
+tony <- geojsonio::geojson_read("data/2017-08-02_tonyt.geojson") %>% gj_attrs
+scott <- geojsonio::geojson_read("data/2017-07-01_scottwh.geojson") %>% gj_attrs
+```
+
+```{r view_map}
+#' makeAwesomeIcon factory
+mkicon <- function(ico, col) leaflet::makeAwesomeIcon(icon = ico, markerColor = col)
+
+trackIcons <- leaflet::awesomeIconList(
+  "cheloniidae-fam" = mkicon('align-center', 'black'),
+  "chelonia-mydas" = mkicon('align-center', 'green'),
+  "eretmochelys-imbricata" = mkicon('align-center', 'blue'),
+  "natator-depressus" = mkicon('align-center', 'red')
+  )
+
+leaflet(wastd) %>% 
+  addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+  addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+  setView(lng=115.0, lat=-21.45, zoom=12) %>%
+  addAwesomeMarkers(~longitude, ~latitude,
+                    data = wastd, 
+                    icon = ~trackIcons[species],
+                    label = ~paste("Track", nest_age, species),
+                    group = "WAStD") %>%
+    addAwesomeMarkers(~longitude, ~latitude,
+                    data = scott, 
+                    icon = ~trackIcons[species],
+                    label = ~paste("Track", nest_age, species),
+                    group = "Scott") %>%
+    addAwesomeMarkers(~longitude, ~latitude,
+                    data = tony, 
+                    icon = ~trackIcons[species],
+                    label = ~paste("Track", nest_age, species),
+                    group = "Tony") %>%
+  addLayersControl(baseGroups = c("Aerial", "Place names"),
+                   overlayGroups = c("WAStD", "Scott", "Tony"))
+```
+
+
+```{r comparison_table}
+df <- wastd %>% 
+  dplyr::transmute(
+    wastd_id = wastd_id,
+    w_lon = longitude,
+    w_lat = latitude,
+    w_species = species,
+    w_nest_age = nest_age
+  ) %>% 
+  dplyr::full_join(scott, by = "wastd_id") %>%
+  dplyr::full_join(tony, by = "wastd_id")
+DT::datatable(df)
+```
