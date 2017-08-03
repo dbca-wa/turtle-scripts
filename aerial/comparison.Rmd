@@ -107,15 +107,35 @@ leaflet(wastd) %>%
 
 
 ```{r comparison_table}
-df <- wastd %>% 
+wastd_new <- wastd %>% 
   dplyr::transmute(
     wastd_id = wastd_id,
     w_lon = longitude,
     w_lat = latitude,
     w_species = species,
     w_nest_age = nest_age
-  ) %>% 
-  dplyr::full_join(scott, by = "wastd_id") %>%
-  dplyr::full_join(tony, by = "wastd_id")
-DT::datatable(df)
+  )
+
+scott_new <- scott %>% 
+  dplyr::transmute(
+    scott_species = species,
+    scott_nest_age = nest_age,
+    wastd_id = wastd_id
+  )
+
+tony_new <- tony %>% 
+  dplyr::transmute(
+    tony_species = species,
+    tony_nest_age = nest_age,
+    wastd_id = wastd_id
+  )
+
+df <- wastd_new %>% 
+  dplyr::full_join(scott_new, by = "wastd_id") %>%
+  dplyr::full_join(tony_new, by = "wastd_id")
+
+DT::datatable(df, options = list(
+  pageLength = 50,
+  lengthMenu = c(20, 50, 100)
+))
 ```
