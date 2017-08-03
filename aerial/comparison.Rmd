@@ -71,7 +71,8 @@ tony <- geojsonio::geojson_read("data/2017-08-02_tonyt.geojson") %>% gj_attrs
 scott <- geojsonio::geojson_read("data/2017-07-01_scottwh.geojson") %>% gj_attrs
 ```
 
-```{r view_map}
+# Map
+```{r view_map, echo=FALSE}
 #' makeAwesomeIcon factory
 mkicon <- function(ico, col) leaflet::makeAwesomeIcon(icon = ico, markerColor = col)
 
@@ -105,7 +106,7 @@ leaflet(wastd) %>%
                    overlayGroups = c("WAStD", "Scott", "Tony"))
 ```
 
-
+# Comparison
 ```{r comparison_table}
 wastd_new <- wastd %>% 
   dplyr::transmute(
@@ -130,12 +131,30 @@ tony_new <- tony %>%
     wastd_id = wastd_id
   )
 
-df <- wastd_new %>% 
-  dplyr::full_join(scott_new, by = "wastd_id") %>%
-  dplyr::full_join(tony_new, by = "wastd_id")
+wastd_and_scott <- wastd_new %>% 
+  dplyr::left_join(scott_new, by = "wastd_id") %>%
+  dplyr::mutate(
+    scott_species_ok = ifelse(w_species == scott_species, 1, 0),
+    scott_nest_age_ok = ifelse(w_nest_age == scott_nest_age, 1, 0)
+  )
+DT::datatable(wastd_and_scott, caption = "Tracks seen by Scott and WAStD")
+summary(wastd_and_scott[,8:9])
 
-DT::datatable(df, options = list(
-  pageLength = 50,
-  lengthMenu = c(20, 50, 100)
-))
+scott_not_wastd <- scott %>%
+  dplyr::anti_join(wastd_new, by = "wastd_id")
+DT::datatable(scott_not_wastd, caption = "Tracks seen by Scott not in WAStD")
+
+wastd_and_tony <- wastd_new %>% 
+  dplyr::full_join(tony_new, by = "wastd_id") %>%
+  dplyr::mutate(
+    tony_species_ok = ifelse(w_species == tony_species, 1, 0),
+    tony_nest_age_ok = ifelse(w_nest_age == tony_nest_age, 1, 0)
+  )
+
+DT::datatable(wastd_and_tony, caption = "Tracks seen by Tony and WAStD")
+summary(wastd_and_tony[,8:9])
+
+tony_not_wastd <- tony %>%
+  dplyr::anti_join(wastd_new, by = "wastd_id")
+DT::datatable(tony_not_wastd, caption = "Tracks seen by Tony not in WAStD")
 ```
