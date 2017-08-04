@@ -112,6 +112,7 @@ leaflet(wastd) %>%
   where the operator found tracks which also exist in WAStD.
 * Define and use helper function to create comparison table for disagreements, 
   where the operator found tracks not in WAStD.
+  
 ```{r comparison_table}
 wastd_new <- wastd %>% 
   dplyr::transmute(
@@ -147,15 +148,42 @@ tony_not_wastd <- not_in_wastd(wastd_new, tony)
 ```
 
 ## Scott vs WAStD
-```{r}
+```{r dt_scott}
 DT::datatable(wastd_and_scott, caption = "Tracks seen by Scott and WAStD")
 summary(wastd_and_scott[,8:9])
-DT::datatable(scott_not_wastd, caption = "Tracks seen by Scott not in WAStD")
 ```
 
 ## Tony vs WAStD
-```{r}
+```{r dt_tony}
 DT::datatable(wastd_and_tony, caption = "Tracks seen by Tony and WAStD")
 summary(wastd_and_tony[,8:9])
+```
+## Tracks not in WAStD
+Primary difference: WAStD tracks omit tagging area. 
+Tagged turtles leave tracks visible on aerial imagery.
+
+```{r not_on_wastd}
+DT::datatable(scott_not_wastd, caption = "Tracks seen by Scott not in WAStD")
 DT::datatable(tony_not_wastd, caption = "Tracks seen by Tony not in WAStD")
+
+leaflet(tony_not_wastd) %>% 
+  addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+  addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+  setView(lng=115.0, lat=-21.45, zoom=12) %>%
+  addAwesomeMarkers(~longitude, ~latitude,
+                  data = wastd, 
+                  icon = ~trackIcons[species],
+                  label = ~paste(observer, wastd_id, nest_age, species),
+                  group = "WAStD") %>%
+    addAwesomeMarkers(~longitude, ~latitude,
+                    data = scott_not_wastd,
+                    icon = ~trackIcons[species],
+                    label = ~paste(observer, wastd_id, nest_age, species),
+                    group = "Scott only") %>%
+  addAwesomeMarkers(~longitude, ~latitude,
+                    icon = ~trackIcons[species],
+                    label = ~paste(observer, wastd_id, nest_age, species),
+                    group = "Tony only") %>%
+addLayersControl(baseGroups = c("Aerial", "Place names"),
+                   overlayGroups = c("WAStD", "Scott only", "Tony only"))
 ```
