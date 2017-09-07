@@ -22,7 +22,7 @@ devtools::install_github("sdray/adespatial")
 devtools::install_github("parksandwildlife/ckanr")
 devtools::install_github("ropensci/geojsonio")
 devtools::install_github("rstudio/leaflet")
-# devtools::install_github("bhaskarvk/leaflet.extras")
+devtools::install_github("bhaskarvk/leaflet.extras")
 # leaflet.extras is cloned to ~/projects/leaflet.extras and built from source
 devtools::install_github("tidyverse/ggplot2")
 devtools::install_github("tidyverse/dplyr")

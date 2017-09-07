@@ -66,7 +66,7 @@ One team on the ground at the time of the aerial survey counted the tracks.
 
 ```{r read_geojson}
 wastd <- geojsonio::geojson_read("data/wastd_tracks.geojson") %>% wastd_attrs
-# sab <- geojsonio::geojson_read("data/2017-03-01_sabrinafo.geojson") %>% gj_attrs
+sab <- geojsonio::geojson_read("data/2017-03-01_sabrinafo.geojson") %>% gj_attrs
 tony <- geojsonio::geojson_read("data/2017-08-02_tonyt.geojson") %>% gj_attrs
 scott <- geojsonio::geojson_read("data/2017-07-01_scottwh.geojson") %>% gj_attrs
 ```
@@ -84,29 +84,45 @@ trackIcons <- leaflet::awesomeIconList(
   )
 
 leaflet(wastd) %>% 
-  addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
-  addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
-  setView(lng=115.0, lat=-21.45, zoom=12) %>%
-  addAwesomeMarkers(~longitude, ~latitude,
-                    data = wastd, 
-                    icon = ~trackIcons[species],
-                    label = ~paste(observer, wastd_id, nest_age, species),
-                    group = "WAStD") %>%
-    addAwesomeMarkers(~longitude, ~latitude,
-                    data = scott, 
-                    icon = ~trackIcons[species],
-                    label = ~paste(observer, wastd_id, nest_age, species),
-                    group = "Scott") %>%
-    addAwesomeMarkers(~longitude, ~latitude,
-                    data = tony, 
-                    icon = ~trackIcons[species],
-                    label = ~paste(observer, wastd_id, nest_age, species),
-                    group = "Tony") %>%
-  addLayersControl(baseGroups = c("Aerial", "Place names"),
-                   overlayGroups = c("WAStD", "Scott", "Tony"))
+  addProviderTiles(
+    "Esri.WorldImagery", group = "Aerial") %>%
+  addProviderTiles(
+    "OpenStreetMap.Mapnik", group = "Place names") %>%
+  setView(
+    lng=115.0, lat=-21.45, zoom=12) %>%
+  addAwesomeMarkers(
+    ~longitude, ~latitude,
+    data = wastd, 
+    icon = ~trackIcons[species],
+    label = ~paste(observer, wastd_id, nest_age, species),
+    group = "WAStD") %>%
+  addAwesomeMarkers(
+    ~longitude, ~latitude,
+    data = sab, 
+    icon = ~trackIcons[species],
+    label = ~paste(observer, wastd_id, nest_age, species),
+    group = "Sabrina") %>%
+  addAwesomeMarkers(
+    ~longitude, ~latitude,
+    data = scott, 
+    icon = ~trackIcons[species],
+    label = ~paste(observer, wastd_id, nest_age, species),
+    group = "Scott") %>%
+  addAwesomeMarkers(
+    ~longitude, ~latitude,
+    data = tony, 
+    icon = ~trackIcons[species],
+    label = ~paste(observer, wastd_id, nest_age, species),
+    group = "Tony") %>%
+  addLayersControl(
+    baseGroups = c("Aerial", "Place names"),
+    overlayGroups = c("WAStD", "Sabrina", "Scott", "Tony"))
 ```
 
 # Comparison
+
+## Tracks in WAStD (all) and seen by observers (unless missed)
+
 * Rename columns in `wastd` to be distinct from user columns.
 * Define and use helper function to create comparison table for agreements, 
   where the operator found tracks which also exist in WAStD.
@@ -141,49 +157,197 @@ not_in_wastd <- function(wastd_tbl, user_tbl){
     dplyr::anti_join(wastd_tbl, by = "wastd_id")
 }
 
+falsely_fresh_nw <- . %>% filter(is.na(wastd_id)) %>% tally %>% as.integer
+
+wastd_and_sab <- compare_to_wastd(wastd_new, sab)
+sab_not_wastd <- not_in_wastd(wastd_new, sab)
+
+agree_species_wastd_vs_sab <- wastd_and_sab %>% group_by(agree_species) %>% tally %>% ungroup
+agree_nest_age_wastd_vs_sab <- wastd_and_sab %>% group_by(agree_nest_age) %>% tally %>% ungroup
+correct_age <- filter(agree_nest_age_wastd_vs_sab, agree_nest_age==1)$n
+falsely_old <- filter(agree_nest_age_wastd_vs_sab, agree_nest_age==0)$n
+falsely_fresh <- filter(agree_nest_age_wastd_vs_sab, is.na(agree_nest_age))$n
+agree_species <- filter(agree_species_wastd_vs_sab, agree_species==1)$n
+disagree_species <- filter(agree_species_wastd_vs_sab, agree_species==0)$n
+falsely_fresh_not_wastd <- sab_not_wastd %>% falsely_fresh_nw
+
+summary_sab <- tibble(
+  observer = "sabrina",
+  compared_to = "wastd",
+  correct_age,
+  falsely_old = 0,
+  falsely_fresh,
+  falsely_fresh_not_wastd,
+  agree_species,
+  disagree_species
+)
+
 wastd_and_scott <- compare_to_wastd(wastd_new, scott)
 scott_not_wastd <- not_in_wastd(wastd_new, scott)
+
+agree_species_wastd_vs_scott <- wastd_and_scott %>% group_by(agree_species) %>% tally %>% ungroup
+agree_nest_age_wastd_vs_scott <- wastd_and_scott %>% group_by(agree_nest_age) %>% tally %>% ungroup
+correct_age <- filter(agree_nest_age_wastd_vs_scott, agree_nest_age==1)$n
+falsely_old <- filter(agree_nest_age_wastd_vs_scott, agree_nest_age==0)$n
+falsely_fresh <- filter(agree_nest_age_wastd_vs_scott, is.na(agree_nest_age))$n
+agree_species <- filter(agree_species_wastd_vs_scott, agree_species==1)$n
+disagree_species <- filter(agree_species_wastd_vs_scott, agree_species==0)$n
+falsely_fresh_not_wastd <- scott_not_wastd %>% falsely_fresh_nw
+
+summary_scott <- tibble(
+  observer = "scott",
+  compared_to = "wastd",
+  correct_age,
+  falsely_old = 0,
+  falsely_fresh,
+  falsely_fresh_not_wastd,
+  agree_species,
+  disagree_species
+)
+
+
 wastd_and_tony <- compare_to_wastd(wastd_new, tony)
 tony_not_wastd <- not_in_wastd(wastd_new, tony)
+
+agree_species_wastd_vs_tony <- wastd_and_tony %>% group_by(agree_species) %>% tally %>% ungroup
+agree_nest_age_wastd_vs_tony <- wastd_and_tony %>% group_by(agree_nest_age) %>% tally %>% ungroup
+correct_age <- filter(agree_nest_age_wastd_vs_tony, agree_nest_age==1)$n
+falsely_old <- filter(agree_nest_age_wastd_vs_tony, agree_nest_age==0)$n
+falsely_fresh <- filter(agree_nest_age_wastd_vs_tony, is.na(agree_nest_age))$n
+agree_species <- filter(agree_species_wastd_vs_tony, agree_species==1)$n
+disagree_species <- filter(agree_species_wastd_vs_tony, agree_species==0)$n
+falsely_fresh_not_wastd <- tony_not_wastd %>% falsely_fresh_nw
+
+summary_tony <- tibble(
+  observer = "tony",
+  compared_to = "wastd",
+  correct_age,
+  falsely_old,
+  falsely_fresh,
+  falsely_fresh_not_wastd,
+  agree_species,
+  disagree_species
+)
+
+smr <- rbind(summary_sab, 
+             summary_scott, 
+             summary_tony)
 ```
 
-## Scott vs WAStD
+
+* NA: fresh tracks falsely counted as old (and therefore not recorded), 
+  or missed altogether by aerial observer
+* 1: agree ground and aerial
+* 0: disagree ground and aerial: aerial observer recorded track falsely as old
+
+
+### Sabrina vs WAStD
+
+```{r dt_sab}
+DT::datatable(wastd_and_sab, caption = "Tracks seen by Sabrina and WAStD")
+```
+
+
+### Scott vs WAStD
+
 ```{r dt_scott}
 DT::datatable(wastd_and_scott, caption = "Tracks seen by Scott and WAStD")
-summary(wastd_and_scott[,8:9])
 ```
 
-## Tony vs WAStD
+### Tony vs WAStD
+
 ```{r dt_tony}
 DT::datatable(wastd_and_tony, caption = "Tracks seen by Tony and WAStD")
-summary(wastd_and_tony[,8:9])
 ```
-## Tracks not in WAStD
-Primary difference: WAStD tracks omit tagging area. 
-Tagged turtles leave tracks visible on aerial imagery.
 
-```{r not_on_wastd}
+
+## All tracks not in WAStD
+
+* tracks not in wastd, where wastd id exists: track counted differently on ground (tagging) - not an error
+* tracks not in wastd, where wastd id does not exist: old track falsely counted as fresh by aerial observer
+
+### Sabrina not in WAStD
+
+```{r sab_not_on_wastd}
+DT::datatable(sab_not_wastd, caption = "Tracks seen by Sabrina not in WAStD")
+```
+
+### Scott not in WAStD
+
+```{r scott_not_on_wastd}
 DT::datatable(scott_not_wastd, caption = "Tracks seen by Scott not in WAStD")
-DT::datatable(tony_not_wastd, caption = "Tracks seen by Tony not in WAStD")
-
-leaflet(tony_not_wastd) %>% 
-  addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
-  addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
-  setView(lng=115.0, lat=-21.45, zoom=12) %>%
-  addAwesomeMarkers(~longitude, ~latitude,
-                  data = wastd, 
-                  icon = ~trackIcons[species],
-                  label = ~paste(observer, wastd_id, nest_age, species),
-                  group = "WAStD") %>%
-    addAwesomeMarkers(~longitude, ~latitude,
-                    data = scott_not_wastd,
-                    icon = ~trackIcons[species],
-                    label = ~paste(observer, wastd_id, nest_age, species),
-                    group = "Scott only") %>%
-  addAwesomeMarkers(~longitude, ~latitude,
-                    icon = ~trackIcons[species],
-                    label = ~paste(observer, wastd_id, nest_age, species),
-                    group = "Tony only") %>%
-addLayersControl(baseGroups = c("Aerial", "Place names"),
-                   overlayGroups = c("WAStD", "Scott only", "Tony only"))
 ```
+
+### Tony not in WAStD
+
+```{r tony_not_on_wastd}
+DT::datatable(tony_not_wastd, caption = "Tracks seen by Tony not in WAStD")
+```
+
+### Map of tracks not in WAStD
+
+```{r map_false_positives}
+leaflet(tony_not_wastd) %>% 
+  addProviderTiles(
+    "Esri.WorldImagery", group = "Aerial") %>%
+  addProviderTiles(
+    "OpenStreetMap.Mapnik", group = "Place names") %>%
+  setView(
+    lng=115.0, lat=-21.45, zoom=12) %>%
+  addAwesomeMarkers(
+    ~longitude, ~latitude,
+    data = wastd, 
+    icon = ~trackIcons[species],
+    label = ~paste(observer, wastd_id, nest_age, species),
+    group = "WAStD") %>%
+  addAwesomeMarkers(
+    ~longitude, ~latitude,
+    data = sab_not_wastd,
+    icon = ~trackIcons[species],
+    label = ~paste(observer, wastd_id, nest_age, species),
+    group = "Sabrina only") %>%
+  addAwesomeMarkers(
+    ~longitude, ~latitude,
+    data = scott_not_wastd,
+    icon = ~trackIcons[species],
+    label = ~paste(observer, wastd_id, nest_age, species),
+    group = "Scott only") %>%
+  addAwesomeMarkers(
+    ~longitude, ~latitude,
+    icon = ~trackIcons[species],
+    label = ~paste(observer, wastd_id, nest_age, species),
+    group = "Tony only") %>%
+  addLayersControl(
+    baseGroups = c("Aerial", "Place names"),
+    overlayGroups = c("WAStD", "Sabrina only", "Scott only", "Tony only"))
+```
+
+
+# Discussion
+
+## Summary
+
+```{r}
+DT::datatable(smr)
+```
+
+## Notes on data collection
+* WAStD is the point of truth for track and nest age, but not for species.
+* Scott only counted tracks he thought were fresh ones.
+* Scott disregarded tracks he tought to be old.
+* Scott analysed the tagging area as well, for which no tracks were counted on the 
+  ground (and therefore are not in WAStD as tracks, but as taggings).
+* Tony recorded some old tracks (against protocol), while Scott and Sabrina did
+  not record tracks they detected but judged to be old.
+
+* WAStD tracks omit tagging area, as presence of turtles leaving tracks there was
+  already recorded as a "tagging" event.
+* Tagged turtles leave tracks visible on aerial imagery.
+
+To link recorded tracks, the WAStD id for each track was manually added to 
+the observers' recorded data while visually comparing both the aerial imagery,
+WAStD tracks and the observers' tracks.
+
+`wastd_id` is set to 5555xx for tracks of tagged turtles visible on aerial imagery,
+but counted as taggings in WAStD.
+
