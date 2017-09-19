@@ -1,0 +1,99 @@
+---
+title: "SDLFilter examples"
+author: "Marine Turtles WA"
+date: "2017/09/19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(SDLfilter)
+```
+
+## Purpose
+
+This workbook sound-checks the R package 
+[SDLfilter](https://github.com/TakahiroShimada/SDLfilter),
+which was developed under / for Windows in a Ubuntu environment.
+
+The package and the code shown here were written by 
+[Takahiro Shimada](https://github.com/TakahiroShimada).
+
+## Data
+
+* `turtle`: Fastloc GPS data obtained from a green turtle
+* `basemap`: A Map for the example site
+
+```{r data}
+data(turtle)
+data(basemap)
+```
+
+## Deduplicate
+
+```{r ddfilter}
+turtle.dupfilter <- dupfilter(turtle, step.time=5/60, step.dist = 0.001)
+vmax <- est.vmax(turtle.dupfilter)
+maxvlp <- est.maxvlp(turtle.dupfilter)
+turtle.ddfilter <- ddfilter(turtle.dupfilter, vmax=vmax, maxvlp = maxvlp)
+```
+
+## Compare deduplicated against raw data
+### Entire area
+
+```{r map_all}
+par(mfrow=c(1,2))
+wgs84 <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84")
+
+par(mar=c(4,5,2,1))
+LatLong <- data.frame(Y=turtle.dupfilter$lat, X=turtle.dupfilter$lon)
+coordinates(LatLong) <- ~X+Y
+proj4string(LatLong) <- wgs84
+plot(LatLong, pch=21, bg="yellow", xlim=c(147.8, 156.2), ylim=c(-32, -20))
+axis(1, at=seq(from = 148, to = 156, by=4))
+axis(2, at=seq(from = -32, to = -20, by=4), las=2)
+box()
+mtext("Longitude", side=1, line=2.5)
+mtext("Latitude", side=2, line=3.5)
+title("Unfiltered")
+
+par(mar=c(4,4,2,2))
+LatLong <- data.frame(Y=turtle.ddfilter$lat, X=turtle.ddfilter$lon)
+coordinates(LatLong) <- ~X+Y
+proj4string(LatLong) <- wgs84
+plot(LatLong, pch=21, bg="yellow", xlim=c(147.8, 156.2), ylim=c(-32, -20))
+axis(1, at=seq(from = 148, to = 156, by=4))
+axis(2, at=seq(from = -32, to = -20, by=4), las=2)
+box()
+mtext("Longitude", side=1, line=2.5)
+title("Filtered")
+```
+
+### Zoomed in
+
+```{r map_detail}
+par(mar=c(4,5,2,1))
+plot(basemap, col="grey", xlim=c(152.8, 153.1), ylim=c(-25.75, -25.24))
+axis(1, at=seq(from = 152, to = 154, by=0.2))
+axis(2, at=seq(from = -26, to = -25, by=0.2), las=2)
+mtext("Longitude", side=1, line=2.5)
+mtext("Latitude", side=2, line=3.5)
+box()
+title("Unfiltered")
+LatLong <- data.frame(Y=turtle.dupfilter$lat, X=turtle.dupfilter$lon)
+coordinates(LatLong) <- ~X+Y
+proj4string(LatLong) <- wgs84
+plot(LatLong, pch=21, bg="yellow", add=TRUE) 
+
+par(mar=c(4,4,2,2))
+plot(basemap, col="grey", xlim=c(152.8, 153.1), ylim=c(-25.75, -25.24))
+axis(1, at=seq(from = 152, to = 154, by=0.2))
+axis(2, at=seq(from = -26, to = -25, by=0.2), las=2)
+mtext("Longitude", side=1, line=2.5)
+box()
+title("Filtered")
+LatLong <- data.frame(Y=turtle.ddfilter$lat, X=turtle.ddfilter$lon)
+coordinates(LatLong) <- ~X+Y
+proj4string(LatLong) <- wgs84
+plot(LatLong, pch=21, bg="yellow", add=TRUE) 
+```
