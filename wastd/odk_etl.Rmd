@@ -30,31 +30,37 @@ library(xml2)
 * [ODK docs](http://docs.opendatakit.org/aggregate-use/#collect-aggregate-api)
 
 ```{r helpers}
-#' All forms from an ODK-Aggregate server URL
-list_forms <- function(
-  url=Sys.getenv("ODKA_URL"),
-  un=Sys.getenv("ODKA_UN"),
-  pw=Sys.getenv("ODKA_PW")){
-  httr::GET(file.path(url, "xformsList"),
-            httr::authenticate(un, pw)) %>%
+#' Return all forms from an ODK-Aggregate server URL as tibble
+list_forms <- function(url=Sys.getenv("ODKA_URL"),
+                       un=Sys.getenv("ODKA_UN"),
+                       pw=Sys.getenv("ODKA_PW")){
+  
+  . <- ""
+  api <- file.path(url, "formList")
+  auth <- httr::authenticate(un, pw)
+  
+  httr::GET(api, auth) %>%
   httr::content(., as = "parsed", encoding = "UTF-8") %>%
   xml2::as_list(.)
 }
 
 #' All submission IDs for one ODK-A formId
-list_submission_ids <- function(
-  form_id,
-  url=Sys.getenv("ODKA_URL"),
-  un=Sys.getenv("ODKA_UN"),
-  pw=Sys.getenv("ODKA_PW")){
-  httr::GET(file.path(url, "view/submissionList"), 
-            httr::authenticate(un, pw), 
-            query = list(formId = form_id)) %>% 
-  httr::content(.,as = "parsed", encoding = "UTF-8") %>%
-  xml2::xml_children(.) %>%
-  extract2(1) %>% 
-  xml2::xml_children(.) %>% 
-  purrr::map_chr(., xml2::xml_text)
+list_submission_ids <- function(form_id,
+                                url=Sys.getenv("ODKA_URL"),
+                                un=Sys.getenv("ODKA_UN"),
+                                pw=Sys.getenv("ODKA_PW")){
+  
+  . <- ""
+  api <- file.path(url, "view/submissionList")
+  auth <- httr::authenticate(un, pw)
+  qry <- list(formId = form_id)
+  
+  httr::GET(api, auth, query = qry) %>%
+    httr::content(.,as = "parsed", encoding = "UTF-8") %>%
+    xml2::xml_children(.) %>%
+    extract2(1) %>% 
+    xml2::xml_children(.) %>% 
+    purrr::map_chr(., xml2::xml_text)
 }
 
 # The download URL for one submission of one form
@@ -79,9 +85,13 @@ get_submission <- function(
   un=Sys.getenv("ODKA_UN"),
   pw=Sys.getenv("ODKA_PW")
 ){
-  submission_dl_url(form_id, submission_id, url=url) %>%
-    httr::GET(., httr::authenticate(un, pw)) %>% 
-    httr::content(., as="parsed", encoding="UTF-8") %>% 
+  
+  . <- ""
+  api <- submission_dl_url(form_id, submission_id, url = url)
+  auth <- httr::authenticate(un, pw)
+  
+  httr::GET(api, auth) %>% 
+    httr::content(., as = "parsed", encoding = "UTF-8") %>% 
     xml2::as_list(.)
 }
 ```
