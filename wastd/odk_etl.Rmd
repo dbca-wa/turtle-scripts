@@ -36,8 +36,8 @@ list_forms <- function(url=Sys.getenv("ODKA_URL"),
                        pw=Sys.getenv("ODKA_PW")){
   
   . <- ""
-  api <- file.path(url, "formList")
-  auth <- httr::authenticate(un, pw)
+  api <- file.path(url, "xformsList")
+  auth <- httr::authenticate(un, pw, type = "digest")
   
   httr::GET(api, auth) %>%
   httr::content(., as = "parsed", encoding = "UTF-8") %>%
@@ -52,7 +52,7 @@ list_submission_ids <- function(form_id,
   
   . <- ""
   api <- file.path(url, "view/submissionList")
-  auth <- httr::authenticate(un, pw)
+  auth <- httr::authenticate(un, pw, type = "digest")
   qry <- list(formId = form_id)
   
   httr::GET(api, auth, query = qry) %>%
@@ -88,7 +88,7 @@ get_submission <- function(
   
   . <- ""
   api <- submission_dl_url(form_id, submission_id, url = url)
-  auth <- httr::authenticate(un, pw)
+  auth <- httr::authenticate(un, pw, type = "digest")
   
   httr::GET(api, auth) %>% 
     httr::content(., as = "parsed", encoding = "UTF-8") %>% 
