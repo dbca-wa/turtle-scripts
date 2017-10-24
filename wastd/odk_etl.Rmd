@@ -13,6 +13,7 @@ library(purrr)
 library(magrittr)
 library(httr)
 library(xml2)
+library(DT)
 ```
 
 # Setup
@@ -36,6 +37,14 @@ map_chr_hack <- function(.x, .f, ...) {
         purrr::flatten_chr(.)
 }
 
+#' Return all XML node called "nodename" from an xml_nodeset as list
+extract_node <- function(xml_nodeset, nodename){
+  xml_nodeset %>%
+  xml2::xml_find_all(., paste0("//", nodename)) %>% 
+    xml2::as_list(.) %>% 
+    purrr::flatten(.)
+}
+
 #' Return all forms from an ODK-Aggregate server URL as tibble
 list_forms <- function(url=Sys.getenv("ODKA_URL"),
                        un=Sys.getenv("ODKA_UN"),
@@ -46,8 +55,17 @@ list_forms <- function(url=Sys.getenv("ODKA_URL"),
   auth <- httr::authenticate(un, pw, type = "digest")
   
   httr::GET(api, auth) %>%
-  httr::content(., as = "parsed", encoding = "UTF-8") %>%
-  xml2::as_list(.)
+    httr::content(., as = "parsed", encoding = "UTF-8") %>% 
+    xml2::xml_ns_strip(.) %>% {
+      tibble::tibble(
+        formID = extract_node(., "formID"),
+        name = extract_node(., "name"),
+        # majorMinorVersion = extract_node(., "majorMinorVersion"),
+        # version = extract_node(., "version"),
+        hash = extract_node(., "hash"),
+      downloadUrl = extract_node(., "downloadUrl")
+      )
+    }
 }
 
 #' All submission IDs for one ODK-A formId
@@ -107,30 +125,13 @@ get_submission <- function(
 # Example
 ```{r get_data}
 form_list <- list_forms()
-form_list  %>% {
-tibble::tibble(
-  form_id = purrr::map_chr(., "xform")
-)}
+DT::datatable(form_list)
 
-a_form_id <- form_list[6]$xform$formID
-a_form_id
+one_form_id <- form_list$formID[[1]]
 
-submission_ids <- list_submission_ids(a_form_id)
+submission_ids <- list_submission_ids(one_form_id)
 submission_ids
 
-one_submission <- get_submission(a_form_id, submission_ids[1])
+one_submission <- get_submission(one_form_id, submission_ids[1])
 one_submission
-
-extract_possibly <- purrr::possibly(magrittr::extract, otherwise = -1)
-
-x <- form_list %>% {
-  tibble::tibble(
-    form_id = purrr::map(., "formID"),
-    name = purrr::map(., "name"),
-    download_url = purrr::map(., "downloadUrl")
-  )
-}
-
-xx <- purrr::map(form_list, "formID")
-xx[1]$xform[[1]]
 ```
