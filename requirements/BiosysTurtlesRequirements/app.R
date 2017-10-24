@@ -111,12 +111,12 @@ make_issues <- function(ii){
     separate_rows(labels) %>%
     mutate(tagslog = TRUE) %>%
     spread(labels, tagslog, fill = FALSE)  %>%
-    select(id, Business, Stakeholder, Functional, Transition, must, should) %>%
+    select(id, Business, Stakeholder, Functional, Internal, must, should) %>%
     mutate(
       Business = Business %>% bool2yn,
       Stakeholder = Stakeholder %>% bool2yn,
       Functional = Functional %>% bool2yn,
-      Transition = Transition %>% bool2yn,
+      Internal = Internal %>% bool2yn,
       must  = must %>% bool2yn,
       should = should %>% bool2yn)
 
@@ -230,7 +230,7 @@ make_requirements <- function(ii){
       Stakeholder_Req = Stakeholder,
       Functional_Req = Functional,
       # # Nonfunctional = Nonfunctional,
-      Transition_Req = Transition,
+      Internal_Req = Internal,
       Must_have = must,
       Should_have = should,
       # could_have = could,
