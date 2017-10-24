@@ -1,0 +1,136 @@
+---
+title: "ODK to WAStD Data ETL"
+author: "Turtle Conservation Program, Dept Parks & Wildlife WA"
+date: "`r format(Sys.time(), '%d %B, %Y %H:%M')`"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(wastdr)
+library(dplyr)
+library(purrr)
+library(magrittr)
+library(httr)
+library(xml2)
+```
+
+# Setup
+
+```{r config}
+# Add to your ~/.Rprofile:
+# Sys.setenv(ODKA_UN = "your_odk_ggregate_username")
+# Sys.setenv(ODKA_PW = "your_odk_aggregate_password")
+# Sys.setenv(ODKA_URL="https://your-aggregate-instance.appspot.com")
+```
+
+# Helpers
+* [JavaRosa xformslist](https://groups.google.com/forum/#!topic/opendatakit-developers/rfjN1nwYRFY)
+* [GET view/submissionList](https://github.com/opendatakit/opendatakit/wiki/Briefcase-Aggregate-API#get-viewsubmissionlist)
+* [ODK docs](http://docs.opendatakit.org/aggregate-use/#collect-aggregate-api)
+
+```{r helpers}
+map_chr_hack <- function(.x, .f, ...) {
+    purrr::map(.x, .f, ...) %>%
+        purrr::map_if(is.null, ~ NA_character_) %>%
+        purrr::flatten_chr(.)
+}
+
+#' Return all forms from an ODK-Aggregate server URL as tibble
+list_forms <- function(url=Sys.getenv("ODKA_URL"),
+                       un=Sys.getenv("ODKA_UN"),
+                       pw=Sys.getenv("ODKA_PW")){
+  
+  . <- ""
+  api <- file.path(url, "xformsList")
+  auth <- httr::authenticate(un, pw, type = "digest")
+  
+  httr::GET(api, auth) %>%
+  httr::content(., as = "parsed", encoding = "UTF-8") %>%
+  xml2::as_list(.)
+}
+
+#' All submission IDs for one ODK-A formId
+list_submission_ids <- function(form_id,
+                                url=Sys.getenv("ODKA_URL"),
+                                un=Sys.getenv("ODKA_UN"),
+                                pw=Sys.getenv("ODKA_PW")){
+  
+  . <- ""
+  api <- file.path(url, "view/submissionList")
+  auth <- httr::authenticate(un, pw, type = "digest")
+  qry <- list(formId = form_id)
+  
+  httr::GET(api, auth, query = qry) %>%
+    httr::content(.,as = "parsed", encoding = "UTF-8") %>%
+    xml2::xml_children(.) %>%
+    extract2(1) %>% 
+    xml2::xml_children(.) %>% 
+    purrr::map_chr(., xml2::xml_text)
+}
+
+# The download URL for one submission of one form
+submission_dl_url <- function(
+  form_id, 
+  submission_id, 
+  url=Sys.getenv("ODKA_URL")) {
+  paste0(url, 
+         "/view/downloadSubmission?formId=", 
+         form_id, 
+         "[@version=null%20and%20@uiVersion=null]",
+         "/data[@key=", 
+         submission_id, 
+         "]")
+}
+
+#' One submission from one form
+get_submission <- function(
+  form_id,
+  submission_id,
+  url=Sys.getenv("ODKA_URL"),
+  un=Sys.getenv("ODKA_UN"),
+  pw=Sys.getenv("ODKA_PW")
+){
+  
+  . <- ""
+  api <- submission_dl_url(form_id, submission_id, url = url)
+  auth <- httr::authenticate(un, pw, type = "digest")
+  
+  httr::GET(api, auth) %>% 
+    httr::content(., as = "parsed", encoding = "UTF-8") %>% 
+    xml2::as_list(.)
+}
+
+
+```
+
+# Example
+```{r get_data}
+form_list <- list_forms()
+form_list  %>% {
+tibble::tibble(
+  form_id = purrr::map_chr(., "xform")
+)}
+
+a_form_id <- form_list[6]$xform$formID
+a_form_id
+
+submission_ids <- list_submission_ids(a_form_id)
+submission_ids
+
+one_submission <- get_submission(a_form_id, submission_ids[1])
+one_submission
+
+extract_possibly <- purrr::possibly(magrittr::extract, otherwise = -1)
+
+x <- form_list %>% {
+  tibble::tibble(
+    form_id = purrr::map(., "formID"),
+    name = purrr::map(., "name"),
+    download_url = purrr::map(., "downloadUrl")
+  )
+}
+
+xx <- purrr::map(form_list, "formID")
+xx[1]$xform[[1]]
+```
