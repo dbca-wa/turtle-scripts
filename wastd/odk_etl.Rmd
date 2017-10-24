@@ -30,6 +30,12 @@ library(xml2)
 * [ODK docs](http://docs.opendatakit.org/aggregate-use/#collect-aggregate-api)
 
 ```{r helpers}
+map_chr_hack <- function(.x, .f, ...) {
+    purrr::map(.x, .f, ...) %>%
+        purrr::map_if(is.null, ~ NA_character_) %>%
+        purrr::flatten_chr(.)
+}
+
 #' Return all forms from an ODK-Aggregate server URL as tibble
 list_forms <- function(url=Sys.getenv("ODKA_URL"),
                        un=Sys.getenv("ODKA_UN"),
@@ -94,12 +100,17 @@ get_submission <- function(
     httr::content(., as = "parsed", encoding = "UTF-8") %>% 
     xml2::as_list(.)
 }
+
+
 ```
 
 # Example
 ```{r get_data}
 form_list <- list_forms()
-form_list
+form_list  %>% {
+tibble::tibble(
+  form_id = purrr::map_chr(., "xform")
+)}
 
 a_form_id <- form_list[6]$xform$formID
 a_form_id
@@ -109,4 +120,17 @@ submission_ids
 
 one_submission <- get_submission(a_form_id, submission_ids[1])
 one_submission
+
+extract_possibly <- purrr::possibly(magrittr::extract, otherwise = -1)
+
+x <- form_list %>% {
+  tibble::tibble(
+    form_id = purrr::map(., "formID"),
+    name = purrr::map(., "name"),
+    download_url = purrr::map(., "downloadUrl")
+  )
+}
+
+xx <- purrr::map(form_list, "formID")
+xx[1]$xform[[1]]
 ```
