@@ -7,9 +7,40 @@ output: html_document
 ```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 setwd("~/projects/turtle-scripts/wamtram")
-if (file.exists("../config/setup.R")) source("../config/setup.R")
-if (file.exists("../config/load.R")) source("../config/load.R")
+
+library(ckanr)
+
+# Spatial analysis
+library(rgdal)
+library(sp)
+library(maptools)
+
+# Data management goes last to mask shared functions
+library(Hmisc)
+library(htmlTable)
+library(httr)
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(stringr)
+library(tidyjson)
+library(jsonlite)
+library(tibble)
+library(rvest)
+
+library(tidyverse)
+library(magrittr)
+
+# Visualisation
+library(DT)
+# library(mapview)
+library(leaflet)
+require(leaflet.extras)
+# library(trelliscope)
+library(RColorBrewer)
+
 library(RODBC)
+if (file.exists("../config/setup.R")) source("../config/setup.R")
 ```
 
 This document describes and executes the Extraction, Transformation and (up)Loading
@@ -231,7 +262,7 @@ There exists duplication of records between the two sets of tables.
 Nesting beaches are stored in table `TRT_PLACES`.
 ```{r}
 sites <- sqlQuery(con, "select * from dbo.TRT_PLACES;") %>%
-  rename(
+  dplyr::rename(
     prefix=LOCATION_CODE,
     name=PLACE_CODE,
     label=PLACE_NAME,
@@ -244,7 +275,7 @@ sites <- sqlQuery(con, "select * from dbo.TRT_PLACES;") %>%
     comments=COMMENTS
   )
 
-sites_with_coordinates <- sites %>% filter(!is.na(site_latitude))
+sites_with_coordinates <- sites %>% dplyr::filter(!is.na(site_latitude))
 ico <- makeAwesomeIcon(icon="cog", library="glyphicon")
 leaflet(sites_with_coordinates) %>%
   addProviderTiles("Esri.WorldImagery") %>%
@@ -406,7 +437,7 @@ utc <- "UTC"
 gmt08 <- "Australia/Perth"
 
 o <- obs %>%
-    mutate(
+    dplyr::mutate(
         o_date=parse_date_time(CORRECTED_DATE, orders=ord, tz=gmt08),
         o_time=parse_date_time(OBSERVATION_TIME, orders=ord, tz=gmt08),
         observation_datetime_gmt08=o_date - days(1) + hours(hour(o_time)) + minutes(minute(o_time)),
@@ -416,10 +447,10 @@ o <- obs %>%
         -OBSERVATION_DATE, -OBSERVATION_DATE_OLD, -DATE_CONVENTION,
         -CORRECTED_DATE, -OBSERVATION_TIME, -o_date, -o_time
     ) %>%
-    rename(
+    dplyr::rename(
         activity_code=ACTIVITY_CODE
     ) %>%
-    left_join(activities, by="activity_code") %>%
+    dplyr::left_join(activities, by="activity_code") %>%
     # left_join(person_names, by=c("MEASURER_PERSON_ID" = "PERSON_ID")) %>%
     # rename(measured_by=name) %>%
     # left_join(person_names, by=c("MEASURER_REPORTER_PERSON_ID" = "PERSON_ID")) %>%
@@ -446,7 +477,7 @@ enc2 <- o %>%
 write.csv(enc, file="data/wamtram_encounters.csv", row.names=F)
 write.csv(enc2, file="data/wamtram_encounters_missing.csv", row.names=F)
 
-ckanr::resource_update(Sys.getenv("W2_ENC_CSV_RID"), "data/wamtram_encounters.csv")
+# ckanr::resource_update(Sys.getenv("W2_ENC_CSV_RID"), "data/wamtram_encounters.csv")
 ```
 
 
@@ -454,8 +485,7 @@ ckanr::resource_update(Sys.getenv("W2_ENC_CSV_RID"), "data/wamtram_encounters.cs
 * TRT_IDENTIFICATION_TYPES = TAG_TYPE
 
 ```{r}
-datatable(sites)
-
+DT::datatable(sites)
 ```
 
 
@@ -482,9 +512,6 @@ For tags (tag IDs = rows), one column per year, value 0 (not encountered) or 1 (
 plus columns for location and species.
 
 
-# Upload
-This section uploads the extracted data to the data catalogue.
-
 ```{r}
-setwd("~/projects/turtle-scripts/wamtram")
+setwd("~/projects/turtle-scripts")
 ```

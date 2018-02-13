@@ -14,6 +14,7 @@ library(magrittr)
 library(httr)
 library(xml2)
 library(DT)
+library(XML)
 ```
 
 # Setup
@@ -103,8 +104,8 @@ submission_dl_url <- function(
 
 #' One submission from one form
 get_submission <- function(
-  form_id,
   submission_id,
+  form_id,
   url=Sys.getenv("ODKA_URL"),
   un=Sys.getenv("ODKA_UN"),
   pw=Sys.getenv("ODKA_PW")
@@ -127,11 +128,25 @@ get_submission <- function(
 form_list <- list_forms()
 DT::datatable(form_list)
 
-one_form_id <- form_list$formID[[1]]
+one_form_id <- form_list$formID[[3]]
 
 submission_ids <- list_submission_ids(one_form_id)
 submission_ids
 
-one_submission <- get_submission(one_form_id, submission_ids[1])
+one_submission <- get_submission(submission_ids[1], one_form_id)
 one_submission
+
+all_submissions <- purrr::map(submission_ids, get_submission, one_form_id)
+
+d <- one_submission
+# instance_id <- d$data[[1]]$meta$instanceID[[1]]
+all_submissions$data %>% {
+  tibble::tibble(
+    instanceID = map(., c('meta', 'instanceID'), purrr::map2_chr) %>% extract2(1) %>% extract2(1),
+    observation_start_time = map(., 'observation_start_time', purrr::map2_chr) %>% extract2(1) %>% extract2(1)
+  )
+}
+map(d$data, c('meta', 'instanceID'), purrr::map2_chr)
+
+
 ```
