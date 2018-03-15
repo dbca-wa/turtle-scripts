@@ -28,7 +28,7 @@ devtools::install_github("tidyverse/ggplot2")
 devtools::install_github("tidyverse/dplyr")
 devtools::install_github("r-pkgs/gh")
 devtools::install_github("pablobarbera/Rfacebook", subdir="Rfacebook")
-devtools::install_github("parksandwildlife/wastdr")
+devtools::install_github("dbca-wa/wastdr")
 
 
 install.packages("data/AEM_0.6.tar.gz", repos = NULL, type = "source")
