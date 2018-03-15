@@ -11,7 +11,7 @@ output:
     fig_height: 5
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(
 collapse = TRUE,
 comment = "#>"

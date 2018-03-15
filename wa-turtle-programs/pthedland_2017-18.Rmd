@@ -1,0 +1,105 @@
+---
+title: "Season review 2016-2017"
+author: "Marine Turtles WA"
+date: "`r Sys.time()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    fig_width: 9
+    fig_height: 5
+---
+
+```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(
+collapse = TRUE,
+comment = "#>"
+)
+library(wastdr)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(skimr)
+library(leaflet)
+library(lubridate)
+library(listviewer)
+library(DT)
+library(ggplot2)
+```
+
+# Data
+## Load data
+```{r get_data}
+if (file.exists("../data/tracks.Rda")){
+    load("../data/tracks.Rda")
+} else {
+    animal_records <- wastdr::wastd_GET("animal-encounters")
+    animals <- wastdr::parse_animal_encounters(animal_records)
+    track_records <- wastdr::wastd_GET("turtle-nest-encounters")
+    tracks_all <- parse_turtle_nest_encounters(track_records)
+    surveys <- wastd_GET("surveys") %>% parse_surveys()
+    save(animal_records, animals, tracks_all, track_records, surveys, 
+         file = "../data/tracks.Rda")
+}
+```
+
+# Animal encounters
+Turtle encounters in FY 2016-17
+
+## Turtles encountered
+
+```{r}
+animals %>% group_by(species) %>% tally() %>% DT::datatable()
+```
+
+## Turtles encountered by activity at Thv
+Shows tagging data imported from Thv 2016/2017, but not other locations,
+plus turtle strandings (health shows whether dead or alive)
+
+```{r}
+animals %>% group_by(species, activity) %>% tally() %>% DT::datatable()
+animals %>% group_by(species, activity, health) %>% tally() %>% DT::datatable()
+animals %>% group_by(species, health) %>% tally() %>% DT::datatable()
+```
+# Nesting effort
+## Nesting by species
+```{r}
+tracks %>% group_by(species) %>% tally() %>% DT::datatable()
+```
+
+## Nesting by species and type
+```{r}
+tracks %>% group_by(species, nest_type) %>% tally() %>% DT::datatable()
+```
+
+# Location
+```{r map}
+#' makeAwesomeIcon factory
+library(leaflet)
+library(leaflet.extras)
+mkicon <- function(ico, col) makeAwesomeIcon(icon = ico, markerColor = col)
+
+trackIcons <- awesomeIconList(
+  "cheloniidae-fam" = mkicon('align-center', 'black'),
+  "caretta-caretta" = mkicon('align-center', 'yellow'),
+  "chelonia-mydas" = mkicon('align-center', 'green'),
+  "eretmochelys-imbricata" = mkicon('align-center', 'blue'),
+  "natator-depressus" = mkicon('align-center', 'red')
+  )
+
+leaflet(tracks) %>% 
+  addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+  addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+  setView(lng=120.0, lat=-21.45, zoom=6) %>%
+  # addAwesomeMarkers(~longitude, ~latitude,
+  #                   data = tracks, 
+  #                   icon = ~trackIcons[species],
+  #                   label = ~paste("Track", date, nest_age, species, nest_type),
+  #                   popup = ~paste("Track", date, nest_age, species, nest_type),
+  #                   group = "Tracks") %>%
+  addHeatmap(data=tracks, lng = ~longitude, lat = ~latitude, 
+              blur = 20, max = 1, radius = 15) %>%
+  addLayersControl(baseGroups = c("Aerial", "Place names"),
+                   overlayGroups = c("Tracks"))
+```
