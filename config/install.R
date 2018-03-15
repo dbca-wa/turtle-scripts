@@ -19,7 +19,7 @@ install.packages("devtools")
 # adespatial replaces packfor::forward.sel
 devtools::install_github("sdray/adespatial")
 # devtools::install_github("ropensci/ckanr")
-devtools::install_github("parksandwildlife/ckanr")
+devtools::install_github("ropensci/ckanr")
 devtools::install_github("ropensci/geojsonio")
 devtools::install_github("rstudio/leaflet")
 devtools::install_github("bhaskarvk/leaflet.extras")

@@ -1,0 +1,43 @@
+---
+title: "Turtle Strandings"
+author: "Florian Mayer (DBCA) and Erina Young (Murdoch)"
+date: "`r Sys.time()`"
+always_allow_html: yes
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(Hmisc)
+library(tidyverse)
+library(lubridate)
+library(skimr)
+library(leaflet)
+library(ckanr)
+```
+
+
+## Load data
+```{r load_data, echo=T}
+if (file.exists("~/ts_records.Rda")){
+    load("~/ts_records.Rda")
+} else {
+    query <- list(taxon='Cheloniidae', encounter_type='stranding', format='json')
+    ts_records <- wastdr::get_wastd("animal-encounters", query=query)
+    save_file <- Sys.getenv("WASTDR_SAVE_LOCALLY", unset = FALSE)
+    if (save_file==TRUE){
+        save(records, file = "~/ts_records.Rda")
+        load("~/ts_records.Rda")
+    }
+    # listviewer::jsonedit(utils::head(track_records$features))
+    strandings <- wastdr::parse_animal_encounters(ts_records)
+    if (save_file == TRUE){
+        save(strandings, file = "~/strandings.Rda")
+    }
+}
+```
