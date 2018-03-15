@@ -35,10 +35,14 @@ library(ggplot2)
 if (file.exists("../data/tracks.Rda")){
     load("../data/tracks.Rda")
 } else {
+    q <- list(taxon = "Cheloniidae", format = "json")
+    animal_records <- wastdr::wastd_GET("animal-encounters", query=q)
+    animals <- wastdr::parse_animal_encounters(animal_records)
     track_records <- wastdr::wastd_GET("turtle-nest-encounters")
     tracks_all <- parse_turtle_nest_encounters(track_records)
     surveys <- wastd_GET("surveys") %>% parse_surveys()
-    save(tracks_all, track_records, surveys, file = "../data/tracks.Rda")
+    save(animal_records, animals, tracks_all, track_records, surveys, 
+         file = "../data/tracks.Rda")
 }
 ```
 
@@ -91,9 +95,19 @@ cbb <- tracks_all %>% filter_2017 %>% filter_broome
 cbb1 <- tracks_all %>% filter_2017 %>% filter_cbb1
 cbb2 <- tracks_all %>% filter_2017 %>% filter_cbb2
 cbb3 <- tracks_all %>% filter_2017 %>% filter_cbb3
+surveys_cbb <- surveys %>% filter_broome_sites
 ```
 
 # Season summary
+
+## Going digital
+Entering and proofreading a record takes about 2 minutes with full concentration.
+By going digital, data entry and proofreading are fully automated.
+This season, the Cable Beach Volunteers have saved Sarah 
+`r (nrow(cbb) + nrow(surveys_cbb)*2) * 2 / 60` hours of mind-numbing data entry
+and proofreading work for `r nrow(cbb)` Track or Treats and 
+`r nrow(surveys_cbb)*2` Site Visit Starts/Ends. 
+This estimate excludes (until Florian gets his shit together) Fox Sakes and Marine Wildlife Incidents, about 2-3h extra!
 
 ## Maps
 ```{r map_overall}
@@ -103,7 +117,8 @@ cbb %>% add_nest_labels %>% map_tracks
 ```{r tracks_all_sectors}
 cbb %>% species_by_type %>% kable
 ```
-## How many nests were found in each sector?
+## Sum of tracks/nests per sector
+Q How many false crawls / fresh nests / hatched nests were found in each sector?
 
 ## Sector 1
 ```{r tracks_sector_1}
@@ -120,7 +135,6 @@ cbb2 %>% species_by_type %>% kable
 cbb3 %>% species_by_type %>% kable
 ```
 
-## How many false crawls were recorded total and each sector?
 ```{r nesting_success}
 cbb %>% tracks_ts
 cbb1 %>% tracks_ts
@@ -128,10 +142,14 @@ cbb2 %>% tracks_ts
 cbb3 %>% tracks_ts
 ```
 
-## How many nests were hatched?
 ## How many nests were predated?
+Coming soon
+
 ## What types of predation were recorded?
+Coming soon
+
 ## How many hatchlings were stuck in sand or dead the next morning?
+No data
 
 ## Survey count
 Q How many days of surveys across all sectors did we have out of 120 days monitoring period?
@@ -143,7 +161,6 @@ This contributes to over-estimation of effort, but shows actual boots on the
 ground - training is also an effort!
 
 ```{r}
-surveys_cbb <- surveys %>% filter_broome_sites
 place <- "Cable Beach Broome"
 surveys_cbb %>% plot_survey_count(place)
 surveys_cbb %>% list_survey_count(place)
@@ -163,7 +180,31 @@ surveys_cbb %>% plot_survey_effort(place)
 surveys_cbb %>% list_survey_effort(place)
 ```
 
-## Which volunteer did the most hours overall on survey?
+## Survey effort per person
+Q Which volunteer did the most hours overall on survey?
+
 ```{r survey_effort_by_person}
-surveys_cbb %>% survey_hours_per_person %>% DT::datatable(.)
+personal_effort <- surveys_cbb %>% survey_hours_per_person
+personal_effort %>% kable
 ```
+
+## Survey effort in kilometers walked
+Number of surveys per sector times length of sector.
+
+```{r}
+survey_count <- function(surveys, site_id){
+  surveys %>% filter(site_id==site_id) %>% nrow
+}
+survey_ground_covered <- function(surveys, site_id, km_per_survey){
+  survey_count(surveys, site_id) * km_per_survey
+}
+```
+
+In sector 1, `r survey_ground_covered(surveys, 22, 4)` km were walked 
+in `r survey_count(surveys, 22)` surveys.
+
+In sector 2, `r survey_ground_covered(surveys, 23, 4)` km were walked 
+in `r survey_count(surveys, 23)` surveys.
+
+In sector 3, `r survey_ground_covered(surveys, 24, 7)` km were walked 
+in `r survey_count(surveys, 24)` surveys.

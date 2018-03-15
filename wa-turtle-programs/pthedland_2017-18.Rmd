@@ -34,7 +34,8 @@ library(ggplot2)
 if (file.exists("../data/tracks.Rda")){
     load("../data/tracks.Rda")
 } else {
-    animal_records <- wastdr::wastd_GET("animal-encounters")
+    q <- list(taxon = "Cheloniidae", format = "json")
+    animal_records <- wastdr::wastd_GET("animal-encounters", query=q)
     animals <- wastdr::parse_animal_encounters(animal_records)
     track_records <- wastdr::wastd_GET("turtle-nest-encounters")
     tracks_all <- parse_turtle_nest_encounters(track_records)
@@ -44,62 +45,160 @@ if (file.exists("../data/tracks.Rda")){
 }
 ```
 
-# Animal encounters
-Turtle encounters in FY 2016-17
 
-## Turtles encountered
+## Helpers
+```{r helpers}
+filter_2017 <- . %>% dplyr::filter(date > dmy("17/10/2017"))
+
+filter_port_hedland_sites <- . %>% dplyr::filter(site_id %in% c(35, 45))
+filter_port_hedland_cemetery <- . %>% dplyr::filter(site_name=="Port Hedland Cemetery Beach")
+filter_port_hedland_prettypool <- . %>% dplyr::filter(site_name=="Port Hedland Pretty Pool Beach")
+
+daily_species_by_type <- . %>% 
+    filter(nest_age=="fresh") %>%
+    group_by(date, species, nest_type) %>% 
+    tally() %>%
+    ungroup()
+
+daily_summary <- . %>% 
+    daily_species_by_type %>% 
+    tidyr::spread(nest_type, n, fill=0) %>%
+    DT::datatable(.)
+
+species_by_type <- . %>% 
+  filter(nest_age=="fresh") %>%
+  group_by(species, nest_type) %>% 
+  tally() %>%
+  ungroup() %>% 
+  tidyr::spread(nest_type, n, fill=0)
+
+tracks_ts <- . %>% 
+    daily_species_by_type %>% 
+    {ggplot2::ggplot(data=., aes(x = date, y = n, colour = nest_type)) + 
+            ggplot2::geom_point() + 
+            ggplot2::geom_smooth(method = "auto") +
+            # ggplot2::geom_line() +
+            ggplot2::scale_x_date(breaks = scales::pretty_breaks(),
+                                  labels = scales::date_format("%d %b %Y")) +
+            ggplot2::scale_y_continuous(limits = c(0, NA)) +
+            ggplot2::xlab("Date") +
+            ggplot2::ylab("Number counted per day") +
+            ggplot2::ggtitle("Nesting activity") +
+            ggplot2::theme_light()}
+```
+
+## Filter data
+
+```{r, eval=T}
+tracks_pth <- tracks_all %>% filter_port_hedland_sites %>% filter_2017
+tracks_pth_cem <- tracks_all %>% filter_port_hedland_cemetery %>% filter_2017
+tracks_pth_ppo <- tracks_all %>% filter_port_hedland_prettypool %>% filter_2017
+surveys_pth <- surveys %>% filter_port_hedland_sites %>% filter_2017
+```
+
+# Season summary
+
+## General notes
+Nests without a clearly visible emergence point were not recorded.
+This led to under-reporting of hatched nests this season.
+
+## Going digital
+Entering and proofreading a record takes about 2 minutes with full concentration.
+By going digital, data entry and proofreading are fully automated.
+This season, the Care for Hedland Volunteers have saved Jo and the Kellies 
+`r (nrow(tracks_pth) + nrow(surveys_pth)*2) * 2 / 60` hours of mind-numbing data entry
+and proofreading work for `r nrow(tracks_pth)` Track or Treats and 
+`r nrow(surveys_pth)*2` Site Visit Starts/Ends. 
+This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra!
+
+## Maps
+```{r map_overall}
+tracks_pth_cem %>% add_nest_labels %>% map_tracks
+tracks_pth_ppo %>% add_nest_labels %>% map_tracks
+```
+## How many nests did we have all together across all sectors?
+```{r tracks_all_sectors}
+tracks_pth %>% species_by_type %>% kable
+```
+## Sum of tracks/nests per sector
+Q How many false crawls / fresh nests / hatched nests were found in each sector?
+
+## Cemetery Beach
+```{r tracks_cem}
+tracks_pth_cem %>% species_by_type %>% kable
+```
+
+## Pretty Pool Beach
+```{r tracks_ppo}
+tracks_pth_ppo %>% species_by_type %>% kable
+```
+
+```{r nesting_success}
+tracks_pth %>% tracks_ts
+tracks_pth_cem %>% tracks_ts
+tracks_pth_ppo %>% tracks_ts
+```
+
+## How many nests were predated?
+Coming soon
+
+## What types of predation were recorded?
+Coming soon
+
+## Survey count
+
+### Caveat
+* Data includes training surveys.
+
+This contributes to over-estimation of effort, but shows actual boots on the 
+ground - training is also an effort!
 
 ```{r}
-animals %>% group_by(species) %>% tally() %>% DT::datatable()
+place <- "Port Hedland"
+surveys_pth %>% plot_survey_count(place)
+surveys_pth %>% list_survey_count(place)
 ```
 
-## Turtles encountered by activity at Thv
-Shows tagging data imported from Thv 2016/2017, but not other locations,
-plus turtle strandings (health shows whether dead or alive)
+## Survey effort in hours
+Q How many hours did volunteers survey, how many kilometers were walked?
+
+### Caveat
+* Surveys with missing end points are auto-closed after 5 hours. 
+* Data includes training surveys.
+
+Both factors contribute to over-estimation of effort.
+
+```{r survey_effort}
+surveys_pth %>% plot_survey_effort(place)
+surveys_pth %>% list_survey_effort(place)
+```
+
+## Survey effort per person
+Q Which volunteer did the most hours overall on survey?
+
+### Caveat
+This list only includes the primary reporter. This leads to under-reporting, as time spent
+as team is not reported on.
+
+```{r survey_effort_by_person}
+personal_effort <- surveys_pth %>% survey_hours_per_person
+personal_effort %>% kable
+```
+
+## Survey effort in kilometers walked
+Number of surveys per sector times length of site.
 
 ```{r}
-animals %>% group_by(species, activity) %>% tally() %>% DT::datatable()
-animals %>% group_by(species, activity, health) %>% tally() %>% DT::datatable()
-animals %>% group_by(species, health) %>% tally() %>% DT::datatable()
-```
-# Nesting effort
-## Nesting by species
-```{r}
-tracks %>% group_by(species) %>% tally() %>% DT::datatable()
+survey_count <- function(surveys, site_id){
+  surveys %>% filter(site_id==site_id) %>% nrow
+}
+survey_ground_covered <- function(surveys, site_id, km_per_survey){
+  survey_count(surveys, site_id) * km_per_survey
+}
 ```
 
-## Nesting by species and type
-```{r}
-tracks %>% group_by(species, nest_type) %>% tally() %>% DT::datatable()
-```
+At Cemetery Beach, `r survey_ground_covered(surveys, 35, 1.6)` km were walked 
+in `r survey_count(surveys_pth, 35)` surveys.
 
-# Location
-```{r map}
-#' makeAwesomeIcon factory
-library(leaflet)
-library(leaflet.extras)
-mkicon <- function(ico, col) makeAwesomeIcon(icon = ico, markerColor = col)
-
-trackIcons <- awesomeIconList(
-  "cheloniidae-fam" = mkicon('align-center', 'black'),
-  "caretta-caretta" = mkicon('align-center', 'yellow'),
-  "chelonia-mydas" = mkicon('align-center', 'green'),
-  "eretmochelys-imbricata" = mkicon('align-center', 'blue'),
-  "natator-depressus" = mkicon('align-center', 'red')
-  )
-
-leaflet(tracks) %>% 
-  addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
-  addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
-  setView(lng=120.0, lat=-21.45, zoom=6) %>%
-  # addAwesomeMarkers(~longitude, ~latitude,
-  #                   data = tracks, 
-  #                   icon = ~trackIcons[species],
-  #                   label = ~paste("Track", date, nest_age, species, nest_type),
-  #                   popup = ~paste("Track", date, nest_age, species, nest_type),
-  #                   group = "Tracks") %>%
-  addHeatmap(data=tracks, lng = ~longitude, lat = ~latitude, 
-              blur = 20, max = 1, radius = 15) %>%
-  addLayersControl(baseGroups = c("Aerial", "Place names"),
-                   overlayGroups = c("Tracks"))
-```
+At Pretty Pool Beach, `r survey_ground_covered(surveys, 45, 1.8)` km were walked 
+in `r survey_count(surveys_pth, 45)` surveys.
