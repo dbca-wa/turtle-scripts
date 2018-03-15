@@ -44,7 +44,7 @@ if (file.exists("../data/tracks.Rda")){
 
 ## Helpers
 ```{r helpers}
-filter_2017 <- . %>% dplyr::filter(date > dmy("17/10/2017")) %>% add_lookups
+filter_2017 <- . %>% dplyr::filter(date > dmy("17/10/2017"))
 filter_broome <- . %>% dplyr::filter(area_name=="Cable Beach Broome")
 filter_cbb1 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 1")
 filter_cbb2 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 2")
@@ -87,17 +87,17 @@ tracks_ts <- . %>%
 ## Filter data
 
 ```{r, eval=T}
-cbb <- tracks %>% filter_2017 %>% filter_broome
-cbb1 <- tracks %>% filter_2017 %>% filter_cbb1
-cbb2 <- tracks %>% filter_2017 %>% filter_cbb2
-cbb3 <- tracks %>% filter_2017 %>% filter_cbb3
+cbb <- tracks_all %>% filter_2017 %>% filter_broome
+cbb1 <- tracks_all %>% filter_2017 %>% filter_cbb1
+cbb2 <- tracks_all %>% filter_2017 %>% filter_cbb2
+cbb3 <- tracks_all %>% filter_2017 %>% filter_cbb3
 ```
 
 # Season summary
 
 ## Maps
 ```{r map_overall}
-cbb %>% map_tracks
+cbb %>% add_nest_labels %>% map_tracks
 ```
 ## How many nests did we have all together across all sectors?
 ```{r tracks_all_sectors}
