@@ -14,6 +14,8 @@ library(purrr)
 library(magrittr)
 library(httr)
 library(xml2)
+library(DT)
+library(XML)
 ```
 
 # Setup
@@ -37,6 +39,14 @@ map_chr_hack <- function(.x, .f, ...) {
         purrr::flatten_chr(.)
 }
 
+#' Return all XML node called "nodename" from an xml_nodeset as list
+extract_node <- function(xml_nodeset, nodename){
+  xml_nodeset %>%
+  xml2::xml_find_all(., paste0("//", nodename)) %>% 
+    xml2::as_list(.) %>% 
+    purrr::flatten(.)
+}
+
 #' Return all forms from an ODK-Aggregate server URL as tibble
 list_forms <- function(url=Sys.getenv("ODKA_URL"),
                        un=Sys.getenv("ODKA_UN"),
@@ -47,8 +57,17 @@ list_forms <- function(url=Sys.getenv("ODKA_URL"),
   auth <- httr::authenticate(un, pw, type = "digest")
   
   httr::GET(api, auth) %>%
-  httr::content(., as = "parsed", encoding = "UTF-8") %>%
-  xml2::as_list(.)
+    httr::content(., as = "parsed", encoding = "UTF-8") %>% 
+    xml2::xml_ns_strip(.) %>% {
+      tibble::tibble(
+        formID = extract_node(., "formID"),
+        name = extract_node(., "name"),
+        # majorMinorVersion = extract_node(., "majorMinorVersion"),
+        # version = extract_node(., "version"),
+        hash = extract_node(., "hash"),
+      downloadUrl = extract_node(., "downloadUrl")
+      )
+    }
 }
 
 #' All submission IDs for one ODK-A formId
@@ -86,8 +105,8 @@ submission_dl_url <- function(
 
 #' One submission from one form
 get_submission <- function(
-  form_id,
   submission_id,
+  form_id,
   url=Sys.getenv("ODKA_URL"),
   un=Sys.getenv("ODKA_UN"),
   pw=Sys.getenv("ODKA_PW")
@@ -108,30 +127,27 @@ get_submission <- function(
 # Example
 ```{r get_data}
 form_list <- list_forms()
-form_list  %>% {
-tibble::tibble(
-  form_id = purrr::map_chr(., "xform")
-)}
+DT::datatable(form_list)
 
-a_form_id <- form_list[6]$xform$formID
-a_form_id
+one_form_id <- form_list$formID[[3]]
 
-submission_ids <- list_submission_ids(a_form_id)
+submission_ids <- list_submission_ids(one_form_id)
 submission_ids
 
-one_submission <- get_submission(a_form_id, submission_ids[1])
+one_submission <- get_submission(submission_ids[1], one_form_id)
 one_submission
 
-extract_possibly <- purrr::possibly(magrittr::extract, otherwise = -1)
+all_submissions <- purrr::map(submission_ids, get_submission, one_form_id)
 
-x <- form_list %>% {
+d <- one_submission
+# instance_id <- d$data[[1]]$meta$instanceID[[1]]
+all_submissions$data %>% {
   tibble::tibble(
-    form_id = purrr::map(., "formID"),
-    name = purrr::map(., "name"),
-    download_url = purrr::map(., "downloadUrl")
+    instanceID = map(., c('meta', 'instanceID'), purrr::map2_chr) %>% extract2(1) %>% extract2(1),
+    observation_start_time = map(., 'observation_start_time', purrr::map2_chr) %>% extract2(1) %>% extract2(1)
   )
 }
+map(d$data, c('meta', 'instanceID'), purrr::map2_chr)
 
-xx <- purrr::map(form_list, "formID")
-xx[1]$xform[[1]]
+
 ```
