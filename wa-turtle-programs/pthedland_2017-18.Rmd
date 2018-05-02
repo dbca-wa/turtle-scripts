@@ -1,5 +1,5 @@
 ---
-title: "Season review 2016-2017"
+title: "Season review 2017-2018"
 author: "Marine Turtles WA"
 date: "`r Sys.time()`"
 output:
@@ -26,6 +26,11 @@ library(lubridate)
 library(listviewer)
 library(DT)
 library(ggplot2)
+library(ckanr)
+
+# Configure ckanr to data.dpaw.wa.gov.au
+if (file.exists("~/.Rprofile")) source("~/.Rprofile")
+ckanr::ckanr_setup(url = Sys.getenv("CKAN_URL"), key = Sys.getenv("CKAN_API_KEY"))
 ```
 
 # Data
@@ -202,3 +207,11 @@ in `r survey_count(surveys_pth, 35)` surveys.
 
 At Pretty Pool Beach, `r survey_ground_covered(surveys, 45, 1.8)` km were walked 
 in `r survey_count(surveys_pth, 45)` surveys.
+
+# Data upload
+
+```{r data_upload}
+# d <- ckanr::package_show("turtle-tracks")
+ckanr::resource_update("b35fb19e-e72d-420c-b875-12b4db4afe8c", "pthedland_2017-18.html")
+
+```
