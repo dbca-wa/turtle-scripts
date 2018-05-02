@@ -1,0 +1,259 @@
+---
+title: "Season review 2017-2018"
+author: "West Pilbara Turtle Program Marine Turtles WA"
+date: "`r Sys.time()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    fig_width: 9
+    fig_height: 5
+---
+
+```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library(wastdr)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(skimr)
+library(leaflet)
+library(lubridate)
+library(listviewer)
+library(DT)
+library(ggplot2)
+library(ckanr)
+
+# Configure ckanr to data.dpaw.wa.gov.au
+if (file.exists("~/.Rprofile")) source("~/.Rprofile")
+ckanr::ckanr_setup(url = Sys.getenv("CKAN_URL"), key = Sys.getenv("CKAN_API_KEY"))
+```
+
+# Caveat
+The data shown are pending QA and reconciliation with paper-based records. 
+Until this warning disappears, this dataset may contain duplicates from training runs,
+effort attributed to the wrong operators, and possibly other issues and biases.
+
+# Data
+## Load data
+```{r get_data}
+if (file.exists("../data/tracks.Rda")) {
+  load("../data/tracks.Rda")
+} else {
+  q <- list(taxon = "Cheloniidae", format = "json")
+  animal_records <- wastdr::wastd_GET("animal-encounters", query = q)
+  animals <- wastdr::parse_animal_encounters(animal_records)
+  track_records <- wastdr::wastd_GET("turtle-nest-encounters")
+  tracks_all <- parse_turtle_nest_encounters(track_records)
+  surveys <- wastd_GET("surveys") %>% parse_surveys()
+  save(animal_records, animals, tracks_all, track_records, surveys,
+    file = "../data/tracks.Rda"
+  )
+}
+```
+
+
+## Helpers
+```{r helpers}
+filter_2017 <- . %>% dplyr::filter(date > dmy("01/10/2017"))
+
+filter_wp <- . %>% dplyr::filter(site_id %in% c(25, 26, 27))
+filter_cw <- . %>% dplyr::filter(site_name == "Cooling Water Beach") # id 26
+filter_bb <- . %>% dplyr::filter(site_name == "Bells Beach") # id 25
+filter_yc <- . %>% dplyr::filter(site_name == "Wickam Yacht Club Beach") # id 27
+
+daily_species_by_type <- . %>%
+  filter(nest_age == "fresh") %>%
+  group_by(date, species, nest_type) %>%
+  tally() %>%
+  ungroup()
+
+daily_summary <- . %>%
+  daily_species_by_type() %>%
+  tidyr::spread(nest_type, n, fill = 0) %>%
+  DT::datatable(.)
+
+species_by_type <- . %>%
+  filter(nest_age == "fresh") %>%
+  group_by(species, nest_type) %>%
+  tally() %>%
+  ungroup() %>%
+  tidyr::spread(nest_type, n, fill = 0)
+
+tracks_ts <- . %>%
+  daily_species_by_type() %>%
+  {
+    ggplot2::ggplot(data = ., aes(x = date, y = n, colour = nest_type)) +
+      ggplot2::geom_point() +
+      ggplot2::geom_smooth(method = "auto") +
+      # ggplot2::geom_line() +
+      ggplot2::scale_x_date(
+        breaks = scales::pretty_breaks(),
+        labels = scales::date_format("%d %b %Y")
+      ) +
+      ggplot2::scale_y_continuous(limits = c(0, NA)) +
+      ggplot2::xlab("Date") +
+      ggplot2::ylab("Number counted per day") +
+      ggplot2::ggtitle("Nesting activity") +
+      ggplot2::theme_light()
+  }
+```
+
+## Filter data
+
+```{r, eval=T}
+tracks_wp <- tracks_all %>% filter_wp() %>% filter_2017()
+# tracks_cw <- tracks_all %>% filter_cw %>% filter_2017
+tracks_bb <- tracks_all %>% filter_bb() %>% filter_2017()
+tracks_yc <- tracks_all %>% filter_yc() %>% filter_2017()
+
+surveys_wp <- surveys %>% filter_wp() %>% filter_2017()
+# surveys_cw <- surveys %>% filter_cw %>% filter_2017
+surveys_bb <- surveys %>% filter_bb() %>% filter_2017()
+surveys_yc <- surveys %>% filter_yc() %>% filter_2017()
+```
+
+# Season summary
+
+## General notes
+Nests without a clearly visible emergence point were not recorded.
+This led to under-reporting of hatched nests this season.
+
+## Going digital
+Entering and proofreading a record takes about 2 minutes with full concentration.
+By going digital, data entry and proofreading are fully automated.
+This season, the Volunteers have saved 
+`r (nrow(tracks_wp) + nrow(surveys_wp)*2) * 2 / 60` hours of mind-numbing data entry
+and proofreading work for `r nrow(tracks_wp)` Track or Treats and 
+`r nrow(surveys_wp)*2` Site Visit Starts/Ends. 
+This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra!
+
+## Maps
+```{r map_overall}
+tracks_wp %>% add_nest_labels() %>% map_tracks()
+tracks_bb %>% add_nest_labels() %>% map_tracks()
+tracks_yc %>% add_nest_labels() %>% map_tracks()
+```
+
+## How many nests did we have all together across all sectors?
+```{r tracks_all_sectors}
+tracks_wp %>% species_by_type() %>% kable()
+```
+
+```{r tracks_bb}
+tracks_bb %>% species_by_type() %>% kable()
+```
+
+```{r tracks_yc}
+tracks_yc %>% species_by_type() %>% kable()
+```
+
+
+```{r nesting_success}
+tracks_wp %>% tracks_ts()
+```
+
+## How many nests were predated?
+Coming soon
+
+## What types of predation were recorded?
+Coming soon
+
+## Survey count
+
+### Caveat
+* Data includes training surveys.
+
+This contributes to over-estimation of effort, but shows actual boots on the 
+ground - training is also an effort!
+
+```{r survey_count}
+place <- "West Pilbara"
+surveys_wp %>% plot_survey_count(place)
+surveys_wp %>% list_survey_count(place)
+
+place <- "West Pilbara Bells Beach"
+surveys_bb %>% plot_survey_count(place)
+surveys_bb %>% list_survey_count(place)
+
+place <- "West Pilbara Yacht Club Beach"
+surveys_yc %>% plot_survey_count(place)
+surveys_yc %>% list_survey_count(place)
+```
+
+## Survey effort in hours
+Q How many hours did volunteers survey, how many kilometers were walked?
+
+### Caveat
+* Surveys with missing end points are auto-closed after 5 hours. 
+* Data includes training surveys.
+
+Both factors contribute to over-estimation of effort.
+
+```{r survey_effort}
+surveys_wp %>% plot_survey_effort("West Pilbara")
+surveys_wp %>% list_survey_effort("West Pilbara")
+
+surveys_bb %>% plot_survey_effort("West Pilbara Bells Beach")
+surveys_bb %>% list_survey_effort("West Pilbara Bells Beach")
+
+surveys_yc %>% plot_survey_effort("West Pilbara Yacht Club Beach")
+surveys_yc %>% list_survey_effort("West Pilbara Yacht Club Beach")
+```
+
+## Survey effort per primary reporter
+Q Which volunteer did the most hours overall on survey?
+
+### Caveat
+This list only includes the primary reporter. 
+This leads to under-reporting of time spent by other volunteers attending the survey.
+Their names are listed in the Site Visit Start form field "comments" as free text.
+To correctly report on team member effort, curators have to read the list of 
+team members in the Site Visit "comments" field and attach the correct users 
+to the Survey team list.
+Once the surveys are comprehensively attributed to all volunteers present, this
+workbook has to be updated to include the Survey team's effort.
+
+If the primary reporter forgot to update the username in the tablet,
+their survey effort on that day is incorrectly attributed to the previous reporter.
+The only way to reconcile attribution is to manually compare survey usernames with
+team rosters.
+
+```{r survey_effort_by_person}
+personal_effort <- surveys_wp %>% survey_hours_per_person()
+personal_effort %>% kable()
+```
+
+## Survey effort in kilometers walked
+Number of surveys per sector times length of site.
+
+```{r}
+survey_count <- function(surveys, site_id) {
+  surveys %>% filter(site_id == site_id) %>% nrow()
+}
+survey_ground_covered <- function(surveys, site_id, km_per_survey) {
+  survey_count(surveys, site_id) * km_per_survey
+}
+```
+
+At Bells Beach, assuming the round trip was 2 km,
+`r survey_ground_covered(surveys, 25, 2)` km were walked 
+in `r survey_count(surveys_wp, 25)` surveys.
+
+At Yacht Club Beach, assuming the round trip was 1 km,
+`r survey_ground_covered(surveys, 27, 1)` km were walked 
+in `r survey_count(surveys_wp, 27)` surveys.
+
+# Data upload
+
+```{r data_upload}
+# d <- ckanr::package_show("turtle-tracks")
+# ckanr::resource_update("b35fb19e-e72d-420c-b875-12b4db4afe8c", "pthedland_2017-18.html")
+```
+
+```
+

@@ -1,6 +1,6 @@
 ---
 title: "Season review 2017-2018"
-author: "Marine Turtles WA"
+author: "Care for Hedland with Marine Turtles WA"
 date: "`r Sys.time()`"
 output:
   html_document:
