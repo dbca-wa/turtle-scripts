@@ -12,10 +12,8 @@ output:
 ---
 
 ```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-setwd("~/projects/turtle-scripts/wastd")
-if (file.exists("../config/setup.R")) source("../config/setup.R")
-if (file.exists("../config/load.R")) source("../config/load.R")
+source("tracks_setup.R")
+source("tracks_helpers.R")
 ```
 
 # Data
@@ -25,7 +23,7 @@ if (file.exists("../config/load.R")) source("../config/load.R")
 Track count: 
 
 * Tracks were recorded on Android tablets using digital data capture software ODK Collect
-* Forms "TrackCount 0.10" (Nov-Dec 2016), "Track or Treat 0.26" (Feb 2017) and v0.31 (Feb 2017)
+* Forms "TrackCount 0.10" (Nov-Dec 2016), "Track or Treat 0.26" (Feb 2017) and v0.31 (Feb 2017) up to v0.51 (mid season 2017/18)
 * Data warehouse ODK Aggregate at [dpaw-data.appspot.com](https://dpaw-data.appspot.com/)
 * Data exported (through GUI) from dpaw-data as JSON and ingested (scripted) into
   [WAStD](https://strandings.dpaw.wa.gov.au/) after each field trip
@@ -50,18 +48,12 @@ a wrapper function `wastd_api` encapsulates the WAStD API:
   structure is flattened into a data.table.
 
 ```{r api}
-track_records <- wastdr::get_wastd(
-  "turtle-nest-encounters", 
-  query = list(taxon = "Cheloniidae", limit = 10000, format = "json"))
-
-tag_records <- wastdr::get_wastd("animal-encounters")
-
-nest_json <- wastdr::get_wastd(
-  "turtle-nest-encounters", 
-  query = list(taxon = "Cheloniidae", 
-               limit = 10000, 
-               format = "json", 
-               nest_type = "hatched-nest"))
+# nest_json <- wastdr::get_wastd(
+#   "turtle-nest-encounters", 
+#   query = list(taxon = "Cheloniidae", 
+#                limit = 10000, 
+#                format = "json", 
+#                nest_type = "hatched-nest"))
 
 # listviewer::jsonedit(nest_json$content)
 # area_json <- wastd_api("areas", simplify=FALSE)

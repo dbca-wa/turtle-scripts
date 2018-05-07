@@ -1,0 +1,219 @@
+---
+title: "Season review 2017-2018: Delambre and Thevenard Islands"
+author: "Marine Turtles WA"
+date: "`r Sys.time()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    fig_width: 9
+    fig_height: 5
+---
+
+```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+source("tracks_setup.R")
+source("tracks_helpers.R")
+```
+
+# Caveat
+The data shown are pending QA and reconciliation with paper-based records. 
+Until this warning disappears, this dataset may contain duplicates from training runs, effort attributed to the wrong operators, and possibly other issues and biases.
+
+No data returned from Rosemary Islands. Need to deliver better/more/stricter training.
+
+# Data
+```{r, eval=T}
+source("load_data.R")
+tracks_thv <- tracks_all %>% filter_thv() %>% filter_2017()
+tracks_di <- tracks_all %>% filter_di() %>% filter_2017()
+
+surveys_thv <- surveys %>% filter_thv() %>% filter_2017()
+surveys_di <- surveys %>% filter_di() %>% filter_2017()
+
+dist_thv <- disturbance %>% filter_thv() %>% filter_2017()
+dist_di <- disturbance %>% filter_di() %>% filter_2017()
+```
+
+# Season summary
+
+## General notes
+Nests without a clearly visible emergence point were not recorded.
+This led to under-reporting of hatched nests this season.
+
+## Going digital
+Entering and proofreading a record takes about 2 minutes with full concentration.
+By going digital, data entry and proofreading are fully automated.
+This season, the Volunteers have saved 
+`r (nrow(tracks_thv) + nrow(surveys_thv)*2 + nrow(dist_thv)) * 2 / 60` hours of mind-numbing data entry
+and proofreading work for `r nrow(tracks_thv)` Track or Treats and 
+`r nrow(surveys_thv)*2` Site Visit Starts/Ends. 
+
+Time savings Delambre: `r (nrow(tracks_di) + nrow(surveys_di)*2 + nrow(dist_di)) * 2 / 60` hours for `r nrow(tracks_di)` Track or Treats and 
+`r nrow(surveys_di)*2` Site Visit Starts/Ends. 
+
+## Maps
+```{r map_overall}
+tracks_thv %>% add_nest_labels() %>% map_tracks()
+tracks_di %>% add_nest_labels() %>% map_tracks()
+```
+
+## How many nests did we have all together across all sectors?
+
+### Thevenard
+```{r tracks_all_sectors_thv}
+tracks_thv %>% species_by_type() %>% kable()
+```
+
+```{r nesting_success_thv}
+tracks_thv %>% tracks_ts()
+```
+
+### Delambre
+```{r tracks_all_sectors_di}
+tracks_di %>% species_by_type() %>% kable()
+```
+
+```{r nesting_success_di}
+tracks_di %>% tracks_ts()
+```
+
+
+## Disturbance and predation
+Disturbed nests are captured through form "Track or Treat" and appear here
+as "tracks" with "disturbance" recorded as "present".
+
+General signs of disturbance or predator presence are recorded through form 
+"Fox Sake" and appear here as "dist_(place)".
+
+### Disturbance and predation of nests Thevenard
+Turtle nests with recorded disturbance or predation.
+
+```{r}
+disturbed_nests_thv <- tracks_thv %>% filter(disturbance=="present")
+disturbed_nests_thv %>% add_nest_labels %>% map_tracks
+```
+
+There were **`r count(disturbed_nests_thv)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
+
+
+### Disturbance and predation of nests Delambre
+Turtle nests with recorded disturbance or predation.
+
+```{r}
+disturbed_nests_di <- tracks_di %>% filter(disturbance=="present")
+disturbed_nests_di %>% add_nest_labels %>% map_tracks
+```
+
+There were **`r count(disturbed_nests_di)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
+
+Coming soon: details of disturbance to nests.
+
+### General disturbance
+Coming soon: map.
+
+There were **`r count(dist_thv)` reports** of general disturbance or predator presence on Thevenard Is, and **`r count(dist_di)` reports** on Delambre Is.
+
+```{r}
+dist_thv %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_di %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+```
+
+
+## Survey count
+
+### Caveat
+* Data includes training surveys.
+
+This contributes to over-estimation of effort, but shows actual boots on the 
+ground - training is also an effort!
+
+```{r survey_count}
+place <- "Thevenard Is"
+surveys_thv %>% plot_survey_count(place)
+surveys_thv %>% list_survey_count(place)
+
+place <- "Delambre Is"
+surveys_di %>% plot_survey_count(place)
+surveys_di %>% list_survey_count(place)
+```
+
+## Survey effort in hours
+Q How many hours did volunteers survey, how many kilometers were walked?
+
+### Caveat
+* Surveys with missing end points are auto-closed after 5 hours. 
+* Data includes training surveys.
+
+Both factors contribute to over-estimation of effort.
+
+```{r survey_effort}
+surveys_thv %>% plot_survey_effort("Thevenard Is")
+surveys_thv %>% list_survey_effort("Thevenard Is")
+
+surveys_di %>% plot_survey_effort("Delambre Is")
+surveys_di %>% list_survey_effort("Delambre Is")
+```
+
+## Survey effort per primary reporter
+Q Which volunteer did the most hours overall on survey?
+
+### Caveat
+This list only includes the primary reporter. 
+This leads to under-reporting of time spent by other volunteers attending the survey.
+Their names are listed in the Site Visit Start form field "comments" as free text.
+To correctly report on team member effort, curators have to read the list of 
+team members in the Site Visit "comments" field and attach the correct users 
+to the Survey team list.
+Once the surveys are comprehensively attributed to all volunteers present, this
+workbook has to be updated to include the Survey team's effort.
+
+If the primary reporter forgot to update the username in the tablet,
+their survey effort on that day is incorrectly attributed to the previous reporter.
+The only way to reconcile attribution is to manually compare survey usernames with
+team rosters.
+
+```{r survey_effort_by_person}
+personal_effort_thv <- surveys_thv %>% survey_hours_per_person()
+personal_effort_thv %>% kable()
+
+personal_effort_di <- surveys_di %>% survey_hours_per_person()
+personal_effort_di %>% kable()
+```
+
+## Survey effort in kilometers walked
+Number of surveys per sector times length of site.
+
+At Thevenard North Beach, assuming the trip was 6 km,
+`r survey_ground_covered(surveys, 28, 6)` km were walked 
+in `r survey_count(surveys_thv, 28)` surveys.
+
+At Thevenard South Beach, assuming the trip was 6 km,
+`r survey_ground_covered(surveys, 29, 6)` km were walked 
+in `r survey_count(surveys_thv, 29)` surveys.
+
+At Thevenard Nesting Beach, assuming the trip was 1 km,
+`r survey_ground_covered(surveys, 20, 1)` km were walked 
+in `r survey_count(surveys_thv, 20)` surveys.
+
+At Delambre, assuming the trip was 4 km,
+`r survey_ground_covered(surveys, 39, 4)` km were walked 
+in `r survey_count(surveys_thv, 39)` surveys.
+
+# Data upload
+
+```{r data_upload}
+# d <- ckanr::package_show("turtle-tracks")
+# ckanr::resource_update("b35fb19e-e72d-420c-b875-12b4db4afe8c", "pthedland_2017-18.html")
+```
+
+```{r data_export}
+tracks_thv %>% select(-obs, -photos) %>% readr::write_csv("../data/tracks_thv.csv")
+surveys_thv %>% readr::write_csv("../data/surveys_thv.csv")
+dist_thv %>% select(-photos) %>% readr::write_csv("../data/dist_thv.csv")
+
+tracks_di %>% select(-obs, -photos) %>% readr::write_csv("../data/tracks_di.csv")
+surveys_di %>% readr::write_csv("../data/surveys_di.csv")
+dist_di %>% select(-photos) %>% readr::write_csv("../data/dist_di.csv")
+```
+
