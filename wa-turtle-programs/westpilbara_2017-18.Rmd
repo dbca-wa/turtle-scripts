@@ -185,7 +185,7 @@ in `r survey_count(surveys_wp, 27)` surveys.
 
 ```{r data_upload}
 # d <- ckanr::package_show("turtle-tracks")
-# ckanr::resource_update("b35fb19e-e72d-420c-b875-12b4db4afe8c", "pthedland_2017-18.html")
+ckanr::resource_update("1c57e04a-c29c-464c-b82d-a69e4ee0b199", "westpilbara_2017-18.html")
 ```
 
 ```{r data_export}

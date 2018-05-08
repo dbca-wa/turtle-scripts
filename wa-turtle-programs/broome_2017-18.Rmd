@@ -157,3 +157,10 @@ in `r survey_count(surveys, 23)` surveys.
 
 In sector 3, `r survey_ground_covered(surveys, 24, 7)` km were walked 
 in `r survey_count(surveys, 24)` surveys.
+
+# Data upload
+
+```{r data_upload}
+# d <- ckanr::package_show("turtle-tracks")
+ckanr::resource_update("9572e76b-55e9-4afb-b224-7cce7beb4959", "broome_2017-18.html")
+```
