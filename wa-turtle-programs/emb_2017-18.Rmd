@@ -41,7 +41,7 @@ This led to under-reporting of hatched nests this season.
 Entering and proofreading a record takes about 2 minutes with full concentration.
 By going digital, data entry and proofreading are fully automated.
 This season, the Volunteers have saved 
-`r (nrow(tracks_emb) + nrow(surveys_emb)*2 + nrow(dist_emb)) * 2 / 60` hours of 
+`r (nrow(tracks_emb) + nrow(surveys_emb)*2 + nrow(dist_emb)) * 2 /60` hours of 
 mind-numbing data entry and proofreading work for `r nrow(tracks_emb)` Track or Treats and 
 `r nrow(surveys_emb)*2` Site Visit Starts/Ends. 
 This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra!
@@ -53,7 +53,7 @@ tracks_ap %>% add_nest_labels() %>% map_tracks()
 tracks_cv %>% add_nest_labels() %>% map_tracks()
 ```
 
-## How many nests did we have all together across all sectors?
+## Nesting abundance
 ```{r tracks_all_sectors}
 tracks_emb %>% species_by_type() %>% kable()
 ```
@@ -66,10 +66,30 @@ tracks_ap %>% species_by_type() %>% kable()
 tracks_cv %>% species_by_type() %>% kable()
 ```
 
-
-```{r nesting_success}
+## Nesting success 
+```{r nesting_success, fig.height=5, fig.width=7, warning = F}
 tracks_emb %>% tracks_ts()
+
+nests <- tracks_emb %>% track_success
+label <- "emb"
+
+nests %>% ggplot_track_success_by_date("natator-depressus", label)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+nests %>% track_success_by_species %>% datatable(., 
+    caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)")
 ```
+
+## Hatching and emergence success
+```{r hatching_emergence_success}
+tracks_emb %>% 
+  hatching_emergence_success %>%
+  DT::datatable(., 
+              caption = "Hatching and emergence success summary",
+              options = list(paging = F))
+```
+
 
 ## Disturbance and predation
 Disturbed nests are captured through form "Track or Treat" and appear here
@@ -161,13 +181,13 @@ Number of surveys per sector times length of site.
 
 **Note** adjust length estimates.
 
-At Anna Plains, assuming the round trip was 2 km,
-`r nrow(filter(surveys, site_id==36)) * 2` km were walked 
-in `r nrow(filter(surveys, site_id==36))` surveys.
+At Anna Plains, assuming the round trip was 6 km,
+`r survey_ground_covered(surveys, 37, 6)` km were covered 
+in `r survey_count(surveys, 37)` surveys.
 
-At Yacht Club Beach, assuming the round trip was 2 km,
-`r nrow(filter(surveys, site_id==36)) * 2` km were walked 
-in `r nrow(filter(surveys, site_id==36))` surveys.
+At Caravan Park Beach, assuming the round trip was 6 km,
+`r survey_ground_covered(surveys, 36, 6)` km were covered 
+in `r survey_count(surveys, 36)` surveys.
 
 # Data upload
 

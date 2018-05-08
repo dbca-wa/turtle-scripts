@@ -58,7 +58,7 @@ tracks_bb %>% add_nest_labels() %>% map_tracks()
 tracks_yc %>% add_nest_labels() %>% map_tracks()
 ```
 
-## How many nests did we have all together across all sectors?
+## Nesting abundance
 ```{r tracks_all_sectors}
 tracks_wp %>% species_by_type() %>% kable()
 ```
@@ -71,9 +71,28 @@ tracks_bb %>% species_by_type() %>% kable()
 tracks_yc %>% species_by_type() %>% kable()
 ```
 
-
-```{r nesting_success}
+## Nesting success 
+```{r nesting_success, fig.height=5, fig.width=7, warning = F}
 tracks_wp %>% tracks_ts()
+
+nests <- tracks_wp %>% track_success
+label <- "wp"
+
+nests %>% ggplot_track_success_by_date("natator-depressus", label)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+nests %>% track_success_by_species %>% datatable(., 
+    caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)")
+```
+
+## Hatching and emergence success
+```{r hatching_emergence_success}
+tracks_wp %>% 
+  hatching_emergence_success %>%
+  DT::datatable(., 
+              caption = "Hatching and emergence success summary",
+              options = list(paging = F))
 ```
 
 ## Disturbance and predation

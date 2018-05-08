@@ -37,10 +37,6 @@ dist_di <- disturbance %>% filter_di() %>% filter_2017()
 
 # Season summary
 
-## General notes
-Nests without a clearly visible emergence point were not recorded.
-This led to under-reporting of hatched nests this season.
-
 ## Going digital
 Entering and proofreading a record takes about 2 minutes with full concentration.
 By going digital, data entry and proofreading are fully automated.
@@ -70,98 +66,23 @@ tracks_thv %>% tracks_ts()
 ```
 
 ```{r hatching_emergence_success_thv}
-hatching_success_thv <- tracks_thv %>%
-  filter(nest_type=="hatched-nest") %>%
-  dplyr::filter(hatching_success >= 0) %>% 
-  group_by(species) %>%
-  dplyr::summarize(
-    "count" = n(),
-    "clutch_size_mean" = mean(clutch_size) %>% round(digits = 2),
-    "clutch_size_sd" = sd(clutch_size) %>% round(digits = 2),
-    "clutch_size_min" = min(clutch_size),
-    "clutch_size_max" = max(clutch_size),
-    "hatching_success_mean" = mean(hatching_success) %>% round(digits = 2),
-    "hatching_success_sd" = sd(hatching_success) %>% round(digits = 2),
-    "hatching_success_min" = min(hatching_success),
-    "hatching_success_max" = max(hatching_success),
-    "emergence_success_mean" = mean(emergence_success) %>% round(digits = 2),
-    "emergence_success_sd" = sd(emergence_success) %>% round(digits = 2),
-    "emergence_success_min" = min(emergence_success),
-    "emergence_success_max" = max(emergence_success)
-               )
-DT::datatable(hatching_success_thv, 
+tracks_thv %>% 
+  hatching_emergence_success %>%
+  DT::datatable(., 
               caption = "Hatching and emergence success summary",
               options = list(paging = F))
 ```
 
 ```{r plot_track_effort_thv, fig.height=5, fig.width=7, warning = F}
-fresh_tracks_thv <- tracks_thv %>%
-  dplyr::filter(nest_type %in% c("successful-crawl", 
-                                     "false-crawl", 
-                                     "track-unsure", 
-                                     "track-not-assessed"))
+nests <- tracks_thv %>% track_success
+label <- "thv"
 
-all_tracks_by_date_thv <- fresh_tracks_thv %>%
-  group_by(date, species) %>% tally() %>% ungroup() %>% rename(all = n)
-
-successful_tracks_by_date_thv <- tracks_thv %>% 
-  dplyr::filter(nest_type == 'successful-crawl') %>%
-  group_by(date, species) %>% tally() %>% ungroup() %>% rename(successful = n)
-
-# Join nesting emergences with nesting success or 0
-track_success_thv <- all_tracks_by_date_thv %>%
-  left_join(successful_tracks_by_date_thv, by = c('date','species')) %>%
-  mutate(successful = ifelse(is.na(successful), 0, successful),
-         track_success = 100 * successful/all)
-
-ggplot_track_success_by_date <- function(data, species_name, place_name) {
-  data %>%
-    filter(species == species_name) %>%
-    ggplot(aes(x = date)) + 
-    geom_bar(aes(y = all), stat = "identity", color = "black", fill = "black") +
-    geom_bar(aes(y = successful), stat = "identity", color = "green", fill = "green") +
-    scale_x_date(breaks = scales::pretty_breaks(),
-                 labels = scales::date_format("%d %b %Y")) +
-    labs(x = "Date", y = "Number of all and successful tracks") +
-    ggtitle(paste("Nesting effort of", species_name %>% humanize),
-            subtitle = "Number of all (black) and successful (green) tracks") +
-  labs(x = "Date", y = "Number of all and successful tracks") +
-    theme_minimal() +
-    ggsave(paste0("track_effort_", place_name, "_", species_name, ".pdf"), 
-           width = 7, height = 5)
-}
-ggplot_track_success_by_date(track_success_thv, "natator-depressus", "thv")
-ggplot_track_success_by_date(track_success_thv, "chelonia-mydas", "thv")
-
-ggplot_track_successrate_by_date <- function(data, species_name, place_name) {
-  data %>%
-    filter(species == species_name) %>%
-    ggplot(aes(x = date)) + 
-    geom_bar(aes(y = track_success), stat = "identity") +
-    scale_x_date(breaks = scales::pretty_breaks(),
-                 labels = scales::date_format("%d %b %Y")) +
-    labs(x = "Date", y = "Fraction of tracks with nest") +
-    ggtitle(paste("Nesting success of", species_name %>% humanize),
-            subtitle = "Fraction of successful over total nesting crawls") +
-    theme_light() +
-    ggsave(paste0("track_success_", place_name, "_", species_name, ".pdf"), 
-           width = 7, height = 5)
-}
-
-ggplot_track_successrate_by_date(track_success_thv, "natator-depressus", "thv")
-ggplot_track_successrate_by_date(track_success_thv, "chelonia-mydas", "thv")
-
-# TODO mean, sd, min, max of track_success$track_success for each species
-
-track_success_summary_thv <- track_success_thv %>%
-  group_by(species) %>%
-  dplyr::summarise(
-    mean_nesting_success = mean(track_success) %>% round(digits = 2),
-    sd_nesting_success = sd(track_success) %>% round(digits = 2)
-  )
-datatable(track_success_summary_thv, 
-          caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)")
-
+nests %>% ggplot_track_success_by_date("natator-depressus", label)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+nests %>% track_success_by_species %>% datatable(., 
+    caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)")
 ```
 
 ### Delambre
@@ -194,66 +115,22 @@ ggplot(nests_with_hs_di, aes(group = date, x = date)) +
 ```
 
 ```{r plot_track_effort_di, fig.height=5, fig.width=7, warning = F}
-fresh_tracks_di <- tracks_di %>%
-  dplyr::filter(nest_type %in% c("successful-crawl", 
-                                     "false-crawl", 
-                                     "track-unsure", 
-                                     "track-not-assessed"))
+nests <- tracks_di %>% track_success
+label <- "di"
 
-all_tracks_by_date_di <- fresh_tracks_di %>%
-  group_by(date, species) %>% tally() %>% ungroup() %>% rename(all = n)
-
-successful_tracks_by_date_di <- tracks_di %>% 
-  dplyr::filter(nest_type == 'successful-crawl') %>%
-  group_by(date, species) %>% tally() %>% ungroup() %>% rename(successful = n)
-
-# Join nesting emergences with nesting success or 0
-track_success_di <- all_tracks_by_date_di %>%
-  left_join(successful_tracks_by_date_di, by = c('date','species')) %>%
-  mutate(successful = ifelse(is.na(successful), 0, successful),
-         track_success = 100 * successful/all)
-
-ggplot_track_success_by_date(track_success_di, "natator-depressus", "delambre")
-ggplot_track_success_by_date(track_success_di, "chelonia-mydas", "delambre")
-
-ggplot_track_successrate_by_date(track_success_di, "natator-depressus", "delambre")
-ggplot_track_successrate_by_date(track_success_di, "chelonia-mydas", "delambre")
-
-# TODO mean, sd, min, max of track_success$track_success for each species
-
-track_success_summary_di <- track_success_di %>%
-  group_by(species) %>%
-  dplyr::summarise(
-    mean_nesting_success = mean(track_success) %>% round(digits = 2),
-    sd_nesting_success = sd(track_success) %>% round(digits = 2)
-  )
-datatable(track_success_summary_di, 
-          caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)")
-
+nests %>% ggplot_track_success_by_date("natator-depressus", label)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+nests %>% track_success_by_species %>% datatable(., 
+    caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)")
 ```
 
 
 ```{r hatching_emergence_success_di}
-hatching_success_di <- tracks_di %>%
-  filter(nest_type=="hatched-nest") %>%
-  dplyr::filter(hatching_success >= 0) %>% 
-  group_by(species) %>%
-  dplyr::summarize(
-    "count" = n(),
-    "clutch_size_mean" = mean(clutch_size) %>% round(digits = 2),
-    "clutch_size_sd" = sd(clutch_size) %>% round(digits = 2),
-    "clutch_size_min" = min(clutch_size),
-    "clutch_size_max" = max(clutch_size),
-    "hatching_success_mean" = mean(hatching_success) %>% round(digits = 2),
-    "hatching_success_sd" = sd(hatching_success) %>% round(digits = 2),
-    "hatching_success_min" = min(hatching_success),
-    "hatching_success_max" = max(hatching_success),
-    "emergence_success_mean" = mean(emergence_success) %>% round(digits = 2),
-    "emergence_success_sd" = sd(emergence_success) %>% round(digits = 2),
-    "emergence_success_min" = min(emergence_success),
-    "emergence_success_max" = max(emergence_success)
-               )
-DT::datatable(hatching_success_di, 
+tracks_di %>% 
+  hatching_emergence_success %>%
+  DT::datatable(., 
               caption = "Hatching and emergence success summary",
               options = list(paging = F))
 ```

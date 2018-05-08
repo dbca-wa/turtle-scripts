@@ -46,13 +46,11 @@ This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra
 tracks_pth_cem %>% add_nest_labels %>% map_tracks
 tracks_pth_ppo %>% add_nest_labels %>% map_tracks
 ```
-## How many nests did we have all together across all sectors?
+
+## Nesting abundance
 ```{r tracks_all_sectors}
 tracks_pth %>% species_by_type %>% kable
 ```
-
-## Sum of tracks/nests per sector
-Q How many false crawls / fresh nests / hatched nests were found in each sector?
 
 ## Cemetery Beach
 ```{r tracks_cem}
@@ -64,10 +62,30 @@ tracks_pth_cem %>% species_by_type %>% kable
 tracks_pth_ppo %>% species_by_type %>% kable
 ```
 
-```{r nesting_success}
+## Nesting success 
+```{r nesting_success, fig.height=5, fig.width=7, warning = F}
 tracks_pth %>% tracks_ts
 tracks_pth_cem %>% tracks_ts
 tracks_pth_ppo %>% tracks_ts
+
+nests <- tracks_pth %>% track_success
+label <- "pth"
+
+nests %>% ggplot_track_success_by_date("natator-depressus", label)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+nests %>% track_success_by_species %>% datatable(., 
+    caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)")
+```
+
+## Hatching and emergence success
+```{r hatching_emergence_success}
+tracks_pth %>% 
+  hatching_emergence_success %>%
+  DT::datatable(., 
+              caption = "Hatching and emergence success summary",
+              options = list(paging = F))
 ```
 
 ## Disturbance and predation
