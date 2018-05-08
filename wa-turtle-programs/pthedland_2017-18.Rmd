@@ -1,5 +1,5 @@
 ---
-title: "Season review 2017-2018"
+title: "Care for Hedland Season Review 2017-2018"
 author: "Care for Hedland with Marine Turtles WA"
 date: "`r Sys.time()`"
 output:
@@ -152,5 +152,4 @@ in `r survey_count(surveys_pth, 45)` surveys.
 ```{r data_upload}
 # d <- ckanr::package_show("turtle-tracks")
 ckanr::resource_update("b35fb19e-e72d-420c-b875-12b4db4afe8c", "pthedland_2017-18.html")
-
 ```

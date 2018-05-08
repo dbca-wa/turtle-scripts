@@ -37,6 +37,7 @@ tracks_ts <- . %>%
 survey_count <- function(surveys, site_id){
   surveys %>% filter(site_id==site_id) %>% nrow
 }
+
 survey_ground_covered <- function(surveys, site_id, km_per_survey){
   survey_count(surveys, site_id) * km_per_survey
 }
@@ -49,6 +50,10 @@ filter_broome_sites <- . %>% dplyr::filter(site_id %in% c(22, 23, 24))
 filter_cbb1 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 1")
 filter_cbb2 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 2")
 filter_cbb3 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 3")
+
+filter_emb <- . %>% dplyr::filter(site_id %in% c(36,37))
+filter_emb_ap <- . %>% dplyr::filter(site_id==37) # anna plains
+filter_emb_cvp <- . %>% dplyr::filter(site_id==36) # caravan park
 
 filter_port_hedland_sites <- . %>% dplyr::filter(site_id %in% c(35, 45))
 filter_port_hedland_cemetery <- . %>% dplyr::filter(site_name=="Port Hedland Cemetery Beach")
