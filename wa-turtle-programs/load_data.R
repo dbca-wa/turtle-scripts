@@ -10,6 +10,7 @@ if (file.exists("../data/tracks.Rda")) {
     wastdr::parse_disturbance_observations()
   surveys <- wastd_GET("surveys") %>% wastdr::parse_surveys()
   save(animal_records, animals, tracks_all, track_records,
-       disturbance, surveys, file = "../data/tracks.Rda"
+    disturbance, surveys,
+    file = "../data/tracks.Rda"
   )
 }

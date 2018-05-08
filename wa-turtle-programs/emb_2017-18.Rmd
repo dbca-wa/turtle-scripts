@@ -70,24 +70,26 @@ tracks_cv %>% species_by_type() %>% kable()
 ```{r nesting_success, fig.height=5, fig.width=7, warning = F}
 tracks_emb %>% tracks_ts()
 
-nests <- tracks_emb %>% track_success
+nests <- tracks_emb %>% track_success()
 label <- "emb"
 
 nests %>% ggplot_track_success_by_date("natator-depressus", label)
 nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
 nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
-nests %>% track_success_by_species %>% datatable(., 
-    caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)")
+nests %>% track_success_by_species() %>% datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
 ```
 
 ## Hatching and emergence success
 ```{r hatching_emergence_success}
-tracks_emb %>% 
-  hatching_emergence_success %>%
-  DT::datatable(., 
-              caption = "Hatching and emergence success summary",
-              options = list(paging = F))
+tracks_emb %>%
+  hatching_emergence_success() %>%
+  DT::datatable(.,
+    caption = "Hatching and emergence success summary",
+    options = list(paging = F)
+  )
 ```
 
 
@@ -102,8 +104,8 @@ General signs of disturbance or predator presence are recorded through form
 Turtle nests with recorded disturbance or predation.
 
 ```{r}
-disturbed_nests_emb <- tracks_emb %>% filter(disturbance=="present")
-disturbed_nests_emb %>% add_nest_labels %>% map_tracks
+disturbed_nests_emb <- tracks_emb %>% filter(disturbance == "present")
+disturbed_nests_emb %>% add_nest_labels() %>% map_tracks()
 ```
 
 There were **`r count(disturbed_nests_emb)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
@@ -116,7 +118,7 @@ Coming soon: map.
 There were **`r count(dist_emb)` reports** of general disturbance or predator presence:
 
 ```{r}
-dist_emb %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_emb %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
 ```
 
 
@@ -201,3 +203,4 @@ tracks_emb %>% select(-obs, -photos) %>% readr::write_csv("../data/tracks_emb.cs
 surveys_emb %>% readr::write_csv("../data/surveys_emb.csv")
 dist_emb %>% select(-photos) %>% readr::write_csv("../data/dist_emb.csv")
 ```
+

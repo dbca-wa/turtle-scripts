@@ -1,5 +1,5 @@
 ## Install from source
-lib = Sys.getenv("R_LIBS_USER")
+lib <- Sys.getenv("R_LIBS_USER")
 setwd("~/projects/turtle-scripts/")
 
 
@@ -27,7 +27,7 @@ devtools::install_github("bhaskarvk/leaflet.extras")
 devtools::install_github("tidyverse/ggplot2")
 devtools::install_github("tidyverse/dplyr")
 devtools::install_github("r-pkgs/gh")
-devtools::install_github("pablobarbera/Rfacebook", subdir="Rfacebook")
+devtools::install_github("pablobarbera/Rfacebook", subdir = "Rfacebook")
 devtools::install_github("dbca-wa/wastdr")
 
 
@@ -73,4 +73,4 @@ install.packages(c(
   "bayesplot",
   "rstantools",
   "loo"
-  ))
+))

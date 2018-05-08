@@ -20,12 +20,12 @@ source("tracks_helpers.R")
 
 ```{r filter_data}
 source("load_data.R")
-cbb <- tracks_all %>% filter_2017 %>% filter_broome
-cbb1 <- tracks_all %>% filter_2017 %>% filter_cbb1
-cbb2 <- tracks_all %>% filter_2017 %>% filter_cbb2
-cbb3 <- tracks_all %>% filter_2017 %>% filter_cbb3
-surveys_cbb <- surveys %>% filter_2017 %>% filter_broome_sites
-dist_cbb <- disturbance %>% filter_2017 %>%  filter_broome_sites
+cbb <- tracks_all %>% filter_2017() %>% filter_broome()
+cbb1 <- tracks_all %>% filter_2017() %>% filter_cbb1()
+cbb2 <- tracks_all %>% filter_2017() %>% filter_cbb2()
+cbb3 <- tracks_all %>% filter_2017() %>% filter_cbb3()
+surveys_cbb <- surveys %>% filter_2017() %>% filter_broome_sites()
+dist_cbb <- disturbance %>% filter_2017() %>% filter_broome_sites()
 ```
 
 # Season summary
@@ -41,55 +41,57 @@ This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra
 
 ## Maps
 ```{r map_overall}
-cbb %>% add_nest_labels %>% map_tracks
+cbb %>% add_nest_labels() %>% map_tracks()
 ```
 
 ## Nesting abundance
 ```{r tracks_all_sectors}
-cbb %>% species_by_type %>% kable
+cbb %>% species_by_type() %>% kable()
 ```
 
 ## Sector 1
 ```{r tracks_sector_1}
-cbb1 %>% species_by_type %>% kable
+cbb1 %>% species_by_type() %>% kable()
 ```
 
 ## Sector 2
 ```{r tracks_sector_2}
-cbb2 %>% species_by_type %>% kable
+cbb2 %>% species_by_type() %>% kable()
 ```
 
 ## Sector 3
 ```{r tracks_sector_3}
-cbb3 %>% species_by_type %>% kable
+cbb3 %>% species_by_type() %>% kable()
 ```
 
 ## Nesting success 
 
 ```{r nesting_success, fig.height=5, fig.width=7, warning = F}
-cbb %>% tracks_ts
-cbb1 %>% tracks_ts
-cbb2 %>% tracks_ts
-cbb3 %>% tracks_ts
+cbb %>% tracks_ts()
+cbb1 %>% tracks_ts()
+cbb2 %>% tracks_ts()
+cbb3 %>% tracks_ts()
 
-nests <- cbb %>% track_success
+nests <- cbb %>% track_success()
 label <- "cbb"
 
 nests %>% ggplot_track_success_by_date("natator-depressus", label)
 nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
 nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
-nests %>% track_success_by_species %>% datatable(., 
-    caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)")
+nests %>% track_success_by_species() %>% datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
 ```
 
 ## Hatching and emergence success
 ```{r hatching_emergence_success}
-cbb %>% 
-  hatching_emergence_success %>%
-  DT::datatable(., 
-              caption = "Hatching and emergence success summary",
-              options = list(paging = F))
+cbb %>%
+  hatching_emergence_success() %>%
+  DT::datatable(.,
+    caption = "Hatching and emergence success summary",
+    options = list(paging = F)
+  )
 ```
 
 ## Disturbance and predation
@@ -103,8 +105,8 @@ General signs of disturbance or predator presence are recorded through form
 Turtle nests with recorded disturbance or predation.
 
 ```{r}
-disturbed_nests_cbb <- cbb %>% filter(disturbance=="present")
-disturbed_nests_cbb %>% add_nest_labels %>% map_tracks
+disturbed_nests_cbb <- cbb %>% filter(disturbance == "present")
+disturbed_nests_cbb %>% add_nest_labels() %>% map_tracks()
 ```
 
 There were **`r count(disturbed_nests_cbb)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
@@ -117,7 +119,7 @@ Coming soon: map.
 There were **`r count(dist_cbb)` reports** of general disturbance or predator presence:
 
 ```{r}
-dist_cbb %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_cbb %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
 ```
 
 ## How many hatchlings were stuck in sand or dead the next morning?
@@ -160,8 +162,8 @@ Forgetting to enter one's name prior to a survey leads to incorrect attribution
 of the survey effort to the previously entered volunteer's name.
 
 ```{r survey_effort_by_person}
-personal_effort <- surveys_cbb %>% survey_hours_per_person
-personal_effort %>% kable
+personal_effort <- surveys_cbb %>% survey_hours_per_person()
+personal_effort %>% kable()
 ```
 
 ## Survey effort in kilometers walked
@@ -182,3 +184,4 @@ in `r survey_count(surveys_cbb, 24)` surveys.
 # d <- ckanr::package_show("turtle-tracks")
 ckanr::resource_update("9572e76b-55e9-4afb-b224-7cce7beb4959", "broome_2017-18.html")
 ```
+

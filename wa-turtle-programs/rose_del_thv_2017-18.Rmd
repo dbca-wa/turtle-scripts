@@ -35,6 +35,22 @@ dist_thv <- disturbance %>% filter_thv() %>% filter_2017()
 dist_di <- disturbance %>% filter_di() %>% filter_2017()
 ```
 
+# Background
+Source: Milani Chaloupka, presentation to DBCA / NWS committee 8/5/2018.
+
+Demographic focus is essential for diagnosing population status and trend.
+Survival rates, conditional breeding rates, hatchling production rates, recruitment rates
+population abundance.
+
+Three major flatback pops in Pilbara: Delambre 3.5k nesting/y, Mundabullangana 2.5k nesting /y, Barrow Is 2k/y.
+Biggest pop in GBR is 700 nests/y.
+
+Milani presented: 
+
+* Bayesian gompertz state-space model trend
+* Random effects forest plot with rookery specific posterior distribution
+
+
 # Season summary
 
 ## Going digital
@@ -54,7 +70,7 @@ tracks_thv %>% add_nest_labels() %>% map_tracks()
 tracks_di %>% add_nest_labels() %>% map_tracks()
 ```
 
-## How many nests did we have all together across all sectors?
+## Nesting abundance
 
 ### Thevenard
 ```{r tracks_all_sectors_thv}
@@ -66,23 +82,25 @@ tracks_thv %>% tracks_ts()
 ```
 
 ```{r hatching_emergence_success_thv}
-tracks_thv %>% 
-  hatching_emergence_success %>%
-  DT::datatable(., 
-              caption = "Hatching and emergence success summary",
-              options = list(paging = F))
+tracks_thv %>%
+  hatching_emergence_success() %>%
+  DT::datatable(.,
+    caption = "Hatching and emergence success summary",
+    options = list(paging = F)
+  )
 ```
 
 ```{r plot_track_effort_thv, fig.height=5, fig.width=7, warning = F}
-nests <- tracks_thv %>% track_success
+nests <- tracks_thv %>% track_success()
 label <- "thv"
 
 nests %>% ggplot_track_success_by_date("natator-depressus", label)
 nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
 nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
-nests %>% track_success_by_species %>% datatable(., 
-    caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)")
+nests %>% track_success_by_species() %>% datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
 ```
 
 ### Delambre
@@ -97,42 +115,49 @@ tracks_di %>% tracks_ts()
 
 ```{r fig_fb_hs_es_di, fig.width=7,fig.height=5}
 nests_with_hs_di <- tracks_di %>%
-  filter(nest_type=="hatched-nest",
-         hatching_success >= 0, 
-         species == "natator-depressus")
+  filter(
+    nest_type == "hatched-nest",
+    hatching_success >= 0,
+    species == "natator-depressus"
+  )
 
-ggplot(nests_with_hs_di, aes(group = date, x = date)) + 
-  geom_boxplot(aes(y = as.numeric(hatching_success)), na.rm=TRUE, color = "black") +
-  geom_boxplot(aes(y = as.numeric(emergence_success)), na.rm=TRUE, color = "gray") +
-  scale_x_date(breaks = scales::pretty_breaks(),
-               labels = scales::date_format("%d %b %Y")) +
+ggplot(nests_with_hs_di, aes(group = date, x = date)) +
+  geom_boxplot(aes(y = as.numeric(hatching_success)), na.rm = TRUE, color = "black") +
+  geom_boxplot(aes(y = as.numeric(emergence_success)), na.rm = TRUE, color = "gray") +
+  scale_x_date(
+    breaks = scales::pretty_breaks(),
+    labels = scales::date_format("%d %b %Y")
+  ) +
   xlab("Date") +
   ylab("Success rate in percent") +
   ggtitle("Flatback hatching (black) and emergence (grey) success",
-          subtitle = paste("From", nrow(nests_with_hs_di), "nests")) +
+    subtitle = paste("From", nrow(nests_with_hs_di), "nests")
+  ) +
   theme_minimal() +
   ggsave(paste0("flatback_hs_es_di.pdf"), width = 7, height = 5)
 ```
 
 ```{r plot_track_effort_di, fig.height=5, fig.width=7, warning = F}
-nests <- tracks_di %>% track_success
+nests <- tracks_di %>% track_success()
 label <- "di"
 
 nests %>% ggplot_track_success_by_date("natator-depressus", label)
 nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
 nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
-nests %>% track_success_by_species %>% datatable(., 
-    caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)")
+nests %>% track_success_by_species() %>% datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
 ```
 
 
 ```{r hatching_emergence_success_di}
-tracks_di %>% 
-  hatching_emergence_success %>%
-  DT::datatable(., 
-              caption = "Hatching and emergence success summary",
-              options = list(paging = F))
+tracks_di %>%
+  hatching_emergence_success() %>%
+  DT::datatable(.,
+    caption = "Hatching and emergence success summary",
+    options = list(paging = F)
+  )
 ```
 
 ## Disturbance and predation
@@ -146,8 +171,8 @@ General signs of disturbance or predator presence are recorded through form
 Turtle nests with recorded disturbance or predation.
 
 ```{r}
-disturbed_nests_thv <- tracks_thv %>% filter(disturbance=="present")
-disturbed_nests_thv %>% add_nest_labels %>% map_tracks
+disturbed_nests_thv <- tracks_thv %>% filter(disturbance == "present")
+disturbed_nests_thv %>% add_nest_labels() %>% map_tracks()
 ```
 
 There were **`r count(disturbed_nests_thv)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
@@ -157,8 +182,8 @@ There were **`r count(disturbed_nests_thv)` reports** of disturbed nests. Caveat
 Turtle nests with recorded disturbance or predation.
 
 ```{r}
-disturbed_nests_di <- tracks_di %>% filter(disturbance=="present")
-disturbed_nests_di %>% add_nest_labels %>% map_tracks
+disturbed_nests_di <- tracks_di %>% filter(disturbance == "present")
+disturbed_nests_di %>% add_nest_labels() %>% map_tracks()
 ```
 
 There were **`r count(disturbed_nests_di)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
@@ -171,8 +196,8 @@ Coming soon: map.
 There were **`r count(dist_thv)` reports** of general disturbance or predator presence on Thevenard Is, and **`r count(dist_di)` reports** on Delambre Is.
 
 ```{r}
-dist_thv %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
-dist_di %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_thv %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
+dist_di %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
 ```
 
 
@@ -242,19 +267,19 @@ Number of surveys per sector times length of site.
 
 At Thevenard North Beach, assuming the trip was 6 km,
 `r survey_ground_covered(surveys, 28, 6)` km were walked 
-in `r survey_count(surveys_thv, 28)` surveys.
+in `r survey_count(surveys, 28)` surveys.
 
 At Thevenard South Beach, assuming the trip was 6 km,
 `r survey_ground_covered(surveys, 29, 6)` km were walked 
-in `r survey_count(surveys_thv, 29)` surveys.
+in `r survey_count(surveys, 29)` surveys.
 
 At Thevenard Nesting Beach, assuming the trip was 1 km,
 `r survey_ground_covered(surveys, 20, 1)` km were walked 
-in `r survey_count(surveys_thv, 20)` surveys.
+in `r survey_count(surveys, 20)` surveys.
 
 At Delambre, assuming the trip was 4 km,
 `r survey_ground_covered(surveys, 39, 4)` km were walked 
-in `r survey_count(surveys_thv, 39)` surveys.
+in `r survey_count(surveys, 39)` surveys.
 
 # Data upload
 
@@ -272,4 +297,5 @@ tracks_di %>% select(-obs, -photos) %>% readr::write_csv("../data/tracks_di.csv"
 surveys_di %>% readr::write_csv("../data/surveys_di.csv")
 dist_di %>% select(-photos) %>% readr::write_csv("../data/dist_di.csv")
 ```
+
 

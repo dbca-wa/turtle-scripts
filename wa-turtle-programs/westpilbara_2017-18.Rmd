@@ -75,24 +75,26 @@ tracks_yc %>% species_by_type() %>% kable()
 ```{r nesting_success, fig.height=5, fig.width=7, warning = F}
 tracks_wp %>% tracks_ts()
 
-nests <- tracks_wp %>% track_success
+nests <- tracks_wp %>% track_success()
 label <- "wp"
 
 nests %>% ggplot_track_success_by_date("natator-depressus", label)
 nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
 nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
-nests %>% track_success_by_species %>% datatable(., 
-    caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)")
+nests %>% track_success_by_species() %>% datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
 ```
 
 ## Hatching and emergence success
 ```{r hatching_emergence_success}
-tracks_wp %>% 
-  hatching_emergence_success %>%
-  DT::datatable(., 
-              caption = "Hatching and emergence success summary",
-              options = list(paging = F))
+tracks_wp %>%
+  hatching_emergence_success() %>%
+  DT::datatable(.,
+    caption = "Hatching and emergence success summary",
+    options = list(paging = F)
+  )
 ```
 
 ## Disturbance and predation
@@ -106,8 +108,8 @@ General signs of disturbance or predator presence are recorded through form
 Turtle nests with recorded disturbance or predation.
 
 ```{r}
-disturbed_nests_wp <- tracks_wp %>% filter(disturbance=="present")
-disturbed_nests_wp %>% add_nest_labels %>% map_tracks
+disturbed_nests_wp <- tracks_wp %>% filter(disturbance == "present")
+disturbed_nests_wp %>% add_nest_labels() %>% map_tracks()
 ```
 
 There were **`r count(disturbed_nests_wp)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
@@ -120,7 +122,7 @@ Coming soon: map.
 There were **`r count(dist_wp)` reports** of general disturbance or predator presence:
 
 ```{r}
-dist_wp %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_wp %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
 ```
 
 
@@ -212,4 +214,5 @@ tracks_wp %>% select(-obs, -photos) %>% readr::write_csv("../data/tracks_wp.csv"
 surveys_wp %>% readr::write_csv("../data/surveys_wp.csv")
 dist_wp %>% select(-photos) %>% readr::write_csv("../data/dist_wp.csv")
 ```
+
 
