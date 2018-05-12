@@ -34,6 +34,43 @@ tracks_ts <- . %>%
       ggplot2::theme_light()
   }
 
+
+
+map_dist <- function(dist){
+  . <- NULL
+
+  pal <- leaflet::colorFactor(
+    palette = 'Set1',
+    domain = dist$disturbance_cause
+  )
+
+  layersControlOptions <- NULL
+  l <- leaflet(width = 800, height = 600) %>%
+    addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+    addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+    clearBounds()
+
+  dist.df <- dist %>% split(dist$disturbance_cause)
+
+  names(dist.df) %>%
+    purrr::walk(function(df) {
+      l <<- l %>% addAwesomeMarkers(data = dist.df[[df]],
+                                    lng = ~longitude, lat = ~latitude,
+                                    icon = leaflet::makeAwesomeIcon(
+                                      text = ~stringr::str_sub(disturbance_cause, 0,1),
+                                      markerColor = ~pal(disturbance_cause)),
+                                    label = ~paste(date, disturbance_cause),
+                                    popup = ~paste(date, disturbance_cause, "\n", comments),
+                                    group = df)
+    })
+
+  l %>%
+    addLayersControl(
+      baseGroups = c("Aerial", "Place names"),
+      overlayGroups = names(dist.df),
+      options = layersControlOptions(collapsed = FALSE))
+}
+
 survey_count <- function(surveys, site_id){
   surveys %>% filter(site_id==site_id) %>% nrow
 }

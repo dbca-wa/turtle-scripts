@@ -94,12 +94,11 @@ There were **`r count(disturbed_nests_cbb)` reports** of disturbed nests. Caveat
 Coming soon: details of disturbance to nests.
 
 ### General disturbance
-Coming soon: map.
-
 There were **`r count(dist_cbb)` reports** of general disturbance or predator presence:
 
 ```{r}
 dist_cbb %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_cbb %>% map_dist
 ```
 
 ## How many hatchlings were stuck in sand or dead the next morning?

@@ -96,12 +96,11 @@ There were **`r count(disturbed_nests_wp)` reports** of disturbed nests. Caveat:
 Coming soon: details of disturbance to nests.
 
 ### General disturbance
-Coming soon: map.
-
 There were **`r count(dist_wp)` reports** of general disturbance or predator presence:
 
 ```{r}
 dist_wp %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_wp %>% map_dist
 ```
 
 

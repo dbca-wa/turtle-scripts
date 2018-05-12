@@ -46,7 +46,7 @@ This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra
 tracks_pth_cem %>% add_nest_labels %>% map_tracks
 tracks_pth_ppo %>% add_nest_labels %>% map_tracks
 ```
-## How many nests did we have all together across all sectors?
+## Nesting abundnace
 ```{r tracks_all_sectors}
 tracks_pth %>% species_by_type %>% kable
 ```
@@ -96,6 +96,7 @@ There were **`r count(dist_pth)` reports** of general disturbance or predator pr
 
 ```{r}
 dist_pth %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_pth %>% map_dist
 ```
 
 ## Survey count

@@ -116,7 +116,10 @@ There were **`r count(dist_thv)` reports** of general disturbance or predator pr
 
 ```{r}
 dist_thv %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_thv %>% map_dist
+
 dist_di %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_di %>% map_dist
 ```
 
 
