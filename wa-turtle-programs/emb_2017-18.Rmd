@@ -1,6 +1,6 @@
 ---
-title: "West Pilbara Season Review 2017-2018"
-author: "West Pilbara Turtle Program with Marine Turtles WA"
+title: "Eighty Mile Beach Season Review 2017-2018"
+author: "Marine Turtles WA"
 date: "`r Sys.time()`"
 output:
   html_document:
@@ -21,19 +21,14 @@ The data shown are pending QA and reconciliation with paper-based records.
 Until this warning disappears, this dataset may contain duplicates from training runs, effort attributed to the wrong operators, and possibly other issues and biases.
 
 # Data
+Eighy Mile Beach is surveyed at sites Anna Plains and Caravan Park.
 ```{r, eval=T}
 source("load_data.R")
-tracks_wp <- tracks_all %>% filter_wp() %>% filter_2017()
-# tracks_cw <- tracks_all %>% filter_cw %>% filter_2017
-tracks_bb <- tracks_all %>% filter_bb() %>% filter_2017()
-tracks_yc <- tracks_all %>% filter_yc() %>% filter_2017()
-
-surveys_wp <- surveys %>% filter_wp() %>% filter_2017()
-# surveys_cw <- surveys %>% filter_cw %>% filter_2017
-surveys_bb <- surveys %>% filter_bb() %>% filter_2017()
-surveys_yc <- surveys %>% filter_yc() %>% filter_2017()
-
-dist_wp <- disturbance %>% filter_wp() %>% filter_2017()
+tracks_emb <- tracks_all %>% filter_emb() %>% filter_2017()
+tracks_ap <- tracks_all %>% filter_emb_ap() %>% filter_2017()
+tracks_cv <- tracks_all %>% filter_emb_cvp() %>% filter_2017()
+surveys_emb <- surveys %>% filter_emb() %>% filter_2017()
+dist_emb <- disturbance %>% filter_emb() %>% filter_2017()
 ```
 
 # Season summary
@@ -46,37 +41,37 @@ This led to under-reporting of hatched nests this season.
 Entering and proofreading a record takes about 2 minutes with full concentration.
 By going digital, data entry and proofreading are fully automated.
 This season, the Volunteers have saved 
-`r (nrow(tracks_wp) + nrow(surveys_wp)*2) * 2 / 60` hours of mind-numbing data entry
-and proofreading work for `r nrow(tracks_wp)` Track or Treats and 
-`r nrow(surveys_wp)*2` Site Visit Starts/Ends. 
+`r (nrow(tracks_emb) + nrow(surveys_emb)*2 + nrow(dist_emb)) * 2 /60` hours of 
+mind-numbing data entry and proofreading work for `r nrow(tracks_emb)` Track or Treats and 
+`r nrow(surveys_emb)*2` Site Visit Starts/Ends. 
 This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra!
 
 ## Maps
 ```{r map_overall}
-tracks_wp %>% add_nest_labels() %>% map_tracks()
-tracks_bb %>% add_nest_labels() %>% map_tracks()
-tracks_yc %>% add_nest_labels() %>% map_tracks()
+tracks_emb %>% add_nest_labels() %>% map_tracks()
+tracks_ap %>% add_nest_labels() %>% map_tracks()
+tracks_cv %>% add_nest_labels() %>% map_tracks()
 ```
 
 ## Nesting abundance
 ```{r tracks_all_sectors}
-tracks_wp %>% species_by_type() %>% kable()
+tracks_emb %>% species_by_type() %>% kable()
 ```
 
-```{r tracks_bb}
-tracks_bb %>% species_by_type() %>% kable()
+```{r tracks_ap}
+tracks_ap %>% species_by_type() %>% kable()
 ```
 
-```{r tracks_yc}
-tracks_yc %>% species_by_type() %>% kable()
+```{r tracks_cv}
+tracks_cv %>% species_by_type() %>% kable()
 ```
 
 ## Nesting success 
 ```{r nesting_success, fig.height=5, fig.width=7, warning = F}
-tracks_wp %>% tracks_ts()
+tracks_emb %>% tracks_ts()
 
-nests <- tracks_wp %>% track_success()
-label <- "wp"
+nests <- tracks_emb %>% track_success()
+label <- "emb"
 
 nests %>% ggplot_track_success_by_date("natator-depressus", label)
 nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
@@ -89,13 +84,14 @@ nests %>% track_success_by_species() %>% datatable(.,
 
 ## Hatching and emergence success
 ```{r hatching_emergence_success}
-tracks_wp %>%
+tracks_emb %>%
   hatching_emergence_success() %>%
   DT::datatable(.,
     caption = "Hatching and emergence success summary",
     options = list(paging = F)
   )
 ```
+
 
 ## Disturbance and predation
 Disturbed nests are captured through form "Track or Treat" and appear here
@@ -108,20 +104,21 @@ General signs of disturbance or predator presence are recorded through form
 Turtle nests with recorded disturbance or predation.
 
 ```{r}
-disturbed_nests_wp <- tracks_wp %>% filter(disturbance == "present")
-disturbed_nests_wp %>% add_nest_labels() %>% map_tracks()
+disturbed_nests_emb <- tracks_emb %>% filter(disturbance == "present")
+disturbed_nests_emb %>% add_nest_labels() %>% map_tracks()
 ```
 
-There were **`r count(disturbed_nests_wp)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
+There were **`r count(disturbed_nests_emb)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
 
 Coming soon: details of disturbance to nests.
 
 ### General disturbance
-There were **`r count(dist_wp)` reports** of general disturbance or predator presence:
+Coming soon: map.
+
+There were **`r count(dist_emb)` reports** of general disturbance or predator presence:
 
 ```{r}
-dist_wp %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
-dist_wp %>% map_dist
+dist_emb %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
 ```
 
 
@@ -134,17 +131,9 @@ This contributes to over-estimation of effort, but shows actual boots on the
 ground - training is also an effort!
 
 ```{r survey_count}
-place <- "West Pilbara"
-surveys_wp %>% plot_survey_count(place)
-surveys_wp %>% list_survey_count(place)
-
-place <- "West Pilbara Bells Beach"
-surveys_bb %>% plot_survey_count(place)
-surveys_bb %>% list_survey_count(place)
-
-place <- "West Pilbara Yacht Club Beach"
-surveys_yc %>% plot_survey_count(place)
-surveys_yc %>% list_survey_count(place)
+place <- "Eighty Mile Beach"
+surveys_emb %>% plot_survey_count(place)
+surveys_emb %>% list_survey_count(place)
 ```
 
 ## Survey effort in hours
@@ -157,14 +146,8 @@ Q How many hours did volunteers survey, how many kilometers were walked?
 Both factors contribute to over-estimation of effort.
 
 ```{r survey_effort}
-surveys_wp %>% plot_survey_effort("West Pilbara")
-surveys_wp %>% list_survey_effort("West Pilbara")
-
-surveys_bb %>% plot_survey_effort("West Pilbara Bells Beach")
-surveys_bb %>% list_survey_effort("West Pilbara Bells Beach")
-
-surveys_yc %>% plot_survey_effort("West Pilbara Yacht Club Beach")
-surveys_yc %>% list_survey_effort("West Pilbara Yacht Club Beach")
+surveys_emb %>% plot_survey_effort("Eighty Mile Beach")
+surveys_emb %>% list_survey_effort("Eighty Mile Beach")
 ```
 
 ## Survey effort per primary reporter
@@ -185,32 +168,39 @@ their survey effort on that day is incorrectly attributed to the previous report
 The only way to reconcile attribution is to manually compare survey usernames with
 team rosters.
 
+
+Note: Florian Mayer was logged into the device during training, 
+so hours logged against Florian should correctly be attributed to the actual
+data collectors.
+
 ```{r survey_effort_by_person}
-personal_effort <- surveys_wp %>% survey_hours_per_person()
+personal_effort <- surveys_emb %>% survey_hours_per_person()
 personal_effort %>% kable()
 ```
 
 ## Survey effort in kilometers walked
 Number of surveys per sector times length of site.
 
-At Bells Beach, assuming the round trip was 2 km,
-`r survey_ground_covered(surveys, 25, 2)` km were walked 
-in `r survey_count(surveys_wp, 25)` surveys.
+**Note** adjust length estimates.
 
-At Yacht Club Beach, assuming the round trip was 1 km,
-`r survey_ground_covered(surveys, 27, 1)` km were walked 
-in `r survey_count(surveys_wp, 27)` surveys.
+At Anna Plains, assuming the round trip was 6 km,
+`r survey_ground_covered(surveys, 37, 6)` km were covered 
+in `r survey_count(surveys, 37)` surveys.
+
+At Caravan Park Beach, assuming the round trip was 6 km,
+`r survey_ground_covered(surveys, 36, 6)` km were covered 
+in `r survey_count(surveys, 36)` surveys.
 
 # Data upload
 
 ```{r data_upload}
 # d <- ckanr::package_show("turtle-tracks")
-ckanr::resource_update("1c57e04a-c29c-464c-b82d-a69e4ee0b199", "westpilbara_2017-18.html")
+ckanr::resource_update("56f1071d-b8ed-4ac7-bb37-a5151978a9f1", "emb_2017-18.html")
 ```
 
 ```{r data_export}
-tracks_wp %>% select(-obs, -photos) %>% readr::write_csv("../data/tracks_wp.csv")
-surveys_wp %>% readr::write_csv("../data/surveys_wp.csv")
-dist_wp %>% select(-photos) %>% readr::write_csv("../data/dist_wp.csv")
+tracks_emb %>% select(-obs, -photos) %>% readr::write_csv("../data/tracks_emb.csv")
+surveys_emb %>% readr::write_csv("../data/surveys_emb.csv")
+dist_emb %>% select(-photos) %>% readr::write_csv("../data/dist_emb.csv")
 ```
 

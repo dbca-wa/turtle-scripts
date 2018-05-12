@@ -19,7 +19,7 @@ Sys.setenv(GH_REPO = "biosys-turtles")
 #
 #' Map given function, handle null as NA and flatten_chr()
 map_chr_hack <- function(.x, .f, ...) {
-  map(.x, .f, ...) %>% map_if(is.null, ~ NA_character_) %>% flatten_chr()
+  map(.x, .f, ...) %>% map_if(is.null, ~NA_character_) %>% flatten_chr()
 }
 
 #' Format url and label as HTML hyperlink
@@ -29,26 +29,28 @@ as_url <- function(url, label) {
 
 #' Convert a string of markdown to HTML
 md_to_html <- function(md) {
-  if (is.null(md) || is.na(md)) {md <- "no content"}
+  if (is.null(md) || is.na(md)) {
+    md <- "no content"
+  }
   markdown::markdownToHTML(file = NULL, text = md, fragment.only = TRUE)
 }
 
 #' Extract a element with name or number n from a list x
-extract_name <- function(x, n)sapply(x, `[[`, n)
+extract_name <- function(x, n) sapply(x, `[[`, n)
 
 #' Extract a list of mentioned GitHub issue numbers from text
 #' require(testthat)
 #' testthat::expect_equal(extract_related("#5 #65 #123 #7# #test # test ## #8\n#9"), c(5, 65, 123, 8, 9))
 #' testthat::expect_equal(extract_related("#7# #test # test ## "), NA_integer_)
 #' testthat::expect_equal(extract_related(""), NA_integer_)
-extract_related <- function (x) {
+extract_related <- function(x) {
   out <- x %>%
     str_extract_all("(?<=#)\\d+(?=\\s|\\n|\\<|$)") %>%
-    compact %>%
-    unlist %>%
+    compact() %>%
+    unlist() %>%
     extract_name(1) %>%
-    as.integer %>%
-    compact
+    as.integer() %>%
+    compact()
   if (length(out) == 0) return(NA_integer_) else return(out)
 }
 
@@ -59,17 +61,18 @@ gethub <- function(what,
                    # .token = Sys.getenv("GITHUB_PAT"),
                    .limit = Inf) {
   gh(paste0("/repos/:owner/:repo/", what),
-     owner = owner,
-     repo = repo,
-     # .token = .token,
-     .limit = .limit)
+    owner = owner,
+    repo = repo,
+    # .token = .token,
+    .limit = .limit
+  )
 }
 
 #' Substitute boolean values with "yes" or "no". Per popular request.
 bool2yn <- . %>% ifelse("yes", "no")
 
 #' Build a tbl_df of GH issues from a GH API response
-make_issues <- function(ii){
+make_issues <- function(ii) {
   i1 <- ii %>% {
     tibble::tibble(
       id = map_int(., "number"),
@@ -94,13 +97,16 @@ make_issues <- function(ii){
       tagging = milestone %in% c(
         "Overarching requirements",
         "Turtle Tagging",
-        "Turtle Tag Asset Management") %>% bool2yn,
+        "Turtle Tag Asset Management"
+      ) %>% bool2yn(),
       tracks = milestone %in% c(
         "Overarching requirements",
-        "Turtle Tracks and Nests") %>% bool2yn,
+        "Turtle Tracks and Nests"
+      ) %>% bool2yn(),
       strandings = milestone %in% c(
         "Overarching requirements",
-        "Marine Wildlife Strandings") %>% bool2yn
+        "Marine Wildlife Strandings"
+      ) %>% bool2yn()
     )
   } %>% arrange(id)
 
@@ -110,22 +116,23 @@ make_issues <- function(ii){
   i2 <- i1 %>%
     separate_rows(labels) %>%
     mutate(tagslog = TRUE) %>%
-    spread(labels, tagslog, fill = FALSE)  %>%
+    spread(labels, tagslog, fill = FALSE) %>%
     select(id, Business, Stakeholder, Functional, Internal, must, should) %>%
     mutate(
-      Business = Business %>% bool2yn,
-      Stakeholder = Stakeholder %>% bool2yn,
-      Functional = Functional %>% bool2yn,
-      Internal = Internal %>% bool2yn,
-      must  = must %>% bool2yn,
-      should = should %>% bool2yn)
+      Business = Business %>% bool2yn(),
+      Stakeholder = Stakeholder %>% bool2yn(),
+      Functional = Functional %>% bool2yn(),
+      Internal = Internal %>% bool2yn(),
+      must = must %>% bool2yn(),
+      should = should %>% bool2yn()
+    )
 
   iss <- left_join(i1, i2, by = "id")
   iss
 }
 
 # Issues in long form as MS Word document ------------------------------------#
-as_md <- function(id, title, milestone, body, url, labels){
+as_md <- function(id, title, milestone, body, url, labels) {
   paste0(
     "# Requirement ", id, " ", title, "\n\n",
     "[View #", id, " online](", url, ")\n\n",
@@ -135,55 +142,60 @@ as_md <- function(id, title, milestone, body, url, labels){
   )
 }
 
-issues_md <- function(issue_tbl){
+issues_md <- function(issue_tbl) {
   issue_tbl %>%
     mutate(md = as_md(id, title, milestone, body_md, url, labels_chr)) %>%
     select(md)
 }
 
-prepare_issues_md <- function(issues_tbl){
+prepare_issues_md <- function(issues_tbl) {
   issues_oa <- issues_tbl %>%
     dplyr::filter(milestone == "Overarching requirements") %>%
-    issues_md
+    issues_md()
 
   issues_tag <- issues_tbl %>%
-    dplyr::filter(milestone %in% c("Turtle Tagging",
-                                   "Turtle Tag Asset Management")) %>%
-    issues_md
+    dplyr::filter(milestone %in% c(
+      "Turtle Tagging",
+      "Turtle Tag Asset Management"
+    )) %>%
+    issues_md()
 
   issues_track <- issues_tbl %>%
     dplyr::filter(milestone == "Turtle Tracks and Nests") %>%
-    issues_md
+    issues_md()
 
   issues_strand <- issues_tbl %>%
     dplyr::filter(milestone == "Marine Wildlife Strandings") %>%
-    issues_md
+    issues_md()
 
   issues_out <- rbind(issues_oa, issues_tag, issues_track, issues_strand)
 
   issues_out
 }
 
-write_md <- function(md, fname="issues.md"){
+write_md <- function(md, fname = "issues.md") {
   out <- paste0(
-"---
+    "---
 output:
   word_document: default
   html_document: default
 ---
-", md)
-  write.table(out, file = fname, sep = "\n", fileEncoding = "utf-8",
-              quote = F, row.names = F, col.names = F)
+", md
+  )
+  write.table(out,
+    file = fname, sep = "\n", fileEncoding = "utf-8",
+    quote = F, row.names = F, col.names = F
+  )
 }
 
-write_docx <- function(issues_md){
+write_docx <- function(issues_md) {
   write_md(issues_md$md, fname = "requirements.md")
   rmarkdown::render("requirements.md")
 }
 
 
 #' Build a tbl_df of GH milestones from a GH API response
-make_milestones <- function(mm){
+make_milestones <- function(mm) {
   mm %>% {
     tibble::tibble(
       id = map_int(., "id"),
@@ -203,7 +215,7 @@ make_milestones <- function(mm){
 }
 
 #' Build a tbl_df of GH labels from a GH API response
-make_labels <- function(ll){
+make_labels <- function(ll) {
   ll %>% {
     tibble::tibble(
       id = map_int(., "id"),
@@ -215,7 +227,7 @@ make_labels <- function(ll){
 }
 
 #' Return selected columns for a tbl_df of GH issues (labels pivoted)
-make_requirements <- function(ii){
+make_requirements <- function(ii) {
   ii %>%
     transmute(
       ID = id,
@@ -236,13 +248,13 @@ make_requirements <- function(ii){
       # could_have = could,
       # wont_have = wont
       Categories = labels_chr
-      #, Requirement = body # too large to include
+      # , Requirement = body # too large to include
       # Source = url
     )
 }
 
 #' Return selected columns for a tbl_df of GH milestones
-make_business_needs <- function(mm){
+make_business_needs <- function(mm) {
   mm %>%
     transmute(
       ID = number,
@@ -252,12 +264,12 @@ make_business_needs <- function(mm){
     )
 }
 
-lookup_issue_index <- function(issue_lookup, issue_id){
-  issue_lookup %>% filter(id == issue_id) %>% extract("zerorn") %>% as.integer
+lookup_issue_index <- function(issue_lookup, issue_id) {
+  issue_lookup %>% filter(id == issue_id) %>% extract("zerorn") %>% as.integer()
 }
 
 #' Extract related issues (0-indexed) if mentioned in issue body
-make_relations <- function(df){
+make_relations <- function(df) {
   dd <- df %>%
     mutate(zerorn = as.integer(rownames(df)) - 1) %>%
     select(id, zerorn)
@@ -267,12 +279,13 @@ make_relations <- function(df){
     filter(!is.na(related)) %>%
     rowwise() %>%
     do(expand.grid(.$id, .$related)) %>%
-    transmute(# source_id = Var1,
-              # target_id = Var2,
-              source = lookup_issue_index(dd, Var1),
-              target = lookup_issue_index(dd, Var2)) %>%
+    transmute( # source_id = Var1,
+      # target_id = Var2,
+      source = lookup_issue_index(dd, Var1),
+      target = lookup_issue_index(dd, Var2)
+    ) %>%
     filter(!is.na(target)) %>%
-    data.frame
+    data.frame()
 }
 
 #------------------------------------------------------------------------------#
@@ -289,7 +302,7 @@ ui <- navbarPage(
       h1("Explore"),
       p("Click to view details, drag to re-order"),
       forceNetworkOutput("force", width = "100%", height = "800px")
-      ),
+    ),
 
     column(
       5,
@@ -298,15 +311,19 @@ ui <- navbarPage(
       uiOutput("download_requirements_docx"),
       h1("Details"),
       uiOutput("issue_selector"),
-      uiOutput("issue_detail"))),
+      uiOutput("issue_detail")
+    )
+  ),
 
   tabPanel(
     "Business Needs",
-    shiny::dataTableOutput("business_needs_table")),
+    shiny::dataTableOutput("business_needs_table")
+  ),
 
   tabPanel(
     "Requirements",
-    shiny::dataTableOutput("requirements_table"))
+    shiny::dataTableOutput("requirements_table")
+  )
 )
 
 #------------------------------------------------------------------------------#
@@ -318,13 +335,22 @@ server <- function(input, output) {
   # Summon data from GitHub API
   #
   issue_list <- reactive(
-    withProgress(message = 'Loading requirements...', {gethub("issues")}))
+    withProgress(message = "Loading requirements...", {
+      gethub("issues")
+    })
+  )
 
   milestone_list <- reactive(
-    withProgress(message = 'Loading business needs...', {gethub("milestones")}))
+    withProgress(message = "Loading business needs...", {
+      gethub("milestones")
+    })
+  )
 
   labels_list <- reactive(
-    withProgress(message = 'Loading categories...', {gethub("labels")}))
+    withProgress(message = "Loading categories...", {
+      gethub("labels")
+    })
+  )
 
   #----------------------------------------------------------------------------#
   # Transform primary data
@@ -380,7 +406,8 @@ server <- function(input, output) {
       "selected_issue",
       "Backspace and type to search; select to view details",
       setNames(rownames(ii), ii$title),
-      width = '100%')
+      width = "100%"
+    )
   })
 
   output$category_selector <- renderUI({
@@ -394,9 +421,10 @@ server <- function(input, output) {
       "selected_categories",
       "Categories",
       vals,
-      width = '50%',
+      width = "50%",
       selected = vals,
-      multiple = TRUE)
+      multiple = TRUE
+    )
   })
 
   output$priority_selector <- renderUI({
@@ -411,27 +439,30 @@ server <- function(input, output) {
       "selected_priorities",
       "Priorities",
       vals,
-      width = '50%',
+      width = "50%",
       selected = vals,
-      multiple = TRUE)
+      multiple = TRUE
+    )
   })
 
   #----------------------------------------------------------------------------#
   # Build datatables
   #
-  opts = list(
+  opts <- list(
     autoWidth = TRUE,
-    lengthMenu = list(c(10, 25, 50, -1), c('10', '25', '50', 'All')),
+    lengthMenu = list(c(10, 25, 50, -1), c("10", "25", "50", "All")),
     pageLength = 10,
     fixedHeader = list(header = TRUE, footer = TRUE)
   )
 
   output$business_needs_table <- shiny::renderDataTable(
-    business_needs(), options = opts, escape = FALSE
+    business_needs(),
+    options = opts, escape = FALSE
   )
 
   output$requirements_table <- shiny::renderDataTable(
-    requirements(), options = opts, escape = FALSE
+    requirements(),
+    options = opts, escape = FALSE
   )
 
   output$issue_detail <- renderUI({
@@ -448,7 +479,7 @@ server <- function(input, output) {
   output$force <- renderForceNetwork({
     forceNetwork(
       Links = relations(),
-      Nodes =  data.frame(issues()),
+      Nodes = data.frame(issues()),
       Source = "source",
       Target = "target",
       Value = 2,
@@ -473,7 +504,9 @@ server <- function(input, output) {
     filename = "requirements.csv",
     content = function(file) {
       d <- requirements() %>% select(-Link)
-      if (is.null(d)) {return(NULL)}
+      if (is.null(d)) {
+        return(NULL)
+      }
       dd <- data.frame(lapply(d, as.character), stringsAsFactors = FALSE)
       write.csv(dd, file, row.names = FALSE, fileEncoding = "utf-8")
     }
@@ -481,8 +514,10 @@ server <- function(input, output) {
 
   output$download_requirements_csv <- renderUI({
     d <- requirements()
-    if (is.null(d)) {return(NULL)}
-    downloadButton('downloadRequirementsCSV', label = "csv")
+    if (is.null(d)) {
+      return(NULL)
+    }
+    downloadButton("downloadRequirementsCSV", label = "csv")
   })
 
   output$downloadRequirementsDOCX <- downloadHandler(
@@ -491,7 +526,9 @@ server <- function(input, output) {
 
       # issues as tbl_df
       d <- issues()
-      if (is.null(d)) {return(NULL)}
+      if (is.null(d)) {
+        return(NULL)
+      }
 
       # issues as md
       issues_md <- prepare_issues_md(d)
@@ -507,14 +544,14 @@ server <- function(input, output) {
 
   output$download_requirements_docx <- renderUI({
     d <- issues()
-    if (is.null(d)) {return(NULL)}
-    downloadButton('downloadRequirementsDOCX', label = "docx")
+    if (is.null(d)) {
+      return(NULL)
+    }
+    downloadButton("downloadRequirementsDOCX", label = "docx")
   })
-
 }
 
 shinyApp(ui = ui, server = server)
 
 # Export issues as DOCX:
 # gethub("issues") %>% make_issues %>% prepare_issues_md %>% write_docx
-

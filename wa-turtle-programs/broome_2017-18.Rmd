@@ -1,5 +1,5 @@
 ---
-title: "Broome season review 2017-18"
+title: "Broome Season Review 2017-18"
 author: "Marine Turtles WA, Sarah Mullineux, Florian Mayer"
 date: "`r Sys.time()`"
 output:
@@ -20,12 +20,12 @@ source("tracks_helpers.R")
 
 ```{r filter_data}
 source("load_data.R")
-cbb <- tracks_all %>% filter_2017 %>% filter_broome
-cbb1 <- tracks_all %>% filter_2017 %>% filter_cbb1
-cbb2 <- tracks_all %>% filter_2017 %>% filter_cbb2
-cbb3 <- tracks_all %>% filter_2017 %>% filter_cbb3
-surveys_cbb <- surveys %>% filter_2017 %>% filter_broome_sites
-dist_cbb <- disturbance %>% filter_2017 %>%  filter_broome_sites
+cbb <- tracks_all %>% filter_2017() %>% filter_broome()
+cbb1 <- tracks_all %>% filter_2017() %>% filter_cbb1()
+cbb2 <- tracks_all %>% filter_2017() %>% filter_cbb2()
+cbb3 <- tracks_all %>% filter_2017() %>% filter_cbb3()
+surveys_cbb <- surveys %>% filter_2017() %>% filter_broome_sites()
+dist_cbb <- disturbance %>% filter_2017() %>% filter_broome_sites()
 ```
 
 # Season summary
@@ -41,37 +41,57 @@ This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra
 
 ## Maps
 ```{r map_overall}
-cbb %>% add_nest_labels %>% map_tracks
+cbb %>% add_nest_labels() %>% map_tracks()
 ```
 
-## How many nests did we have all together across all sectors?
+## Nesting abundance
 ```{r tracks_all_sectors}
-cbb %>% species_by_type %>% kable
+cbb %>% species_by_type() %>% kable()
 ```
-
-## Sum of tracks/nests per sector
-Q How many false crawls / fresh nests / hatched nests were found in each sector?
 
 ## Sector 1
 ```{r tracks_sector_1}
-cbb1 %>% species_by_type %>% kable
+cbb1 %>% species_by_type() %>% kable()
 ```
 
 ## Sector 2
 ```{r tracks_sector_2}
-cbb2 %>% species_by_type %>% kable
+cbb2 %>% species_by_type() %>% kable()
 ```
 
 ## Sector 3
 ```{r tracks_sector_3}
-cbb3 %>% species_by_type %>% kable
+cbb3 %>% species_by_type() %>% kable()
 ```
 
-```{r nesting_success}
-cbb %>% tracks_ts
-cbb1 %>% tracks_ts
-cbb2 %>% tracks_ts
-cbb3 %>% tracks_ts
+## Nesting success 
+
+```{r nesting_success, fig.height=5, fig.width=7, warning = F}
+cbb %>% tracks_ts()
+cbb1 %>% tracks_ts()
+cbb2 %>% tracks_ts()
+cbb3 %>% tracks_ts()
+
+nests <- cbb %>% track_success()
+label <- "cbb"
+
+nests %>% ggplot_track_success_by_date("natator-depressus", label)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+nests %>% track_success_by_species() %>% datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
+```
+
+## Hatching and emergence success
+```{r hatching_emergence_success}
+cbb %>%
+  hatching_emergence_success() %>%
+  DT::datatable(.,
+    caption = "Hatching and emergence success summary",
+    options = list(paging = F)
+  )
 ```
 
 ## Disturbance and predation
@@ -85,8 +105,8 @@ General signs of disturbance or predator presence are recorded through form
 Turtle nests with recorded disturbance or predation.
 
 ```{r}
-disturbed_nests_cbb <- cbb %>% filter(disturbance=="present")
-disturbed_nests_cbb %>% add_nest_labels %>% map_tracks
+disturbed_nests_cbb <- cbb %>% filter(disturbance == "present")
+disturbed_nests_cbb %>% add_nest_labels() %>% map_tracks()
 ```
 
 There were **`r count(disturbed_nests_cbb)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
@@ -141,18 +161,26 @@ Forgetting to enter one's name prior to a survey leads to incorrect attribution
 of the survey effort to the previously entered volunteer's name.
 
 ```{r survey_effort_by_person}
-personal_effort <- surveys_cbb %>% survey_hours_per_person
-personal_effort %>% kable
+personal_effort <- surveys_cbb %>% survey_hours_per_person()
+personal_effort %>% kable()
 ```
 
 ## Survey effort in kilometers walked
 Number of surveys per sector times length of sector.
 
-In sector 1, `r survey_ground_covered(surveys, 22, 4)` km were walked 
-in `r survey_count(surveys, 22)` surveys.
+In sector 1, `r survey_ground_covered(surveys_cbb, 22, 4)` km were walked 
+in `r survey_count(surveys_cbb, 22)` surveys.
 
-In sector 2, `r survey_ground_covered(surveys, 23, 4)` km were walked 
-in `r survey_count(surveys, 23)` surveys.
+In sector 2, `r survey_ground_covered(surveys_cbb, 23, 4)` km were walked 
+in `r survey_count(surveys_cbb, 23)` surveys.
 
-In sector 3, `r survey_ground_covered(surveys, 24, 7)` km were walked 
-in `r survey_count(surveys, 24)` surveys.
+In sector 3, `r survey_ground_covered(surveys_cbb, 24, 7)` km were walked 
+in `r survey_count(surveys_cbb, 24)` surveys.
+
+# Data upload
+
+```{r data_upload}
+# d <- ckanr::package_show("turtle-tracks")
+ckanr::resource_update("9572e76b-55e9-4afb-b224-7cce7beb4959", "broome_2017-18.html")
+```
+
