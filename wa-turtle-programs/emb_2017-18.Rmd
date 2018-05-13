@@ -44,7 +44,6 @@ This season, the Volunteers have saved
 `r (nrow(tracks_emb) + nrow(surveys_emb)*2 + nrow(dist_emb)) * 2 /60` hours of 
 mind-numbing data entry and proofreading work for `r nrow(tracks_emb)` Track or Treats and 
 `r nrow(surveys_emb)*2` Site Visit Starts/Ends. 
-This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra!
 
 ## Maps
 ```{r map_overall}
@@ -55,7 +54,7 @@ tracks_cv %>% add_nest_labels() %>% map_tracks()
 
 ## Nesting abundance
 ```{r tracks_all_sectors}
-tracks_emb %>% species_by_type() %>% kable()
+# tracks_emb %>% species_by_type() %>% kable(.)
 ```
 
 ```{r tracks_ap}
@@ -63,7 +62,7 @@ tracks_ap %>% species_by_type() %>% kable()
 ```
 
 ```{r tracks_cv}
-tracks_cv %>% species_by_type() %>% kable()
+# tracks_cv %>% species_by_type() %>% kable()
 ```
 
 ## Nesting success 
@@ -113,12 +112,12 @@ There were **`r count(disturbed_nests_emb)` reports** of disturbed nests. Caveat
 Coming soon: details of disturbance to nests.
 
 ### General disturbance
-Coming soon: map.
 
 There were **`r count(dist_emb)` reports** of general disturbance or predator presence:
 
 ```{r}
 dist_emb %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
+dist_emb %>% map_dist
 ```
 
 

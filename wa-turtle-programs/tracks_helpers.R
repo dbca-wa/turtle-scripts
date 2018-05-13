@@ -34,9 +34,6 @@ tracks_ts <- . %>%
       ggplot2::theme_light()
   }
 
-<<<<<<< HEAD
-
-
 map_dist <- function(dist){
   . <- NULL
 
@@ -74,8 +71,8 @@ map_dist <- function(dist){
 
 survey_count <- function(surveys, site_id){
   surveys %>% filter(site_id==site_id) %>% nrow
-=======
-hatching_emergence_success <- . %>%
+
+  hatching_emergence_success <- . %>%
   filter(nest_type=="hatched-nest") %>%
   dplyr::filter(hatching_success >= 0) %>%
   group_by(species) %>%
@@ -94,6 +91,7 @@ hatching_emergence_success <- . %>%
     "emergence_success_min" = min(emergence_success),
     "emergence_success_max" = max(emergence_success)
   )
+}
 
 ggplot_track_success_by_date <- function(data, species_name, place_name) {
   data %>%
@@ -143,7 +141,6 @@ track_success <- function(tracks){
     left_join(successful_tracks_by_date, by = c('date','species')) %>%
     mutate(successful = ifelse(is.na(successful), 0, successful),
            track_success = 100 * successful/all)
->>>>>>> fbe8c1686c2b69bc7ec54992946a6254b82761fd
 }
 
 track_success_by_species <- function(track_success) {
