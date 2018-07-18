@@ -70,9 +70,9 @@ map_dist <- function(dist){
 }
 
 survey_count <- function(surveys, site_id){
-  surveys %>% filter(site_id==site_id) %>% nrow
+  surveys %>% filter(site_id==site_id) %>% nrow}
 
-  hatching_emergence_success <- . %>%
+hatching_emergence_success <- . %>%
   filter(nest_type=="hatched-nest") %>%
   dplyr::filter(hatching_success >= 0) %>%
   group_by(species) %>%
@@ -91,7 +91,7 @@ survey_count <- function(surveys, site_id){
     "emergence_success_min" = min(emergence_success),
     "emergence_success_max" = max(emergence_success)
   )
-}
+
 
 ggplot_track_success_by_date <- function(data, species_name, place_name) {
   data %>%
@@ -188,4 +188,3 @@ filter_thv <- . %>% dplyr::filter(site_id %in% c(20, 28, 29))
 filter_thvn <- . %>% dplyr::filter(site_id == 28)
 filter_thvs <- . %>% dplyr::filter(site_id == 29)
 filter_thvt <- . %>% dplyr::filter(site_id == 20)
-

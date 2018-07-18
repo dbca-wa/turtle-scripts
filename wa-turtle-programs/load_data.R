@@ -1,6 +1,7 @@
 if (file.exists("../data/tracks.Rda")) {
   load("../data/tracks.Rda")
 } else {
+  require(magrittr)
   q <- list(taxon = "Cheloniidae", format = "json")
   animal_records <- wastdr::wastd_GET("animal-encounters", query = q)
   animals <- wastdr::parse_animal_encounters(animal_records)

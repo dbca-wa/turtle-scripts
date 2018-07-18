@@ -58,7 +58,7 @@ tracks_cv %>% add_nest_labels() %>% map_tracks()
 ```
 
 ```{r tracks_ap}
-tracks_ap %>% species_by_type() %>% kable()
+# tracks_ap %>% species_by_type() %>% kable()
 ```
 
 ```{r tracks_cv}
@@ -67,10 +67,10 @@ tracks_ap %>% species_by_type() %>% kable()
 
 ## Nesting success 
 ```{r nesting_success, fig.height=5, fig.width=7, warning = F}
-tracks_emb %>% tracks_ts()
+# tracks_emb %>% tracks_ts()
 
-nests <- tracks_emb %>% track_success()
-label <- "emb"
+nests <- tracks_ap %>% track_success()
+label <- "Anna Plains"
 
 nests %>% ggplot_track_success_by_date("natator-depressus", label)
 nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
@@ -79,16 +79,37 @@ nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
 nests %>% track_success_by_species() %>% datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
+
+
+nests <- tracks_cv %>% track_success()
+label <- "Caravan Park"
+
+nests %>% ggplot_track_success_by_date("natator-depressus", label)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+nests %>% track_success_by_species() %>% datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
+
 ```
 
 ## Hatching and emergence success
 ```{r hatching_emergence_success}
-tracks_emb %>%
+tracks_ap %>%
   hatching_emergence_success() %>%
   DT::datatable(.,
-    caption = "Hatching and emergence success summary",
+    caption = "Hatching and emergence success summary Anna Plains",
     options = list(paging = F)
   )
+
+tracks_cv %>%
+  hatching_emergence_success() %>%
+  DT::datatable(.,
+    caption = "Hatching and emergence success summary Caravan Park",
+    options = list(paging = F)
+  )
+
 ```
 
 
