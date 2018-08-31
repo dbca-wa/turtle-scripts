@@ -126,6 +126,8 @@ dist_wp %>% map_dist
 
 
 ## Survey count
+Curators are to QA [all West Pilbara surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=25,26,27) following the 
+[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
 
 ### Caveat
 * Data includes training surveys.
