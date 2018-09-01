@@ -1,5 +1,5 @@
-if (file.exists("../data/tracks.Rda")) {
-  load("../data/tracks.Rda")
+if (file.exists(here::here("data", "tracks.Rda"))) {
+  load(here::here("data", "tracks.Rda"))
 } else {
   require(magrittr)
   q <- list(taxon = "Cheloniidae", format = "json")
@@ -10,8 +10,13 @@ if (file.exists("../data/tracks.Rda")) {
   disturbance <- wastdr::wastd_GET("disturbance-observations") %>%
     wastdr::parse_disturbance_observations()
   surveys <- wastd_GET("surveys") %>% wastdr::parse_surveys()
-  save(animal_records, animals, tracks_all, track_records,
-    disturbance, surveys,
-    file = "../data/tracks.Rda"
+  save(
+    animal_records,
+    animals,
+    tracks_all,
+    track_records,
+    disturbance,
+    surveys,
+    file = here::here("data", "tracks.Rda")
   )
 }

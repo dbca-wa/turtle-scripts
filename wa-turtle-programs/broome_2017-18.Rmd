@@ -20,10 +20,11 @@ source("tracks_helpers.R")
 
 ```{r filter_data}
 source("load_data.R")
-cbb <- tracks_all %>% filter_2017() %>% filter_broome()
-cbb1 <- tracks_all %>% filter_2017() %>% filter_cbb1()
-cbb2 <- tracks_all %>% filter_2017() %>% filter_cbb2()
-cbb3 <- tracks_all %>% filter_2017() %>% filter_cbb3()
+tracks_2017 <- tracks_all %>% filter_2017()
+cbb <-  tracks_2017 %>% filter_broome()
+cbb1 <- tracks_2017 %>% filter_cbb1()
+cbb2 <- tracks_2017 %>% filter_cbb2()
+cbb3 <- tracks_2017 %>% filter_cbb3()
 surveys_cbb <- surveys %>% filter_2017() %>% filter_broome_sites()
 dist_cbb <- disturbance %>% filter_2017() %>% filter_broome_sites()
 ```

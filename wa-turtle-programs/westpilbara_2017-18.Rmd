@@ -36,6 +36,28 @@ surveys_yc <- surveys %>% filter_yc() %>% filter_2017()
 dist_wp <- disturbance %>% filter_wp() %>% filter_2017()
 ```
 
+Note: Jason reported the following counts for manual entry (not done yet, so not showing up in this report):
+
+```{r, eval=F}
+# 16/11:
+# 5 false crawls, 3 nests:
+# -20.61127   117.15553 below dune
+# -20.61067 117.15619 above high water
+# -20.61138 117.15530 right on the high water mark
+#  
+# 22/11:
+# 11 false crawls, 4 nests:
+# -20.61144 117.15526 above high water
+# -20.61031 117.15677 below dune
+# -20.61119 117.15564 above high water
+# -20.61129 117.15547 above high water
+#  
+# 23/11:
+# 2 false crawls, 2 nests:
+# -20.61149 117.15523 Above high water
+# -20.61143 117.15528 Above high water
+```
+
 # Season summary
 
 ## General notes
@@ -130,10 +152,7 @@ Curators are to QA [all West Pilbara surveys on WAStD](https://tsc.dbca.wa.gov.a
 [QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
 
 ### Caveat
-* Data includes training surveys.
-
-This contributes to over-estimation of effort, but shows actual boots on the 
-ground - training is also an effort!
+* Data includes training surveys. (Not production, but also effort)
 
 ```{r survey_count}
 place <- "West Pilbara"
@@ -153,10 +172,9 @@ surveys_yc %>% list_survey_count(place)
 Q How many hours did volunteers survey, how many kilometers were walked?
 
 ### Caveat
-* Surveys with missing end points are auto-closed after 5 hours. 
+* Surveys with missing end points are auto-closed after 5 hours (over-estimation of effort).
 * Data includes training surveys.
-
-Both factors contribute to over-estimation of effort.
+* Data excludes commute to survey site.
 
 ```{r survey_effort}
 surveys_wp %>% plot_survey_effort("West Pilbara")
@@ -175,17 +193,16 @@ Q Which volunteer did the most hours overall on survey?
 ### Caveat
 This list only includes the primary reporter. 
 This leads to under-reporting of time spent by other volunteers attending the survey.
-Their names are listed in the Site Visit Start form field "comments" as free text.
+Their names are listed in the Site Visit Start form field "comments" as free text, and from 2018, in the Site Visit Start form field "team".
 To correctly report on team member effort, curators have to read the list of 
 team members in the Site Visit "comments" field and attach the correct users 
-to the Survey team list.
-Once the surveys are comprehensively attributed to all volunteers present, this
+to the Survey team list. From 2018, this will be automated but still requires QA.
+Once the surveys are comprehensively attributed to all volunteers present, the code underneath this
 workbook has to be updated to include the Survey team's effort.
 
 If the primary reporter forgot to update the username in the tablet,
 their survey effort on that day is incorrectly attributed to the previous reporter.
-The only way to reconcile attribution is to manually compare survey usernames with
-team rosters.
+The only way to reconcile attribution is to manually compare survey usernames with team rosters.
 
 ```{r survey_effort_by_person}
 personal_effort <- surveys_wp %>% survey_hours_per_person()
@@ -194,6 +211,7 @@ personal_effort %>% kable()
 
 ## Survey effort in kilometers walked
 Number of surveys per sector times length of site.
+This includes local knowledge about distances on site.
 
 At Bells Beach, assuming the round trip was 2 km,
 `r survey_ground_covered(surveys, 25, 2)` km were walked 

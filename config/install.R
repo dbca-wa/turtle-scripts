@@ -56,6 +56,7 @@ install.packages(c(
   "tidyjson",
   "xts",
   "rvest",
+  "here",
 
   "DT",
   "mapview",

@@ -161,7 +161,7 @@ survey_ground_covered <- function(surveys, site_id, km_per_survey){
 }
 
 
-filter_2017 <- . %>% dplyr::filter(date > dmy("17/10/2017"))
+filter_2017 <- . %>% dplyr::filter(date > dmy("01/10/2017") & date < dmy("01/04/2018"))
 
 filter_broome <- . %>% dplyr::filter(area_name=="Cable Beach Broome")
 filter_broome_sites <- . %>% dplyr::filter(site_id %in% c(22, 23, 24))
@@ -183,7 +183,7 @@ filter_bb <- . %>% dplyr::filter(site_name == "Bells Beach") # id 25
 filter_yc <- . %>% dplyr::filter(site_name == "Wickam Yacht Club Beach") # id 27
 
 filter_di <- . %>% dplyr::filter(site_id == 39)
-
+filter_ri <- . %>% dplyr::filter(site_id == 40)
 filter_thv <- . %>% dplyr::filter(site_id %in% c(20, 28, 29))
 filter_thvn <- . %>% dplyr::filter(site_id == 28)
 filter_thvs <- . %>% dplyr::filter(site_id == 29)

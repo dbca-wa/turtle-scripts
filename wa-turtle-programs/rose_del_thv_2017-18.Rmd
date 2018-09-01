@@ -25,8 +25,10 @@ No data returned from Rosemary Islands. Need to deliver better/more/stricter tra
 # Data
 ```{r, eval=T}
 source("load_data.R")
-tracks_thv <- tracks_all %>% filter_thv() %>% filter_2017()
-tracks_di <- tracks_all %>% filter_di() %>% filter_2017()
+tracks_2017 <- tracks_all %>% filter_2017()
+tracks_thv <- tracks_2017 %>% filter_thv()
+tracks_di <- tracks_2017 %>% filter_di()
+# tracks_ri <- tracks_2017 %>% filter_ri() # no tracks received as of Aug 2018
 
 surveys_thv <- surveys %>% filter_thv() %>% filter_2017()
 surveys_di <- surveys %>% filter_di() %>% filter_2017()
@@ -39,8 +41,7 @@ dist_di <- disturbance %>% filter_di() %>% filter_2017()
 Source: Milani Chaloupka, presentation to DBCA / NWS committee 8/5/2018.
 
 Demographic focus is essential for diagnosing population status and trend.
-Survival rates, conditional breeding rates, hatchling production rates, recruitment rates
-population abundance.
+Survival rates, conditional breeding rates, hatchling production rates, recruitment rates and population abundance.
 
 Three major flatback pops in Pilbara: Delambre 3.5k nesting/y, Mundabullangana 2.5k nesting /y, Barrow Is 2k/y.
 Biggest pop in GBR is 700 nests/y.
@@ -49,7 +50,6 @@ Milani presented:
 
 * Bayesian gompertz state-space model trend
 * Random effects forest plot with rookery specific posterior distribution
-
 
 # Season summary
 
@@ -292,13 +292,23 @@ ckanr::resource_update("19294b29-a70f-45e3-b06b-fc1eefe858d2", "rose_del_thv_201
 ```
 
 ```{r data_export}
-tracks_thv %>% select(-obs, -photos) %>% readr::write_csv("../data/tracks_thv.csv")
-surveys_thv %>% readr::write_csv("../data/surveys_thv.csv")
-dist_thv %>% select(-photos) %>% readr::write_csv("../data/dist_thv.csv")
+tracks_thv %>% 
+  select(-obs, -photos) %>% 
+  readr::write_csv(here::here("data", "tracks_thv.csv"))
+surveys_thv %>% 
+  readr::write_csv(here::here("data", "surveys_thv.csv"))
+dist_thv %>% 
+  select(-photos) %>% 
+  readr::write_csv(here::here("data", "dist_thv.csv"))
 
-tracks_di %>% select(-obs, -photos) %>% readr::write_csv("../data/tracks_di.csv")
-surveys_di %>% readr::write_csv("../data/surveys_di.csv")
-dist_di %>% select(-photos) %>% readr::write_csv("../data/dist_di.csv")
+tracks_di %>% 
+  select(-obs, -photos) %>% 
+  readr::write_csv(here::here("data", "tracks_di.csv"))
+surveys_di %>% 
+  readr::write_csv(here::here("data", "surveys_di.csv"))
+dist_di %>% 
+  select(-photos) %>% 
+  readr::write_csv(here::here("data", "dist_di.csv"))
 ```
 
 

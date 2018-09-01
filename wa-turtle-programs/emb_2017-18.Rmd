@@ -24,11 +24,12 @@ Until this warning disappears, this dataset may contain duplicates from training
 Eighy Mile Beach is surveyed at sites Anna Plains and Caravan Park.
 ```{r, eval=T}
 source("load_data.R")
-tracks_emb <- tracks_all %>% filter_emb() %>% filter_2017()
-tracks_ap <- tracks_all %>% filter_emb_ap() %>% filter_2017()
-tracks_cv <- tracks_all %>% filter_emb_cvp() %>% filter_2017()
-surveys_emb <- surveys %>% filter_emb() %>% filter_2017()
-dist_emb <- disturbance %>% filter_emb() %>% filter_2017()
+tracks_2017 <- tracks_all %>% filter_2017()
+tracks_emb <- tracks_2017 %>% filter_emb()
+tracks_ap <- tracks_2017 %>% filter_emb_ap()
+tracks_cv <- tracks_2017 %>% filter_emb_cvp()
+surveys_emb <- surveys %>% filter_2017() %>% filter_emb()
+dist_emb <- disturbance %>% filter_2017() %>% filter_emb()
 ```
 
 # Season summary
@@ -54,20 +55,20 @@ tracks_cv %>% add_nest_labels() %>% map_tracks()
 
 ## Nesting abundance
 ```{r tracks_all_sectors}
-# tracks_emb %>% species_by_type() %>% kable(.)
+tracks_emb %>% species_by_type() %>% kable(.)
 ```
 
 ```{r tracks_ap}
-# tracks_ap %>% species_by_type() %>% kable()
+tracks_ap %>% species_by_type() %>% kable()
 ```
 
 ```{r tracks_cv}
-# tracks_cv %>% species_by_type() %>% kable()
+tracks_cv %>% species_by_type() %>% kable()
 ```
 
 ## Nesting success 
 ```{r nesting_success, fig.height=5, fig.width=7, warning = F}
-# tracks_emb %>% tracks_ts()
+tracks_emb %>% tracks_ts()
 
 nests <- tracks_ap %>% track_success()
 label <- "Anna Plains"
@@ -219,8 +220,12 @@ ckanr::resource_update("56f1071d-b8ed-4ac7-bb37-a5151978a9f1", "emb_2017-18.html
 ```
 
 ```{r data_export}
-tracks_emb %>% select(-obs, -photos) %>% readr::write_csv("../data/tracks_emb.csv")
-surveys_emb %>% readr::write_csv("../data/surveys_emb.csv")
-dist_emb %>% select(-photos) %>% readr::write_csv("../data/dist_emb.csv")
+tracks_emb %>% 
+  select(-obs, -photos) %>% 
+  readr::write_csv(here::here("data", "tracks_emb.csv"))
+surveys_emb %>% 
+  readr::write_csv(here::here("data", "surveys_emb.csv"))
+dist_emb %>% select(-photos) %>% 
+  readr::write_csv(here::here("data", "dist_emb.csv"))
 ```
 
