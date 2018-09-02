@@ -1,11 +1,15 @@
 library(rayshader)
 library(magrittr)
 library(raster)
+# devtools::install_github("tylermorganwall/rayshader")
+# install.packages("raster")
+# install.packages("elevatr")
+# install.packages("here")
 # https://cran.r-project.org/web/packages/elevatr/vignettes/introduction_to_elevatr.html#introduction_to_elevatr
 
 #Here, I load a map for the River Derwent in Tasmania with the raster package:
 # localtif = raster::raster("tasmania.tif")
-localtif = raster::raster(here::here("data", "dem_01.tif"))
+localtif = raster::raster(here::here("rayshader", "dem_01.tif"))
 
 #And convert it to a matrix:
 elmat = matrix(raster::extract(localtif,raster::extent(localtif),buffer=1000),
