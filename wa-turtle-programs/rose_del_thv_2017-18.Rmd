@@ -18,7 +18,13 @@ source("tracks_helpers.R")
 
 # Caveat
 The data shown are pending QA and reconciliation with paper-based records. 
-Until this warning disappears, this dataset may contain duplicates from training runs, effort attributed to the wrong operators, and possibly other issues and biases.
+Until this warning disappears, this dataset may contain duplicates from training runs, 
+effort attributed to the wrong operators, and possibly other issues and biases.
+
+Particular to Thevenard Island is that all training occurs at the accommodation area, which is registered 
+as a separate site, and explicitly not included in the data analysed here.
+
+Training and test data from Delambre Island are not yet separated out.
 
 No data returned from Rosemary Islands. Need to deliver better/more/stricter training.
 
@@ -56,7 +62,7 @@ Milani presented:
 ## Going digital
 Entering and proofreading a record takes about 2 minutes with full concentration.
 By going digital, data entry and proofreading are fully automated.
-This season, the Volunteers have saved 
+This season, the Volunteers at Thevenard have saved 
 `r (nrow(tracks_thv) + nrow(surveys_thv)*2 + nrow(dist_thv)) * 2 / 60` hours of mind-numbing data entry
 and proofreading work for `r nrow(tracks_thv)` Track or Treats and 
 `r nrow(surveys_thv)*2` Site Visit Starts/Ends. 
@@ -78,6 +84,7 @@ tracks_thv %>% species_by_type() %>% kable()
 ```
 
 ```{r nesting_success_thv}
+placename <- "Thevenard Island"
 tracks_thv %>% tracks_ts()
 ```
 
@@ -109,6 +116,7 @@ tracks_di %>% species_by_type() %>% kable()
 ```
 
 ```{r nesting_success_di}
+placename <- "Delambre Island"
 tracks_di %>% tracks_ts()
 ```
 
@@ -124,17 +132,17 @@ nests_with_hs_di <- tracks_di %>%
 ggplot(nests_with_hs_di, aes(group = date, x = date)) +
   geom_boxplot(aes(y = as.numeric(hatching_success)), na.rm = TRUE, color = "black") +
   geom_boxplot(aes(y = as.numeric(emergence_success)), na.rm = TRUE, color = "gray") +
-  scale_x_date(
-    breaks = scales::pretty_breaks(),
-    labels = scales::date_format("%d %b %Y")
-  ) +
   xlab("Date") +
   ylab("Success rate in percent") +
   ggtitle("Flatback hatching (black) and emergence (grey) success",
-    subtitle = paste("From", nrow(nests_with_hs_di), "nests")
-  ) +
-  theme_minimal() +
-  ggsave(paste0("flatback_hs_es_di.pdf"), width = 7, height = 5)
+    subtitle = paste("From", nrow(nests_with_hs_di), "nests")) +
+  ggplot2::scale_x_date(
+      date_breaks = "1 month",
+      date_minor_breaks = "1 week",
+      labels = scales::date_format("%d %b %Y")) +
+    ggplot2::scale_y_continuous(limits = c(0, NA)) +
+    ggplot2::theme_classic() +
+  ggsave("flatback_hs_es_di.pdf", width = 7, height = 5)
 ```
 
 ```{r plot_track_effort_di, fig.height=5, fig.width=7, warning = F}
