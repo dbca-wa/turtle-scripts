@@ -1,3 +1,5 @@
 *.Rda
 *.csv
 *.geojson
+*.jpg
+*.png

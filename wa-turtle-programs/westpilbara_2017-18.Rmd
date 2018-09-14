@@ -95,6 +95,7 @@ tracks_yc %>% species_by_type() %>% kable()
 
 ## Nesting success 
 ```{r nesting_success, fig.height=5, fig.width=7, warning = F}
+placename <- 'WPTP'
 tracks_wp %>% tracks_ts()
 
 nests <- tracks_wp %>% track_success()

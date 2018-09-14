@@ -1,8 +1,14 @@
 ---
 title: "Ningaloo Turtle Program Data Extraction, Transformation and Loading"
-author: "Turtle Conservation Program, Dept Parks & Wildlife WA"
+author: "Ningaloo Turtle Program and DBCA"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    fig_width: 9
+    fig_height: 5
 ---
 This workbook executes and documents the extraction, transformation and loading
 (ETL) of Ningaloo Turtle Program data from the original Access database into
@@ -30,10 +36,17 @@ Then, load required libraries and source `setup.R`.
 
 ```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-setwd("~/projects/turtle-scripts/ningaloo")
-if (file.exists("../config/setup.R")) source("../config/setup.R")
-if (file.exists("../config/load.R")) source("../config/load.R")
-library(RODBC)
+source(here("config", "setup.R"))
+library(wastdr)
+library(ckanr)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(here)
+library(ggplot2)
+library(lubridate)
+library(sp)
+library(rgdal)
 refresh_data <- TRUE # download fresh database snapshot or use local copy
 ```
 
@@ -43,14 +56,13 @@ Download, unzip and open the Access mdb file from the data catalogue.
 ```{r, echo=T, message=FALSE}
 if (refresh_data) {
   tmp <- tempfile()
-  download.file(resource_show(Sys.getenv("MDB_RID"))$url, tmp)
-  dbfile <- unzip(tmp, "ningaloov6.mdb", exdir="data")
+  download.file(ckanr::resource_show(Sys.getenv("MDB_RID"))$url, tmp)
+  unzip(tmp, "ningaloov6.mdb", exdir = here("ningaloo", "data"))
   unlink(tmp)
-} else {
-  dbfile <- "data/ningaloov6.mdb"
 }
-con <- mdb.get(dbfile, dateformat='%Y-%m-%d', as.is=T)
-contents(con)
+db <- here("ningaloo", "data", "ningaloov6.mdb")
+# con <- Hmisc::mdb.get(db, dateformat = '%Y-%m-%d', as.is = T)
+mdbget <- . %>% Hmisc::mdb.get(db, dateformat = '%Y-%m-%d', as.is = T, table = .)
 ```
 
 # Transform
@@ -62,7 +74,7 @@ of a beach.
 We'll preserve the centroid coordinate pair as "lat" and "lon", and
 the bounding box extent as max and min x and y coordinates.
 ```{r}
-sites <- con$tblSections %>%
+sites <- mdbget("tblSections") %>%
   transmute(
     id=as.numeric(SubSect.Id),
     division=as.character(division.name),
@@ -81,7 +93,7 @@ row.names(sites) <- sites$id
 # sites[which(sites$subsection=="Red Bluff"),]$x_max <- 113.458
 # sites[which(sites$subsection=="Red Bluff"),]$y_max <- -24.016
 
-write.csv(sites, file = "data/sites.csv", row.names=F)
+sites %>% readr::write_csv(here("ningaloo", "data","sites.csv"))
 ```
 
 ### Shapefiles - R style
@@ -91,7 +103,8 @@ of a polygon shapefile.
 
 `coords` is a matrix containing the five coordinate pairs (columns) for all sites (rows).
 ```{r}
-coords <- sites %>%
+sites_with_coords <- sites %>% filter(!is.na(x_min))
+coords <- sites_with_coords %>%
   transmute(
     sw.lon=x_min, sw.lat=y_min,
     se.lon=x_max, se.lat=y_min,
@@ -103,7 +116,7 @@ coords <- sites %>%
 
 `ids` is a vector containing the site IDs.
 ```{r}
-ids <- sites %>% select(id) %>% as.matrix()
+ids <- sites_with_coords %>% select(id) %>% as.matrix()
 ```
 
 `make_polygons` creates one `Polygon` object from a matrix of coordinates and a
@@ -115,7 +128,7 @@ five points: SW, SE, NE, SW, SW to close the ring.
 ```{r}
 #' Create SpatialPolygons from a vector of lon/lat coordinates (poly) and IDs
 make_polygons <- function(poly, id) {
-  Polygons(list(Polygon(matrix(poly, ncol=2, byrow=TRUE))), ID=id)}
+  sp::Polygons(list(sp::Polygon(matrix(poly, ncol=2, byrow=TRUE))), ID=id)}
 ```
 
 Create SpatialPolygons (SpatialPolygons `polys`) from the coordinates
@@ -123,21 +136,26 @@ Create SpatialPolygons (SpatialPolygons `polys`) from the coordinates
 `make_polygons` over all sites (one site is one row in `coords`) using the
 correct projection (WGS84).
 ```{r}
-wgs84 <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84")
-polys <- SpatialPolygons(mapply(make_polygons, split(coords, row(coords)), ids), proj4string=wgs84)
+wgs84 <- sp::CRS("+proj=longlat +ellps=WGS84 +datum=WGS84")
+polys <- sp::SpatialPolygons(mapply(make_polygons, split(coords, row(coords)), ids), proj4string=wgs84)
 ```
 
 Create a SpatialPolygonsDataFrame `polys.df` from SpatialPolygons `polys` and a
 data.frame `sites`. This is the R version of a shapefile, containing spatial
 features (`polys`) as well as text attributes (`sites`).
 ```{r}
-polys.df <- SpatialPolygonsDataFrame(polys, as.data.frame(sites))
+row.names(sites_with_coords) <- row.names(polys)
+polys.df <- sp::SpatialPolygonsDataFrame(polys, as.data.frame(sites_with_coords))
 ```
 
 Write the SPDF to GeoJSON and preview them on an interactive map.
-```{r}
-writeOGR(polys.df, "data/sites.geojson", layer="geojson", driver="GeoJSON")
-mapview(polys.df)
+```{r, echo=TRUE}
+rgdal::writeOGR(polys.df, 
+                here("ningaloo", "data", "sites.geojson"), 
+                layer="geojson", 
+                driver="GeoJSON", 
+                overwrite_layer = TRUE)
+mapview::mapview(polys.df)
 ```
 
 ## Surveys
@@ -168,13 +186,13 @@ seasons table at all.
 ord <- c("mdyHMS")
 tz <- "UTC"
 
-surveys <- con$tblDBAreaSurveyed %>%
-  left_join(con$tblEnvironCond, by="date.id") %>%
+surveys <- mdbget("tblDBAreaSurveyed") %>%
+  left_join(mdbget("tblEnvironCond"), by="date.id") %>%
   mutate(
     date.id=parse_date_time(date.id, ord, tz),
     time.HT=parse_date_time(time.HT, ord, tz),
     time.HT=date.id + hour(time.HT) + minute(time.HT) + second(time.HT),
-    season=ifelse(month(date.id) > 7, year(date.id), year(date.id)-1)
+    season=ifelse(month(date.id) > 7, year(date.id), year(date.id) - 1)
     ) %>%
   rename(
     date=date.id,
@@ -199,18 +217,20 @@ surveys <- con$tblDBAreaSurveyed %>%
 # Fix non-standard boolean values for yes/no lookups
 surveys[which(surveys$site_disturbed==2),]$site_disturbed=0
 
-write.csv(surveys, file = "data/surveys.csv", row.names=F)
+
+
+surveys %>% readr::write_csv(here("ningaloo", "data","surveys.csv"))
 # DT::datatable(surveys)
 ```
 
 ## Lookups
 Let's clean up the column names of lookups.
 ```{r}
-species <- rename(con$tblTurtleSpecies, species_id=Turtle.Species.ID, species_name=Turtle.Species.Name)
-nest_types <- rename(con$tblNestType, nest_type_id=NestTypeID, nest_type=NestType)
-confidence <- rename(con$tblPosConf, confidence_id=PosConf.ID, confidence=txtPosConf)
-position <-  rename(con$tblProfilePos, position_id=intPosID, position=Position)
-track_type <- rename(con$tblTrackType, track_id=track.id, track_origin=txtTrackName)
+species <- rename(mdbget("tblTurtleSpecies"), species_id=Turtle.Species.ID, species_name=Turtle.Species.Name)
+nest_types <- rename(mdbget("tblNestType"), nest_type_id=NestTypeID, nest_type=NestType)
+confidence <- rename(mdbget("tblPosConf"), confidence_id=PosConf.ID, confidence=txtPosConf)
+position <-  rename(mdbget("tblProfilePos"), position_id=intPosID, position=Position)
+track_type <- rename(mdbget("tblTrackType"), track_id=track.id, track_origin=txtTrackName)
 ```
 
 ## Observations: False crawls
@@ -224,7 +244,7 @@ Munge `tblDBFalseCrawl`:
 * write to CSV and preview.
 
 ```{r}
-crawls <- con$tblDBFalseCrawl %>%
+crawls <- mdbget("tblDBFalseCrawl") %>%
   rename(
     species_id=FalseCrawlSpecies,
     survey_id=area.svyd.id,
@@ -234,8 +254,21 @@ crawls <- con$tblDBFalseCrawl %>%
   select(-species_id) %>%
   left_join(surveys, by="survey_id")
 crawls[which(is.na(crawls$species_name)),]$species_name = 'NA'
-write.csv(crawls, file = "data/crawls.csv", row.names=F)
+crawls %>% readr::write_csv(here("ningaloo", "data","crawls.csv"))
+```
 
+### False crawls all time
+```{r plot_false_crawls, fig.height=12, fig.width=9}
+crawls_with_sites <- crawls %>% filter(!is.na(division) & division != "")
+ggplot(crawls_with_sites, aes(x=date, y=no_false_crawls, colour=species_name)) + 
+  facet_grid(division ~ .) +
+  geom_point() + 
+  ggtitle("Number of false crawls - all time") +
+  labs(x="Date", y="Number per subsection") +
+  theme_classic() +
+  theme(legend.position = "bottom",
+        strip.text.y = element_text(angle = 0),) +
+  ggsave("false_crawls_all.pdf", height = 12, width = 9)
 # DT::datatable(crawls)
 ```
 
@@ -252,7 +285,7 @@ Like with false crawls, munge `tblDBNestingSurvey`:
 * save to CSV and preview.
 
 ```{r}
-nests <- con$tblDBNestingSurvey %>%
+nests <- mdbget("tblDBNestingSurvey") %>%
   mutate(
     longitude=as.numeric(longitude),
     latitude=-as.numeric(latitude)) %>%
@@ -285,9 +318,12 @@ nests <- con$tblDBNestingSurvey %>%
     time_of_high_tide, height_of_high_tide, lat, lon)
 row.names(nests) <- nests$nest_id
 nests[which(nests$nest_disturbed==2),]$nest_disturbed=0
-write.csv(nests, file = "data/nests.csv", row.names=F)
+nests %>% readr::write_csv(here("ningaloo", "data","nests.csv"))
 # DT::datatable(nests)
 ```
+
+### Nest map
+TODO
 
 ### Summary of new nests by survey
 The sum of new nests for every unique combination of survey (subsection, date)
@@ -310,10 +346,22 @@ summary_nests <- tbl_df(nests) %>%
   ungroup() %>%
   spread(species_name, n, fill=0) %>%
   inner_join(surveys)
-write.csv(summary_nests, file = "data/summary_nests.csv", row.names=F)
+summary_nests %>% readr::write_csv(here("ningaloo", "data","summary_nests.csv"))
 DT::datatable(summary_nests)
 ```
 
+```{r, fig.height=12, fig.width=9}
+ggplot(summary_nests, aes(x=date)) + 
+  facet_grid(division ~ .) +
+  geom_point(aes(x = date, y = Flatback, colour = "Flatback")) + 
+  geom_point(aes(x = date, y = Green, colour = "Green")) + 
+  ggtitle("Number of nests - all time") +
+  labs(x="Date", y="Number per subsection") +
+  theme_classic() +
+  theme(legend.position = "bottom",
+        strip.text.y = element_text(angle = 0),) +
+  ggsave("nests_all.pdf", height = 12, width = 9)
+```
 
 ```{r}
 summary_nests_seasons <- tbl_df(nests) %>%
@@ -324,7 +372,7 @@ summary_nests_seasons <- tbl_df(nests) %>%
   spread(species_name, n, fill=0) %>%
   inner_join(sites, by="subsection") %>%
   select(-x_max, -x_min, -y_max, -y_min)
-write.csv(summary_nests_seasons, file = "data/summary_nests_seasons.csv", row.names=F)
+summary_nests_seasons %>% readr::write_csv(here("ningaloo", "data","summary_nests_seasons.csv"))
 DT::datatable(summary_nests_seasons)
 
 
@@ -363,7 +411,7 @@ summary_crawls <- tbl_df(crawls) %>%
   spread(species_name, n, fill=0) %>%
   inner_join(surveys) %>%
   select(-x_max, -x_min, -y_max, -y_min)
-write.csv(summary_crawls, file = "data/summary_crawls.csv", row.names=F)
+summary_crawls %>% readr::write_csv(here("ningaloo", "data","summary_crawls.csv"))
 DT::datatable(summary_crawls)
 ```
 
@@ -381,9 +429,11 @@ Although we can patch the data here, sites with missing coordinates need to be f
 If there are any sites listed here, please supply the missing data in the original
 NTP access database, then zip and upload the original Access database to the data catalogue.
 ```{r}
-badsites <- filter(con$tblSections,
-  is.na(SubSect.NE.lat) | is.na(SubSect.NE.long) |
-    is.na(SubSect.SW.lat) | is.na(SubSect.SW.long))
+badsites <- mdbget("tblSections") %>%
+  filter(is.na(SubSect.NE.lat) | 
+           is.na(SubSect.NE.long) | 
+           is.na(SubSect.SW.lat) | 
+           is.na(SubSect.SW.long))
 DT::datatable(badsites, caption="Sites with missing coordinates")
 ```
 
@@ -410,7 +460,7 @@ These have been replaced with species name "NA" for the above products,
 but should be fixed at source.
 
 ```{r}
-cr <- con$tblDBFalseCrawl %>%
+cr <- mdbget("tblDBFalseCrawl") %>%
   rename(
     species_id=FalseCrawlSpecies,
     survey_id=area.svyd.id,
@@ -422,17 +472,18 @@ cr <- con$tblDBFalseCrawl %>%
 DT::datatable(filter(cr, is.na(species_name))[,1:8])
 ```
 
-# Load
+# Data upload
 Upload outputs to CKAN.
 ```{r}
-ckanr::resource_update(Sys.getenv("SITES_RID"), path="data/sites.geojson")
-ckanr::resource_update(Sys.getenv("SITES_CSV_RID"), path="data/sites.csv")
-ckanr::resource_update(Sys.getenv("SURVEYS_RID"), path="data/surveys.csv")
-ckanr::resource_update(Sys.getenv("CRAWL_RID"), "data/crawls.csv")
-ckanr::resource_update(Sys.getenv("NEST_RID"), "data/nests.csv")
-ckanr::resource_update(Sys.getenv("NEW_NEST_RID"), "data/summary_nests.csv")
-ckanr::resource_update(Sys.getenv("NEST_SEASON_RID"), "data/summary_nests_seasons.csv")
-ckanr::resource_update(Sys.getenv("FALSE_CRAWL_RID"), "data/summary_crawls.csv")
+ckanr::resource_update(Sys.getenv("ETL_RID"), "ningaloo_etl.html")
+ckanr::resource_update(Sys.getenv("SITES_RID"), path=here("ningaloo", "data", "sites.geojson"))
+ckanr::resource_update(Sys.getenv("SITES_CSV_RID"), path=here("ningaloo", "data", "sites.csv"))
+ckanr::resource_update(Sys.getenv("SURVEYS_RID"), path=here("ningaloo", "data", "surveys.csv"))
+ckanr::resource_update(Sys.getenv("CRAWL_RID"), path=here("ningaloo", "data", "crawls.csv"))
+ckanr::resource_update(Sys.getenv("NEST_RID"), path=here("ningaloo", "data", "nests.csv"))
+ckanr::resource_update(Sys.getenv("NEW_NEST_RID"), path=here("ningaloo", "data", "summary_nests.csv"))
+ckanr::resource_update(Sys.getenv("NEST_SEASON_RID"), path=here("ningaloo", "data", "summary_nests_seasons.csv"))
+ckanr::resource_update(Sys.getenv("FALSE_CRAWL_RID"), path=here("ningaloo", "data", "summary_crawls.csv"))
 ```
 
 # Selecting data
@@ -473,8 +524,3 @@ Next:
 * s2 = `all_surveyed`==F, All but the above
 
 Nest and crawl tallies for s1 per day and division, per section (are they moving?)
-
-
-```{r}
-setwd("~/projects/turtle-scripts")
-```
