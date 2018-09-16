@@ -86,25 +86,22 @@ tracks_wp %>% species_by_type() %>% kable()
 ```
 
 ```{r tracks_bb}
-tracks_bb %>% species_by_type() %>% kable()
+# tracks_bb %>% species_by_type() %>% kable()
 ```
 
 ```{r tracks_yc}
-tracks_yc %>% species_by_type() %>% kable()
+# tracks_yc %>% species_by_type() %>% kable()
 ```
 
 ## Nesting success 
 ```{r nesting_success, fig.height=5, fig.width=7, warning = F}
-placename <- 'WPTP'
-tracks_wp %>% tracks_ts()
-
-nests <- tracks_wp %>% track_success()
 label <- "wp"
-
+tracks_wp %>% tracks_ts(placename = label)
+nests <- tracks_wp %>% track_success()
 nests %>% ggplot_track_success_by_date("natator-depressus", label)
-nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
+# nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
-nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+# nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
 nests %>% track_success_by_species() %>% datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )

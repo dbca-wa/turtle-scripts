@@ -16,7 +16,8 @@ species_by_type <- . %>%
   ungroup() %>%
   tidyr::spread(nest_type, n, fill = 0)
 
-tracks_ts <- . %>%
+tracks_ts <- function(data, placename="") {
+  data %>%
   daily_species_by_type() %>%
   {
     ggplot2::ggplot(data = ., aes(x = date, y = n, colour = nest_type)) +
@@ -32,9 +33,10 @@ tracks_ts <- . %>%
       ggplot2::scale_y_continuous(limits = c(0, NA)) +
       ggplot2::xlab("Date") +
       ggplot2::theme_classic() +
-      # ggsave(glue::glue("track_abundance_{wastdr::urlize(placename)}.png"), width = 7, height = 5)
+      ggsave(glue::glue("track_abundance_{wastdr::urlize(placename)}.png"), width = 7, height = 5)
       NULL
   }
+}
 
 map_dist <- function(dist){
   . <- NULL
@@ -95,14 +97,14 @@ hatching_emergence_success <- . %>%
   )
 
 
-ggplot_track_success_by_date <- function(data, species_name, place_name) {
+ggplot_track_success_by_date <- function(data, speciesname, placename="") {
   data %>%
-    filter(species == species_name) %>%
+    filter(species == speciesname) %>%
     ggplot(aes(x = date)) +
     geom_bar(aes(y = all), stat = "identity", color = "black", fill = "grey") +
     geom_bar(aes(y = successful), stat = "identity", color = "black", fill = "green") +
     labs(x = "Date", y = "Number of all and successful tracks") +
-    ggtitle(paste("Nesting effort of", species_name %>% humanize),
+    ggtitle(paste("Nesting effort of", speciesname %>% humanize),
             subtitle = "Number of all (grey) and successful (green) tracks") +
     labs(x = "Date", y = "Number of all and successful tracks") +
     ggplot2::scale_x_date(
@@ -111,16 +113,16 @@ ggplot_track_success_by_date <- function(data, species_name, place_name) {
       labels = scales::date_format("%d %b %Y")) +
     ggplot2::scale_y_continuous(limits = c(0, NA)) +
     ggplot2::theme_classic() +
-    ggsave(glue::glue("track_effort_{wastdr::urlize(placename)}_{species_name}.png"), width = 7, height = 5)
+    ggsave(glue::glue("track_effort_{wastdr::urlize(placename)}_{speciesname}.png"), width = 7, height = 5)
 }
 
-ggplot_track_successrate_by_date <- function(data, species_name, place_name) {
+ggplot_track_successrate_by_date <- function(data, speciesname, placename="") {
   data %>%
-    filter(species == species_name) %>%
+    filter(species == speciesname) %>%
     ggplot(aes(x = date)) +
     geom_bar(aes(y = track_success), stat = "identity", color = "black", fill = "grey") +
     labs(x = "Date", y = "Fraction of tracks with nest") +
-    ggtitle(paste("Nesting success of", species_name %>% humanize),
+    ggtitle(paste("Nesting success of", speciesname %>% humanize),
             subtitle = "Fraction of successful over total nesting crawls") +
     ggplot2::scale_x_date(
       date_breaks = "1 month",
@@ -128,7 +130,7 @@ ggplot_track_successrate_by_date <- function(data, species_name, place_name) {
       labels = scales::date_format("%d %b %Y")) +
     ggplot2::scale_y_continuous(limits = c(0, NA)) +
     ggplot2::theme_classic() +
-    ggsave(glue::glue("track_success_{wastdr::urlize(placename)}_{species_name}.png"), width = 7, height = 5)
+    ggsave(glue::glue("track_success_{wastdr::urlize(placename)}_{speciesname}.png"), width = 7, height = 5)
 }
 
 track_success <- function(tracks){

@@ -31,16 +31,25 @@ No data returned from Rosemary Islands. Need to deliver better/more/stricter tra
 # Data
 ```{r, eval=T}
 source("load_data.R")
+filter_2017 <- . %>% 
+  dplyr::filter(date > dmy("01/10/2017") & 
+                  date < dmy("01/04/2018"))
+
+filter_orphaned <- . %>% filter(is.na(survey_id))
+
 tracks_2017 <- tracks_all %>% filter_2017()
 tracks_thv <- tracks_2017 %>% filter_thv()
 tracks_di <- tracks_2017 %>% filter_di()
-# tracks_ri <- tracks_2017 %>% filter_ri() # no tracks received as of Aug 2018
+tracks_ri <- tracks_2017 %>% filter_ri()
+tracks_orph <- tracks_2017 %>% filter_orphaned()
 
 surveys_thv <- surveys %>% filter_thv() %>% filter_2017()
 surveys_di <- surveys %>% filter_di() %>% filter_2017()
+surveys_ri <- surveys %>% filter_ri() %>% filter_2017()
 
 dist_thv <- disturbance %>% filter_thv() %>% filter_2017()
 dist_di <- disturbance %>% filter_di() %>% filter_2017()
+dist_ri <- disturbance %>% filter_ri() %>% filter_2017()
 ```
 
 # Background
@@ -74,6 +83,30 @@ Time savings Delambre: `r (nrow(tracks_di) + nrow(surveys_di)*2 + nrow(dist_di))
 ```{r map_overall}
 tracks_thv %>% add_nest_labels() %>% map_tracks()
 tracks_di %>% add_nest_labels() %>% map_tracks()
+tracks_ri %>% add_nest_labels() %>% map_tracks()
+```
+
+## QA
+```{r orphaned_tracks}
+tracks_thv_orph <- tracks_orph %>% filter_thv()
+tracks_di_orph <- tracks_orph %>% filter_di()
+tracks_ri_orph <- tracks_orph %>% filter_ri()
+
+# Surveys are missing for each row in:
+tracks_orph %>%
+  dplyr::group_by(date, site_name) %>%
+  tally() %>%
+  dplyr::arrange(site_name)
+
+# These tracks have no site:
+tracks_all %>% 
+  filter(is.na(site_id)) %>%
+  add_nest_labels() %>% map_tracks()
+# Actions: 
+# Extend site polygons to include GPS error
+# Add sites for new surveyed beaches > new report?
+# Add sites for known training areas
+# Delete training records outside training areas
 ```
 
 ## Nesting abundance
@@ -84,8 +117,7 @@ tracks_thv %>% species_by_type() %>% kable()
 ```
 
 ```{r nesting_success_thv}
-placename <- "Thevenard Island"
-tracks_thv %>% tracks_ts()
+tracks_thv %>% tracks_ts(placename="Thevenard Is")
 ```
 
 ```{r hatching_emergence_success_thv}
@@ -98,9 +130,8 @@ tracks_thv %>%
 ```
 
 ```{r plot_track_effort_thv, fig.height=5, fig.width=7, warning = F}
-nests <- tracks_thv %>% track_success()
 label <- "thv"
-
+nests <- tracks_thv %>% track_success()
 nests %>% ggplot_track_success_by_date("natator-depressus", label)
 nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
@@ -116,8 +147,7 @@ tracks_di %>% species_by_type() %>% kable()
 ```
 
 ```{r nesting_success_di}
-placename <- "Delambre Island"
-tracks_di %>% tracks_ts()
+tracks_di %>% tracks_ts(placename = "Delambre Island")
 ```
 
 
@@ -168,6 +198,66 @@ tracks_di %>%
   )
 ```
 
+### Rosemary
+```{r tracks_all_sectors_ri}
+tracks_ri %>% species_by_type() %>% kable()
+```
+
+```{r nesting_success_ri}
+tracks_ri %>% tracks_ts(placename="Rosemary Island")
+```
+
+No nest excavations on RI, skipping hatching success plot.
+```{r fig_fb_hs_es_ri, fig.width=7,fig.height=5, eval=F}
+nests_with_hs_ri <- tracks_ri %>%
+  filter(
+    nest_type == "hatched-nest",
+    hatching_success >= 0,
+    species == "natator-depressus"
+  )
+
+ggplot(nests_with_hs_ri, aes(group = date, x = date)) +
+  geom_boxplot(aes(y = as.numeric(hatching_success)), 
+               na.rm = TRUE, color = "black") +
+  geom_boxplot(aes(y = as.numeric(emergence_success)), 
+               na.rm = TRUE, color = "gray") +
+  xlab("Date") +
+  ylab("Success rate in percent") +
+  ggtitle("Flatback hatching (black) and emergence (grey) success",
+          subtitle = paste("From", nrow(nests_with_hs_di), "nests")) +
+  ggplot2::scale_x_date(
+    date_breaks = "1 month",
+    date_minor_breaks = "1 week",
+    labels = scales::date_format("%d %b %Y")) +
+  ggplot2::scale_y_continuous(limits = c(0, NA)) +
+  ggplot2::theme_classic() +
+  ggsave("flatback_hs_es_ri.pdf", width = 7, height = 5)
+```
+
+```{r plot_track_effort_ri, fig.height=5, fig.width=7, warning = F}
+nests <- tracks_ri %>% track_success()
+label <- "ri"
+
+nests %>% ggplot_track_success_by_date("natator-depressus", label)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+nests %>% track_success_by_species() %>% datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
+```
+
+
+```{r hatching_emergence_success_ri}
+tracks_ri %>%
+  hatching_emergence_success() %>%
+  DT::datatable(.,
+    caption = "Hatching and emergence success summary",
+    options = list(paging = F)
+  )
+```
+
+
 ## Disturbance and predation
 Disturbed nests are captured through form "Track or Treat" and appear here
 as "tracks" with "disturbance" recorded as "present".
@@ -196,6 +286,17 @@ disturbed_nests_di %>% add_nest_labels() %>% map_tracks()
 
 There were **`r count(disturbed_nests_di)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
 
+### Disturbance and predation of nests Rosemary
+Turtle nests with recorded disturbance or predation.
+
+```{r}
+disturbed_nests_ri <- tracks_ri %>% filter(disturbance == "present")
+disturbed_nests_ri %>% add_nest_labels() %>% map_tracks()
+```
+
+There were **`r count(disturbed_nests_ri)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
+
+
 Coming soon: details of disturbance to nests.
 
 ### General disturbance
@@ -209,6 +310,9 @@ dist_thv %>% map_dist
 
 dist_di %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
 dist_di %>% map_dist
+
+dist_ri %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_ri %>% map_dist
 ```
 
 
@@ -228,6 +332,10 @@ surveys_thv %>% list_survey_count(place)
 place <- "Delambre Is"
 surveys_di %>% plot_survey_count(place)
 surveys_di %>% list_survey_count(place)
+
+place <- "Rosemary Is"
+surveys_ri %>% plot_survey_count(place)
+surveys_ri %>% list_survey_count(place)
 ```
 
 ## Survey effort in hours
@@ -245,6 +353,9 @@ surveys_thv %>% list_survey_effort("Thevenard Is")
 
 surveys_di %>% plot_survey_effort("Delambre Is")
 surveys_di %>% list_survey_effort("Delambre Is")
+
+surveys_ri %>% plot_survey_effort("Rosemary Is")
+surveys_ri %>% list_survey_effort("Rosemary Is")
 ```
 
 ## Survey effort per primary reporter
@@ -271,6 +382,9 @@ personal_effort_thv %>% kable()
 
 personal_effort_di <- surveys_di %>% survey_hours_per_person()
 personal_effort_di %>% kable()
+
+personal_effort_ri <- surveys_ri %>% survey_hours_per_person()
+personal_effort_ri %>% kable()
 ```
 
 ## Survey effort in kilometers walked
@@ -291,6 +405,8 @@ in `r survey_count(surveys, 20)` surveys.
 At Delambre, assuming the trip was 4 km,
 `r survey_ground_covered(surveys, 39, 4)` km were walked 
 in `r survey_count(surveys, 39)` surveys.
+
+TODO RI
 
 # Data upload
 
@@ -317,6 +433,13 @@ surveys_di %>%
 dist_di %>% 
   select(-photos) %>% 
   readr::write_csv(here::here("data", "dist_di.csv"))
+
+tracks_ri %>% 
+  select(-obs, -photos) %>% 
+  readr::write_csv(here::here("data", "tracks_ri.csv"))
+surveys_ri %>% 
+  readr::write_csv(here::here("data", "surveys_ri.csv"))
+dist_ri %>% 
+  select(-photos) %>% 
+  readr::write_csv(here::here("data", "dist_ri.csv"))
 ```
-
-
