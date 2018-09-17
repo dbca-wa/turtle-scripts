@@ -40,6 +40,42 @@ and proofreading work for `r nrow(cbb)` Track or Treats and
 `r nrow(surveys_cbb)*2` Site Visit Starts/Ends. 
 This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra!
 
+## QA
+### Tracks outside known sites
+Actions: 
+
+* Extend site polygons to include GPS error.
+* Add sites for new surveyed beaches and create new report.
+* Add sites for known training areas.
+* Change training records outside training areas to "Hatchback turtles" and mark as "curated" to
+  prevent from being overwritten by repeated data loading.
+* Note: re-run uncached data import after changing tracks.
+
+```{r missing_sites}
+tracks_all %>% 
+  filter(is.na(site_id)) %>%
+  add_nest_labels() %>% 
+  map_tracks()
+```
+
+### Tracks at known sites with missing surveys
+Actions:
+
+* Filter datatable to site of interest.
+* Create missing surveys. This might be automatable.
+* NNote: re-run uncached data import after adding surveys.
+
+```{r missing_surveys}
+tracks_all %>%
+  filter_2017 %>%
+  filter(is.na(survey_id)) %>%
+  dplyr::group_by(date, site_name) %>%
+  tally() %>%
+  dplyr::arrange(site_name) %>%
+  DT::datatable(.)
+```
+
+
 ## Maps
 ```{r map_overall}
 cbb %>% add_nest_labels() %>% map_tracks()

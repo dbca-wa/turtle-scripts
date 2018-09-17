@@ -46,6 +46,41 @@ This season, the Volunteers have saved
 mind-numbing data entry and proofreading work for `r nrow(tracks_emb)` Track or Treats and 
 `r nrow(surveys_emb)*2` Site Visit Starts/Ends. 
 
+## QA
+### Tracks outside known sites
+Actions: 
+
+* Extend site polygons to include GPS error.
+* Add sites for new surveyed beaches and create new report.
+* Add sites for known training areas.
+* Change training records outside training areas to "Hatchback turtles" and mark as "curated" to
+  prevent from being overwritten by repeated data loading.
+* Note: re-run uncached data import after changing tracks.
+
+```{r missing_sites}
+tracks_all %>% 
+  filter(is.na(site_id)) %>%
+  add_nest_labels() %>% 
+  map_tracks()
+```
+
+### Tracks at known sites with missing surveys
+Actions:
+
+* Filter datatable to site of interest.
+* Create missing surveys. This might be automatable.
+* NNote: re-run uncached data import after adding surveys.
+
+```{r missing_surveys}
+tracks_all %>%
+  filter_2017 %>%
+  filter(is.na(survey_id)) %>%
+  dplyr::group_by(date, site_name) %>%
+  tally() %>%
+  dplyr::arrange(site_name) %>%
+  DT::datatable(.)
+```
+
 ## Maps
 ```{r map_overall}
 tracks_emb %>% add_nest_labels() %>% map_tracks()
@@ -68,31 +103,33 @@ tracks_cv %>% species_by_type() %>% kable()
 
 ## Nesting success 
 ```{r nesting_success, fig.height=5, fig.width=7, warning = F}
-tracks_emb %>% tracks_ts()
+# tracks_emb %>% tracks_ts()
+```
 
+```{r}
 nests <- tracks_ap %>% track_success()
 label <- "Anna Plains"
 
 nests %>% ggplot_track_success_by_date("natator-depressus", label)
-nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
+# nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
-nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+# nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
 nests %>% track_success_by_species() %>% datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
+```
 
-
+```{r}
 nests <- tracks_cv %>% track_success()
 label <- "Caravan Park"
 
 nests %>% ggplot_track_success_by_date("natator-depressus", label)
-nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
+# nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
-nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+# nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
 nests %>% track_success_by_species() %>% datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
-
 ```
 
 ## Hatching and emergence success

@@ -87,30 +87,41 @@ tracks_ri %>% add_nest_labels() %>% map_tracks()
 ```
 
 ## QA
-```{r orphaned_tracks}
-tracks_thv_orph <- tracks_orph %>% filter_thv()
-tracks_di_orph <- tracks_orph %>% filter_di()
-tracks_ri_orph <- tracks_orph %>% filter_ri()
+### Tracks outside known sites
+Actions: 
 
-# Surveys are missing for each row in:
-tracks_orph %>%
-  dplyr::group_by(date, site_name) %>%
-  tally() %>%
-  dplyr::arrange(site_name)
+* Extend site polygons to include GPS error.
+* Add sites for new surveyed beaches and create new report.
+* Add sites for known training areas.
+* Change training records outside training areas to "Hatchback turtles" and mark as "curated" to
+  prevent from being overwritten by repeated data loading.
+* Note: re-run uncached data import after changing tracks.
 
-# These tracks have no site:
+```{r missing_sites}
 tracks_all %>% 
   filter(is.na(site_id)) %>%
-  add_nest_labels() %>% map_tracks()
-# Actions: 
-# Extend site polygons to include GPS error
-# Add sites for new surveyed beaches > new report?
-# Add sites for known training areas
-# Delete training records outside training areas
+  add_nest_labels() %>% 
+  map_tracks()
+```
+
+### Tracks at known sites with missing surveys
+Actions:
+
+* Filter datatable to site of interest.
+* Create missing surveys. This might be automatable.
+* NNote: re-run uncached data import after adding surveys.
+
+```{r missing_surveys}
+tracks_all %>%
+  filter_2017 %>%
+  filter(is.na(survey_id)) %>%
+  dplyr::group_by(date, site_name) %>%
+  tally() %>%
+  dplyr::arrange(site_name) %>%
+  DT::datatable(.)
 ```
 
 ## Nesting abundance
-
 ### Thevenard
 ```{r tracks_all_sectors_thv}
 tracks_thv %>% species_by_type() %>% kable()
