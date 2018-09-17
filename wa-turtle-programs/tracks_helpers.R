@@ -186,9 +186,9 @@ filter_port_hedland_cemetery <- . %>% dplyr::filter(site_name=="Port Hedland Cem
 filter_port_hedland_prettypool <- . %>% dplyr::filter(site_name=="Port Hedland Pretty Pool Beach")
 
 filter_wp <- . %>% dplyr::filter(site_id %in% c(25, 26, 27))
-filter_cw <- . %>% dplyr::filter(site_name == "Cooling Water Beach") # id 26
-filter_bb <- . %>% dplyr::filter(site_name == "Bells Beach") # id 25
-filter_yc <- . %>% dplyr::filter(site_name == "Wickam Yacht Club Beach") # id 27
+filter_cw <- . %>% dplyr::filter(site_id == 26) # id 26
+filter_bb <- . %>% dplyr::filter(site_id == 25) # id 25
+filter_yc <- . %>% dplyr::filter(site_id == 27) # id 27
 
 filter_di <- . %>% dplyr::filter(site_id == 39)
 filter_ri <- . %>% dplyr::filter(site_id == 40)

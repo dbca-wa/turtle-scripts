@@ -20,16 +20,29 @@ source("tracks_helpers.R")
 The data shown are pending QA and reconciliation with paper-based records. 
 Until this warning disappears, this dataset may contain duplicates from training runs, effort attributed to the wrong operators, and possibly other issues and biases.
 
+Update September 2018:
+
+* Some records were uploaded but not ingested. This happened because
+  the older forms used still accepted submissions, but were already
+  retired from data ingest into WAStD. Re-enabling the ingest for those
+  older forms managed to import the late uploads.
+* Most tablets did have unfinalised, unsent forms. These required manual
+  review (which is the purpose of leaving forms unfinalised), re-enabling
+  of those old form versions both on the server and on the data ingest.
+  
+The data shown here now includes these two batches of observations.
+In situ tests in Sept 2018 have shown that 100% of the data collected digitally arrive in the database.
+
 # Data
 ```{r, eval=T}
 source("load_data.R")
 tracks_wp <- tracks_all %>% filter_wp() %>% filter_2017()
-# tracks_cw <- tracks_all %>% filter_cw %>% filter_2017
+# tracks_cw <- tracks_all %>% filter_cw %>% filter_2017() # none yet
 tracks_bb <- tracks_all %>% filter_bb() %>% filter_2017()
 tracks_yc <- tracks_all %>% filter_yc() %>% filter_2017()
 
 surveys_wp <- surveys %>% filter_wp() %>% filter_2017()
-# surveys_cw <- surveys %>% filter_cw %>% filter_2017
+# surveys_cw <- surveys %>% filter_cw %>% filter_2017()
 surveys_bb <- surveys %>% filter_bb() %>% filter_2017()
 surveys_yc <- surveys %>% filter_yc() %>% filter_2017()
 
@@ -58,23 +71,11 @@ Note: Jason reported the following counts for manual entry (not done yet, so not
 # -20.61143 117.15528 Above high water
 ```
 
-# Season summary
+# QA
+This section identified tracks outside known sites and missing surveys.
+We show data from all regions.
 
-## General notes
-Nests without a clearly visible emergence point were not recorded.
-This led to under-reporting of hatched nests this season.
-
-## Going digital
-Entering and proofreading a record takes about 2 minutes with full concentration.
-By going digital, data entry and proofreading are fully automated.
-This season, the Volunteers have saved 
-`r (nrow(tracks_wp) + nrow(surveys_wp)*2) * 2 / 60` hours of mind-numbing data entry
-and proofreading work for `r nrow(tracks_wp)` Track or Treats and 
-`r nrow(surveys_wp)*2` Site Visit Starts/Ends. 
-This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra!
-
-## QA
-### Tracks outside known sites
+## Tracks outside known sites
 Actions: 
 
 * Extend site polygons to include GPS error.
@@ -91,23 +92,41 @@ tracks_all %>%
   map_tracks()
 ```
 
-### Tracks at known sites with missing surveys
+## Tracks at known sites with missing surveys
 Actions:
 
-* Filter datatable to site of interest.
-* Create missing surveys. This might be automatable.
-* NNote: re-run uncached data import after adding surveys.
+* Filter datatable to site of interest by typing the site name into the "Search" box.
+* Create missing surveys, one for each row in the table. (This will be automated early 2019.)
+* Re-run uncached data import after adding surveys, as data for surveys, 
+  tracks and disturbance will change.
 
 ```{r missing_surveys}
 tracks_all %>%
   filter_2017 %>%
   filter(is.na(survey_id)) %>%
   dplyr::group_by(date, site_name) %>%
-  tally() %>%
+  dplyr::tally() %>%
+  dplyr::mutate(number_of_tracks = n) %>%
   dplyr::arrange(site_name) %>%
   DT::datatable(.)
 ```
 
+
+# Season summary
+
+## General notes
+Nests without a clearly visible emergence point were not recorded.
+This led to under-reporting of hatched nests this season.
+
+## Going digital
+Entering and proofreading a record takes about 2 minutes with full concentration.
+By going digital, data entry and proofreading are fully automated.
+This season, the Volunteers have saved 
+`r (nrow(tracks_wp) + nrow(surveys_wp)*2 + nrow(dist_wp)) * 2 / 60` 
+hours of mind-numbing data entry and proofreading work for 
+`r nrow(tracks_wp)` Tracks, 
+`r nrow(dist_wp)` Disturbances, and 
+`r nrow(surveys_wp)*2` Site Visit Starts/Ends. 
 
 ## Maps
 ```{r map_overall}
@@ -203,8 +222,6 @@ surveys_yc %>% list_survey_count(place)
 ```
 
 ## Survey effort in hours
-Q How many hours did volunteers survey, how many kilometers were walked?
-
 ### Caveat
 * Surveys with missing end points are auto-closed after 5 hours (over-estimation of effort).
 * Data includes training surveys.
@@ -263,8 +280,10 @@ ckanr::resource_update("1c57e04a-c29c-464c-b82d-a69e4ee0b199", "westpilbara_2017
 ```
 
 ```{r data_export}
-tracks_wp %>% select(-obs, -photos) %>% readr::write_csv("../data/tracks_wp.csv")
-surveys_wp %>% readr::write_csv("../data/surveys_wp.csv")
-dist_wp %>% select(-photos) %>% readr::write_csv("../data/dist_wp.csv")
+tracks_wp %>% dplyr::select(-obs, -photos) %>% 
+  readr::write_csv(here::here("data", "tracks_wp.csv"))
+surveys_wp %>% readr::write_csv(here::here("data", "surveys_wp.csv"))
+dist_wp %>% dplyr::select(-photos) %>% 
+  readr::write_csv(here::here("data", "dist_wp.csv"))
 ```
 
