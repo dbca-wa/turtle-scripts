@@ -72,19 +72,17 @@ Note: Jason reported the following counts for manual entry (not done yet, so not
 ```
 
 # QA
-This section identifies tracks and disturbances outside known sites and missing surveys.
+This section identifies tracks and disturbances outside known sites, missing surveys, and surveys requiring editing.
 We show data from all regions as not to miss any stray records - ignore data not relevant to this analysis.
 
 ## Tracks outside known sites
-
 * If tracks are close to sites: Extend WAStD site polygons to include GPS error.
-* Add WAStD sites for new surveyed beaches and include in existing or new report.
-* Add WAStD sites for known training areas.
-* Change training records outside training areas to "Hatchback turtles" and mark as "curated" to
+* Add WAStD sites for new surveyed sites (production or training) and include those sites in existing or new report.
+* Change confirmed training records outside training areas to "Hatchback turtles" and mark as "curated" to
   prevent from being overwritten by repeated data loading.
 * Note: re-run uncached data import after changing tracks.
 
-```{r trackcs_missing_sites}
+```{r tracks_missing_sites}
 tracks_all %>% 
   filter_nosite() %>%
   add_nest_labels() %>% 
@@ -109,13 +107,48 @@ TODO: find earliest observation and reporter on given dates. (group by > summari
 tracks_all %>%
   filter_2017 %>%
   filter_nosurvey() %>%
-  dplyr::group_by(date, site_name) %>%
-  dplyr::tally() %>%
-  dplyr::rename(number_of_tracks = n) %>%
-  dplyr::arrange(site_name) %>%
+  dplyr::group_by(site_name, date) %>%
+  dplyr::summarise(earliest_record = min(datetime), 
+                   no_tracks = n(), 
+                   reporter = first(reporter)) %>%
   DT::datatable(.)
 ```
+### QA: Surveys
+Curators are to QA [all West Pilbara surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=25,26,27,46,47) following the 
+[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
 
+Split up per site:
+
+* [Cooling Water Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=26)
+* [Bells Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=25)
+* [Yacht Club Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=27)
+* [Boat Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=46)
+* [Cleaverville Beach 1](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=47)
+
+### QA: Surveys missing Site Visit End
+Where a "Site visit end" was forgotten, "end source id" is empty, and the duration is set to 6h. 
+These surveys should be closed a few minutes after the last recorded track or disturbance.
+
+Surveys with missing end contribute to an over-estimation of survey effort.
+
+TODO: list datetime of last record.
+  
+```{r}
+surveys_wp %>% 
+  dplyr::filter(is.na(end_source_id)) %>%
+  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>% 
+  DT::datatable(escape = FALSE, rownames = FALSE)
+```
+
+### QA: Provided username mismatches WAStD users
+TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data collectors vs 
+[WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
+```{r}
+surveys_wp %>% 
+  dplyr::filter(grepl("QA", start_comments) | grepl("QA", end_comments)) %>%
+  dplyr::select(site_name, reporter, date, start_time, end_time, start_comments, end_comments, change_url) %>% 
+  DT::datatable(escape = FALSE, rownames = FALSE)
+```
 
 # Season summary
 
@@ -189,7 +222,8 @@ General signs of disturbance or predator presence are recorded through form
 Turtle nests with recorded disturbance or predation.
 
 ```{r}
-tracks_wp %>% filter(disturbance == "present") %>% add_nest_labels() %>% map_tracks()
+disturbed_nests_wp <- tracks_wp %>% filter(disturbance == "present")
+disturbed_nests_wp %>% add_nest_labels() %>% map_tracks()
 ```
 
 There were **`r count(disturbed_nests_wp)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
@@ -200,38 +234,41 @@ Coming soon: details of disturbance to nests.
 There were **`r count(dist_wp)` reports** of general disturbance or predator presence:
 
 ```{r}
-dist_wp %>% dplyr::group_by(disturbance_cause) %>% dplyr::tally %>% dplyr::arrange(-n) %>% kable
+dist_wp %>% dplyr::group_by(disturbance_cause) %>% dplyr::tally() %>% dplyr::arrange(-n) %>% kable
 dist_wp %>% map_dist
 ```
 
 
+## Surveys
+### Caveat 
+* Survey data includes training surveys. (Not production, but also effort)
+* Surveys with missing end points are auto-closed after 5 hours (over-estimation of effort).
+* Data includes training surveys. This is desired for an estimate of volunteer contribution, but
+  not desired for an estimate of "production"" survey effort.
+* Data excludes commute to survey site.
+
+### All Surveys
+A direct link to update each survey is at the end of the table.
+
+```{r}
+surveys_wp %>% 
+  dplyr::select(-site_type, -site_id, -reporter_username, -id, -absolute_admin_url) %>% 
+  DT::datatable(escape = F, rownames = FALSE)
+```
+
 ## Survey count
-Curators are to QA [all West Pilbara surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=25,26,27) following the 
-[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
-
-### Caveat
-* Data includes training surveys. (Not production, but also effort)
-
 ```{r survey_count}
-place <- "West Pilbara"
-surveys_wp %>% plot_survey_count(place)
-surveys_wp %>% list_survey_count(place)
+surveys_wp %>% plot_survey_count("West Pilbara")
+surveys_wp %>% list_survey_count("West Pilbara")
 
-place <- "West Pilbara Bells Beach"
-surveys_bb %>% plot_survey_count(place)
-surveys_bb %>% list_survey_count(place)
+surveys_bb %>% plot_survey_count("West Pilbara Bells Beach")
+surveys_bb %>% list_survey_count("West Pilbara Bells Beach")
 
-place <- "West Pilbara Yacht Club Beach"
-surveys_yc %>% plot_survey_count(place)
-surveys_yc %>% list_survey_count(place)
+surveys_yc %>% plot_survey_count("West Pilbara Yacht Club Beach")
+surveys_yc %>% list_survey_count("West Pilbara Yacht Club Beach")
 ```
 
 ## Survey effort in hours
-### Caveat
-* Surveys with missing end points are auto-closed after 5 hours (over-estimation of effort).
-* Data includes training surveys.
-* Data excludes commute to survey site.
-
 ```{r survey_effort}
 surveys_wp %>% plot_survey_effort("West Pilbara")
 surveys_wp %>% list_survey_effort("West Pilbara")
@@ -244,7 +281,6 @@ surveys_yc %>% list_survey_effort("West Pilbara Yacht Club Beach")
 ```
 
 ## Survey effort per primary reporter
-Q Which volunteer did the most hours overall on survey?
 
 ### Caveat
 This list only includes the primary reporter. 
