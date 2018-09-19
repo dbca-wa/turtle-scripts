@@ -15,6 +15,7 @@ library(listviewer)
 library(DT)
 library(ggplot2)
 library(ckanr)
+library(googledrive)
 
 # Configure ckanr to data.dpaw.wa.gov.au
 if (file.exists("~/.Rprofile")) source("~/.Rprofile")

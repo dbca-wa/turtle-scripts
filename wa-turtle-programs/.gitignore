@@ -2,3 +2,5 @@ rsconnect
 *.html
 *.png
 *.pdf
+.httr-oauth
+*.zip

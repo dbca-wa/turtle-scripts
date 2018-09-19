@@ -16,7 +16,7 @@ species_by_type <- . %>%
   ungroup() %>%
   tidyr::spread(nest_type, n, fill = 0)
 
-tracks_ts <- function(data, placename="") {
+tracks_ts <- function(data, placename="", prefix="") {
   data %>%
   daily_species_by_type() %>%
   {
@@ -33,7 +33,7 @@ tracks_ts <- function(data, placename="") {
       ggplot2::scale_y_continuous(limits = c(0, NA)) +
       ggplot2::xlab("Date") +
       ggplot2::theme_classic() +
-      ggsave(glue::glue("track_abundance_{wastdr::urlize(placename)}.png"), width = 7, height = 5)
+      ggsave(glue::glue("{prefix}_track_abundance_{wastdr::urlize(placename)}.png"), width = 7, height = 5) +
       NULL
   }
 }
@@ -158,7 +158,7 @@ hatching_emergence_success <- . %>%
   )
 
 
-ggplot_track_success_by_date <- function(data, speciesname, placename="") {
+ggplot_track_success_by_date <- function(data, speciesname, placename="", prefix="") {
   data %>%
     filter(species == speciesname) %>%
     ggplot(aes(x = date)) +
@@ -174,10 +174,10 @@ ggplot_track_success_by_date <- function(data, speciesname, placename="") {
       labels = scales::date_format("%d %b %Y")) +
     ggplot2::scale_y_continuous(limits = c(0, NA)) +
     ggplot2::theme_classic() +
-    ggsave(glue::glue("track_effort_{wastdr::urlize(placename)}_{speciesname}.png"), width = 7, height = 5)
+    ggsave(glue::glue("{prefix}_track_effort_{wastdr::urlize(placename)}_{speciesname}.png"), width = 7, height = 5)
 }
 
-ggplot_track_successrate_by_date <- function(data, speciesname, placename="") {
+ggplot_track_successrate_by_date <- function(data, speciesname, placename="", prefix="") {
   data %>%
     filter(species == speciesname) %>%
     ggplot(aes(x = date)) +
@@ -191,7 +191,7 @@ ggplot_track_successrate_by_date <- function(data, speciesname, placename="") {
       labels = scales::date_format("%d %b %Y")) +
     ggplot2::scale_y_continuous(limits = c(0, NA)) +
     ggplot2::theme_classic() +
-    ggsave(glue::glue("track_success_{wastdr::urlize(placename)}_{speciesname}.png"), width = 7, height = 5)
+    ggsave(glue::glue("{prefix}_track_success_{wastdr::urlize(placename)}_{speciesname}.png"), width = 7, height = 5)
 }
 
 track_success <- function(tracks){
@@ -243,8 +243,8 @@ filter_emb_ap <- . %>% dplyr::filter(site_id==37) # anna plains
 filter_emb_cvp <- . %>% dplyr::filter(site_id==36) # caravan park
 
 filter_port_hedland_sites <- . %>% dplyr::filter(site_id %in% c(35, 45))
-filter_port_hedland_cemetery <- . %>% dplyr::filter(site_name=="Port Hedland Cemetery Beach")
-filter_port_hedland_prettypool <- . %>% dplyr::filter(site_name=="Port Hedland Pretty Pool Beach")
+filter_port_hedland_cemetery <- . %>% dplyr::filter(site_id==35)
+filter_port_hedland_prettypool <- . %>% dplyr::filter(site_id==45)
 
 filter_wp <- . %>% dplyr::filter(site_id %in% c(25, 26, 27))
 filter_cw <- . %>% dplyr::filter(site_id == 26) # id 26

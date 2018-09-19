@@ -66,6 +66,7 @@ install.packages(c(
   # "leaflet.extras",
   "wordcloud",
   "networkD3",
+  "googledrive",
 
   "lme4",
   "rstan",
