@@ -4,3 +4,4 @@ rsconnect
 *.pdf
 .httr-oauth
 *.zip
+*.csv

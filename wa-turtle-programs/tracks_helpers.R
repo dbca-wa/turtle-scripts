@@ -133,10 +133,6 @@ map_tracks <- function(tracks,
     )
 }
 
-
-survey_count <- function(surveys, site_id){
-  surveys %>% filter(site_id==site_id) %>% nrow}
-
 hatching_emergence_success <- . %>%
   filter(nest_type=="hatched-nest") %>%
   dplyr::filter(hatching_success >= 0) %>%
@@ -261,3 +257,4 @@ filter_thvt <- . %>% dplyr::filter(site_id == 20)
 filter_nosite <- . %>% dplyr::filter(is.na(site_id))
 filter_nosurvey <- . %>% dplyr::filter(is.na(survey_id))
 filter_realspecies <- . %>% dplyr::filter(species != 'corolla-corolla')
+filter_realsurveys <- . %>% dplyr::filter(is_production == TRUE)
