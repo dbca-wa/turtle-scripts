@@ -260,3 +260,4 @@ filter_thvt <- . %>% dplyr::filter(site_id == 20)
 
 filter_nosite <- . %>% dplyr::filter(is.na(site_id))
 filter_nosurvey <- . %>% dplyr::filter(is.na(survey_id))
+filter_realspecies <- . %>% dplyr::filter(species != 'corolla-corolla')
