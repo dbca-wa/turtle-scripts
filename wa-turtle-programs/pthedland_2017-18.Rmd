@@ -5,21 +5,21 @@ date: "`r Sys.time()`"
 output:
   html_document:
     toc: true
-    toc_depth: 2
+    toc_depth: 3
     toc_float: true
-    fig_width: 9
-    fig_height: 5
+    fig_width: 10
+    fig_height: 6
 ---
 
-```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 source("tracks_setup.R")
 source("tracks_helpers.R")
+source("load_data.R")
 ```
 
 # Data
-```{r load_data, eval=T}
-source("load_data.R")
-tracks_2017 <- tracks_all %>% filter_2017() %>% filter_realspecies()
+```{r load_data}
+tracks_2017 <- tracks_all %>% filter_2017() %>% filter_realspecies() %>% add_nest_labels()
 tracks_pth <- tracks_2017 %>% filter_port_hedland_sites()
 tracks_pth_cem <- tracks_2017 %>% filter_port_hedland_cemetery()
 tracks_pth_ppo <- tracks_2017 %>% filter_port_hedland_prettypool()
@@ -78,7 +78,7 @@ Split up per site:
 * [Cemetary Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=35)
 * [Pretty Pool Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=45)
 
-## Surveys missing Site Visit End
+## Surveys missing end
 Where a "Site Visit End" form was forgotten, `end_source_id` is empty, and the duration is set to 6h. 
 These surveys should be closed a few minutes after the last recorded track or disturbance.
 
@@ -86,19 +86,19 @@ Surveys with missing end contribute to an over-estimation of survey effort.
 
 This task will be automated soon.
   
-```{r}
+```{r surveys_missing_end}
 surveys_pth %>% 
   dplyr::filter(is.na(end_source_id)) %>%
   dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>% 
-  DT::datatable(escape = FALSE, rownames = FALSE)
+  dt
 ```
 
 ## Provided username mismatches WAStD users
 TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data collectors vs 
 [WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
 
-```{r}
-surveys_wp %>% filter_surveys_requiring_qa %>% DT::datatable(escape = FALSE, rownames = FALSE)
+```{r name_mismatch}
+surveys_pth %>% filter_surveys_requiring_qa %>% dt
 ```
 
 # Season summary
@@ -120,22 +120,54 @@ This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra
 ### Nesting at Cemetery Beach
 
 ```{r map_cem}
-tracks_pth_cem %>% add_nest_labels() %>% map_tracks()
+tracks_pth_cem %>% map_tracks()
 ```
 
 ### Nesting at Pretty Pool Beach
 
 ```{r map_ppo}
-tracks_pth_ppo %>% add_nest_labels() %>% map_tracks()
+tracks_pth_ppo %>% map_tracks()
 ```
 
-### Tagged nests
-Currently showing all tagged nests.
-The map is saved as a PNG file `r glue::glue(prefix, "_tagged_nests.png"`.
 
-```{r nests_all, fig.height=9, fig.width=10}
-nests_pth %>% map_nests() %T>% 
-  mapview::mapshot(file=glue::glue("{prefix}_tagged_nests.png"))
+### Animated map
+A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
+be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
+
+```{r map_animated}
+ggmap::register_google(key = Sys.getenv("GOOGLE_MAPS_APIKEY"))
+
+# basemap
+bbx <- ggmap::make_bbox(longitude, latitude, tracks_pth, f = 0.05)
+ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
+# basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
+basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>%
+  ggmap::ggmap()
+
+# tracks
+tracks_map <- suppressWarnings(
+  basemap +
+    geom_point(aes(longitude, latitude, colour = nest_type),
+      data = tracks_pth, alpha = 0.8
+    )
+) +
+  ggplot2::ggtitle("Turtle Nesting", subtitle = "Turtle date: {frame_time}") +
+  gganimate::transition_time(date) +
+  gganimate::ease_aes("linear")
+
+# render and save
+gganimate::animate(tracks_map, fps = 2) %T>%
+  gganimate::anim_save(glue::glue("{prefix}_nesting.gif"), .)
+```
+
+
+### Tagged nests
+2017-18: no tagged nests.
+
+The map (once enabled) is saved as a PNG file `r glue::glue(prefix, "_tagged_nests.png")`.
+
+```{r nests_all, eval=F}
+nests_pth %>% map_nests() %>% mapview::mapshot(file=glue::glue("{prefix}_tagged_nests.png"))
 ```
 
 ## Nesting abundance
@@ -156,7 +188,7 @@ tracks_pth_ppo %>% species_by_type() %>% kable()
 ```
 
 ## Nesting success 
-```{r nesting_success, fig.height=5, fig.width=7, warning = F}
+```{r nesting_success, warning = F}
 tracks_pth %>% tracks_ts(placename, prefix)
 tracks_pth_cem %>% tracks_ts("Cemetery Beach", prefix)
 tracks_pth_ppo %>% tracks_ts("Pretty Pool Beach", prefix)
@@ -165,7 +197,7 @@ nests <- tracks_pth %>% track_success()
 
 nests %>% ggplot_track_success_by_date("natator-depressus", placename, prefix)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", placename, prefix)
-nests %>% track_success_by_species() %>% datatable(.,
+nests %>% track_success_by_species() %>% DT::datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
 ```
@@ -192,7 +224,7 @@ Turtle nests with recorded disturbance or predation.
 
 ```{r dist_nests}
 disturbed_nests_pth <- tracks_pth %>% filter(disturbance == "present")
-disturbed_nests_pth %>% add_nest_labels() %>% map_tracks()
+disturbed_nests_pth %>% map_tracks()
 ```
 
 There were **`r count(disturbed_nests_pth)` reports** of disturbed nests. 
@@ -226,11 +258,11 @@ Highest level of aggregation: entire season.
 ### Per day effort
 Lowest level of aggregation: daily.
 
-```{r survey_count, fig.width=10, fig.height=5}
-surveys_wp %>% plot_survey_count(placename, prefix)
-surveys_wp %>% list_survey_count(placename)
-surveys_wp %>% plot_survey_effort(placename, prefix)
-surveys_wp %>% list_survey_effort(placename)
+```{r survey_count}
+surveys_pth %>% plot_survey_count(placename, prefix)
+surveys_pth %>% list_survey_count(placename)
+surveys_pth %>% plot_survey_effort(placename, prefix)
+surveys_pth %>% list_survey_effort(placename)
 ```
 
 ### Individual surveys
@@ -238,10 +270,10 @@ No aggregation: individual surveys.
 
 Note, a direct link to update each survey in WAStD is at the end of the table.
 
-```{r}
+```{r survey_list}
 surveys_pth %>% 
   dplyr::select(-site_type, -site_id, -reporter_username, -id, -absolute_admin_url) %>% 
-  DT::datatable(escape = F, rownames = FALSE)
+  dt
 ```
 
 
@@ -285,10 +317,10 @@ personal_effort %>% kable()
 * This report is rendered into a single HTML page.
 
 ```{r data_export_csv}
-tracks_wp %>% dplyr::select(-obs, -photos) %>% 
+tracks_pth %>% dplyr::select(-obs, -photos) %>% 
   readr::write_csv(glue::glue("{prefix}_tracks.csv"))
-surveys_wp %>% readr::write_csv(glue::glue("{prefix}_surveys.csv"))
-dist_wp %>% dplyr::select(-photos) %>% 
+surveys_pth %>% readr::write_csv(glue::glue("{prefix}_surveys.csv"))
+dist_pth %>% dplyr::select(-photos) %>% 
   readr::write_csv(glue::glue("{prefix}_disturbance.csv"))
 ```
 
@@ -297,10 +329,10 @@ Data are uploaded to the [turtle nest census dataset](https://data.dpaw.wa.gov.a
 on the departmental data catalogue, accessible from the DBCA intranet only.
 
 ```{r data_upload_ckan}
-tracks_wp %>% dplyr::select(-obs, -photos) %>% 
+tracks_pth %>% dplyr::select(-obs, -photos) %>% 
   readr::write_csv(glue::glue("{prefix}_tracks.csv"))
-surveys_wp %>% readr::write_csv(glue::glue("{prefix}_surveys.csv"))
-dist_wp %>% dplyr::select(-photos) %>% 
+surveys_pth %>% readr::write_csv(glue::glue("{prefix}_surveys.csv"))
+dist_pth %>% dplyr::select(-photos) %>% 
   readr::write_csv(glue::glue("{prefix}_disturbance.csv"))
 
 # Package all output files into one ZIP archive

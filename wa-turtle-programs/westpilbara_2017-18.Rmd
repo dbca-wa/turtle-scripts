@@ -210,6 +210,17 @@ gganimate::animate(tracks_map, fps = 2) %T>%
   gganimate::anim_save(glue::glue("{prefix}_nesting.gif"), .)
 ```
 
+
+### Tagged nests
+2017-18: no tagged nests.
+
+The map (once enabled) is saved as a PNG file `r glue::glue(prefix, "_tagged_nests.png")`.
+
+```{r nests_all, eval=F}
+nests_wp %>% map_nests() %>% mapview::mapshot(file=glue::glue("{prefix}_tagged_nests.png"))
+```
+
+
 ## Nesting abundance
 ### All sectors
 The next table includes all tracks from Bells and Yacht Club beach combined.
