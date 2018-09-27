@@ -16,6 +16,8 @@ library(DT)
 library(ggplot2)
 library(ckanr)
 library(googledrive)
+library(ggmap)
+library(gganimate)
 
 # Configure ckanr to data.dpaw.wa.gov.au
 if (file.exists("~/.Rprofile")) source("~/.Rprofile")

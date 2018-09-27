@@ -38,104 +38,7 @@ tracks_ts <- function(data, placename="", prefix="") {
   }
 }
 
-map_dist <- function(dist,
-                     fmt="%d/%m/%Y %H:%M"){
-  . <- NULL
-  wastd_url <- get_wastd_url()
 
-  pal <- leaflet::colorFactor(
-    palette = 'Set1',
-    domain = dist$disturbance_cause
-  )
-
-  layersControlOptions <- NULL
-  l <- leaflet(width = 800, height = 600) %>%
-    addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
-    addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
-    clearBounds()
-
-  dist.df <- dist %>% split(dist$disturbance_cause)
-
-  names(dist.df) %>%
-    purrr::walk(function(df) {
-      l <<- l %>% addAwesomeMarkers(
-        data = dist.df[[df]],
-        lng = ~longitude, lat = ~latitude,
-        icon = leaflet::makeAwesomeIcon(
-          text = ~stringr::str_sub(disturbance_cause, 0,1),
-          markerColor = ~pal(disturbance_cause)),
-        label = ~ glue::glue(
-          '{format(datetime, fmt)} {humanize(disturbance_cause)}'
-        ),
-        popup = ~ glue::glue(
-          '<h3>{humanize(disturbance_cause)}</h3>',
-          '<p>Seen on {format(datetime, fmt)} AWST by {observer}',
-          '<p>Survey {survey_id} at {site_name} ',
-          '{format(survey_start_time, fmt)}-{format(survey_end_time, fmt)} AWST</p>',
-          '<p><a class="btn btn-xs btn-primary" target="_" rel="nofollow" ',
-          'href="{wastd_url}{absolute_admin_url}">Edit on WAStD</a></p>'
-        ),
-
-                                    group = df)
-    })
-
-  l %>%
-    addLayersControl(
-      baseGroups = c("Aerial", "Place names"),
-      overlayGroups = names(dist.df),
-      options = layersControlOptions(collapsed = FALSE))
-}
-
-
-map_tracks <- function(tracks,
-                       fmt="%d/%m/%Y %H:%M") {
-  . <- NULL
-  wastd_url <- get_wastd_url()
-  layersControlOptions <- NULL
-  l <- leaflet(width = 800, height = 600) %>%
-    addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
-    addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
-    clearBounds()
-
-  tracks.df <- tracks %>% split(tracks$species)
-
-  names(tracks.df) %>%
-    purrr::walk(function(df) {
-      l <<- l %>%
-        addAwesomeMarkers(
-          data = tracks.df[[df]],
-          lng = ~ longitude, lat = ~ latitude,
-          icon = leaflet::makeAwesomeIcon(
-            text = ~ nest_type_text,
-            markerColor = ~ species_colours
-          ),
-          label = ~ glue::glue(
-            '{format(datetime, "%d/%m/%Y %H:%M")} {humanize(nest_age)}',
-            ' {humanize(species)} {humanize(nest_type)} {name}'
-          ),
-          popup = ~ glue::glue(
-            '<h3>{humanize(nest_age)} {humanize(species)} {humanize(nest_type)} {name}</h3>',
-            '<p>Seen on {format(datetime, fmt)} AWST by {observer}',
-            '<p>Survey {survey_id} at {site_name} ',
-            '{format(survey_start_time, fmt)}-{format(survey_end_time, fmt)} AWST</p>',
-            '<p><a class="btn btn-xs btn-primary" target="_" rel="nofollow" ',
-            'href="{wastd_url}{absolute_admin_url}">Edit on WAStD</a></p>'
-          ),
-          group = df
-        )
-    })
-
-  l %>%
-    addLayersControl(
-      baseGroups = c("Aerial", "Place names"),
-      overlayGroups = names(tracks.df),
-      options = layersControlOptions(collapsed = FALSE)
-    )
-}
-
-
-survey_count <- function(surveys, site_id){
-  surveys %>% filter(site_id==site_id) %>% nrow}
 
 hatching_emergence_success <- . %>%
   filter(nest_type=="hatched-nest") %>%
@@ -260,3 +163,5 @@ filter_thvt <- . %>% dplyr::filter(site_id == 20)
 
 filter_nosite <- . %>% dplyr::filter(is.na(site_id))
 filter_nosurvey <- . %>% dplyr::filter(is.na(survey_id))
+filter_realspecies <- . %>% dplyr::filter(species != 'corolla-corolla')
+filter_realsurveys <- . %>% dplyr::filter(is_production == TRUE)

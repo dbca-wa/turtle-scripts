@@ -17,9 +17,7 @@ source("tracks_helpers.R")
 ```
 
 # Caveat
-The data shown are pending QA and reconciliation with paper-based records. 
-Until this warning disappears, this dataset may contain duplicates from training runs, effort attributed to the wrong operators, and possibly other issues and biases.
-
+The data shown are currently updated by the curators through Quality Assurance (QA).
 Update September 2018:
 
 * Some records were uploaded but not ingested. This happened because
@@ -29,24 +27,41 @@ Update September 2018:
 * Most tablets did have unfinalised, unsent forms. These required manual
   review (which is the purpose of leaving forms unfinalised), re-enabling
   of those old form versions both on the server and on the data ingest.
+  The option to leave unfinished records on the tablets has now been removed.
+* Missing surveys are automatically reconstructed.
+* Coming soon: surveys missing an end point (default length 6h) will be adjusted
+  to latest record plus buffer time. This will reduce over-estimation of survey effort.
   
 The data shown here now includes these two batches of observations.
 In situ tests in Sept 2018 have shown that 100% of the data collected digitally arrive in the database.
 
+Remaining QA tasks:
+
+* Reconcile reporter and team names from data as submitted (typos may lead to wrong match)
+  and team roster.
+
 # Data
 ```{r, eval=T}
 source("load_data.R")
-tracks_wp <- tracks_all %>% filter_wp() %>% filter_2017()
-# tracks_cw <- tracks_all %>% filter_cw %>% filter_2017() # none yet
-tracks_bb <- tracks_all %>% filter_bb() %>% filter_2017()
-tracks_yc <- tracks_all %>% filter_yc() %>% filter_2017()
+tracks_wp <- tracks_all %>% filter_wp() %>% filter_2017() %>% filter_realspecies()
+# tracks_cw <- tracks_all %>% filter_cw %>% filter_2017() %>% filter_realspecies() # none yet
+tracks_bb <- tracks_all %>% filter_bb() %>% filter_2017() %>% filter_realspecies()
+tracks_yc <- tracks_all %>% filter_yc() %>% filter_2017() %>% filter_realspecies()
 
 surveys_wp <- surveys %>% filter_wp() %>% filter_2017()
+surveys_wp_prod <- surveys_wp %>% filter_realsurveys()
 # surveys_cw <- surveys %>% filter_cw %>% filter_2017()
 surveys_bb <- surveys %>% filter_bb() %>% filter_2017()
 surveys_yc <- surveys %>% filter_yc() %>% filter_2017()
 
 dist_wp <- disturbance %>% filter_wp() %>% filter_2017()
+
+nests_wp <- nests_all %>% filter_wp() # none yet
+nests_bb <- nests_all %>% filter_bb() # none yet
+nests_yc <- nests_all %>% filter_yc() # none yet
+
+prefix <- "WPTP"
+placename <- "Cape Lambert"
 ```
 
 Note: Jason reported the following counts for manual entry (not done yet, so not showing up in this report):
@@ -76,44 +91,38 @@ This section identifies tracks and disturbances outside known sites, missing sur
 We show data from all regions as not to miss any stray records - ignore data not relevant to this analysis.
 
 ## Tracks outside known sites
-* If tracks are close to sites: Extend WAStD site polygons to include GPS error.
-* Add WAStD sites for new surveyed sites (production or training) and include those sites in existing or new report.
-* Change confirmed training records outside training areas to "Hatchback turtles" and mark as "curated" to
-  prevent from being overwritten by repeated data loading.
+Review whether there are stray tracks close to this program's sites.
+
+* WAStD sites missing (new sites) or boundaries set too narrow. 
+  Extend sites, re-save stray tracks to auto-repair their site affiliation.
+* Training records close to site (but not meant to be within site).
+  Change confirmed training records outside training areas to "Hatchback turtles" 
+  and mark as "curated" to prevent from being overwritten by repeated data loading.
 * Note: re-run uncached data import after changing tracks.
 
 ```{r tracks_missing_sites}
 tracks_all %>% 
   filter_nosite() %>%
+  filter_realspecies() %>%
   add_nest_labels() %>% 
   map_tracks()
 ```
+
+## Disturbance outside known sites
+Review disturbances close to this program's sites. It is safe to ignore other disturbances.
+
+Disturbances can either be legitimate, although opportunistic, records, or training
+records.
+
+* Training records: set to "Other, see comments", mention "training" in comments,
+  ideally instruct data collectors to photograph their writing board with "training"
+  written on it to make absolutely clear that this record is a training record.
 
 ```{r dist_missing_sites}
 disturbance %>% filter_nosite() %>% map_dist()
 ```
 
-## Tracks at known sites with missing surveys
-Actions:
-
-* Filter datatable to site of interest by typing the site name into the "Search" box.
-* Create missing surveys, one for each row in the table. (This will be automated early 2019.)
-* Re-run uncached data import after adding surveys, as data for surveys, 
-  tracks and disturbance will change.
-  
-TODO: find earliest observation and reporter on given dates. (group by > summarize)
-
-```{r missing_surveys}
-tracks_all %>%
-  filter_2017 %>%
-  filter_nosurvey() %>%
-  dplyr::group_by(site_name, date) %>%
-  dplyr::summarise(earliest_record = min(datetime), 
-                   no_tracks = n(), 
-                   reporter = first(reporter)) %>%
-  DT::datatable(.)
-```
-### QA: Surveys
+## Surveys in WAStD
 Curators are to QA [all West Pilbara surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=25,26,27,46,47) following the 
 [QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
 
@@ -125,13 +134,13 @@ Split up per site:
 * [Boat Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=46)
 * [Cleaverville Beach 1](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=47)
 
-### QA: Surveys missing Site Visit End
-Where a "Site visit end" was forgotten, "end source id" is empty, and the duration is set to 6h. 
+## Surveys missing Site Visit End
+Where a "Site Visit End" form was forgotten, `end_source_id` is empty, and the duration is set to 6h. 
 These surveys should be closed a few minutes after the last recorded track or disturbance.
 
 Surveys with missing end contribute to an over-estimation of survey effort.
 
-TODO: list datetime of last record.
+This task will be automated soon.
   
 ```{r}
 surveys_wp %>% 
@@ -140,9 +149,10 @@ surveys_wp %>%
   DT::datatable(escape = FALSE, rownames = FALSE)
 ```
 
-### QA: Provided username mismatches WAStD users
+## Provided username mismatches WAStD users
 TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data collectors vs 
 [WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
+
 ```{r}
 surveys_wp %>% 
   dplyr::filter(grepl("QA", start_comments) | grepl("QA", end_comments)) %>%
@@ -168,40 +178,73 @@ hours of mind-numbing data entry and proofreading work for
 
 ## Maps
 ```{r map_overall}
-tracks_wp %>% add_nest_labels() %>% map_tracks()
+tracks_wp <- tracks_wp %>% add_nest_labels() %T>% map_tracks()
 # tracks_bb %>% add_nest_labels() %>% map_tracks()
 # tracks_yc %>% add_nest_labels() %>% map_tracks()
 ```
 
+### Animated map
+
+```{r map_animated}
+# basemap
+bbx <- ggmap::make_bbox(longitude, latitude, tracks_wp, f = 0.05)
+ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
+# basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
+basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>% ggmap::ggmap()
+
+# tracks
+tracks_map <- suppressWarnings(
+  basemap + geom_point(aes(longitude, latitude, colour = nest_type), data = tracks_wp, alpha = 0.8)
+) +
+  ggplot2::ggtitle("Turtle Nesting", subtitle = "Turtle date: {frame_time}") +
+  gganimate::transition_time(date) +
+  gganimate::ease_aes("linear")
+
+# render and save
+gganimate::animate(tracks_map, fps=2) %T>%
+  gganimate::anim_save(glue::glue("{prefix}_nesting.gif"), .)
+```
+
 ## Nesting abundance
 ### All sectors
+The next table includes all tracks from Bells and Yacht Club beach combined.
+
 ```{r tracks_all_sectors}
 tracks_wp %>% species_by_type() %>% kable()
 ```
-## Bell's Beach
+
+### Bells Beach
+Only Bells Beach tracks.
+
 ```{r tracks_bb}
 tracks_bb %>% species_by_type() %>% kable()
 ```
+
 ### Yacht Club Beach
+Only Yacht Club Beach tracks.
+
 ```{r tracks_yc}
 tracks_yc %>% species_by_type() %>% kable()
 ```
 
-## Nesting success 
+## Nesting success
+All beaches.
+
 ```{r nesting_success, fig.height=5, fig.width=7, warning = F}
-label <- "wp"
-tracks_wp %>% tracks_ts(placename = label)
+tracks_wp %>% tracks_ts(placename = placename, prefix = prefix)
 nests <- tracks_wp %>% track_success()
-nests %>% ggplot_track_success_by_date("natator-depressus", label)
-# nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
-nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
-# nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+nests %>% ggplot_track_success_by_date("natator-depressus", placename, prefix)
+# nests %>% ggplot_track_success_by_date("chelonia-mydas", placename)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", placename, prefix)
+# nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename)
 nests %>% track_success_by_species() %>% datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
 ```
 
 ## Hatching and emergence success
+Not monitored consistently. The following data are opportunistic observations.
+
 ```{r hatching_emergence_success}
 tracks_wp %>%
   hatching_emergence_success() %>%
@@ -219,7 +262,7 @@ General signs of disturbance or predator presence are recorded through form
 "Fox Sake" and appear here as "dist_(place)".
 
 ### Disturbance and predation of nests
-Turtle nests with recorded disturbance or predation.
+Turtle nests with recorded disturbance or predation. All beaches.
 
 ```{r}
 disturbed_nests_wp <- tracks_wp %>% filter(disturbance == "present")
@@ -239,16 +282,35 @@ dist_wp %>% map_dist
 ```
 
 
-## Surveys
+## Survey effort
 ### Caveat 
 * Survey data includes training surveys. (Not production, but also effort)
 * Surveys with missing end points are auto-closed after 5 hours (over-estimation of effort).
-* Data includes training surveys. This is desired for an estimate of volunteer contribution, but
-  not desired for an estimate of "production"" survey effort.
 * Data excludes commute to survey site.
 
-### All Surveys
-A direct link to update each survey is at the end of the table.
+### Per season effort
+Highest level of aggregation: entire season.
+
+* Excluding training, there were **`r nrow(surveys_wp_prod)` surveys** to all beaches
+  of the WPTP (Bells, Yacht Club, coming 2018: Cleaverville, not included: cooling water)
+  for a total duration of **`r sum(surveys_wp_prod$duration_hours)` hours**.
+* Caveat: all training surveys must be marked as "not production" manually in WAStD.
+  Above data currently may include training effort.
+
+### Per day effort
+Lowest level of aggregation: daily.
+
+```{r survey_count, fig.width=10, fig.height=5}
+surveys_wp %>% plot_survey_count(placename, prefix)
+surveys_wp %>% list_survey_count(placename)
+surveys_wp %>% plot_survey_effort(placename, prefix)
+surveys_wp %>% list_survey_effort(placename)
+```
+
+### Individual surveys
+No aggregation: individual surveys.
+
+Note, a direct link to update each survey in WAStD is at the end of the table.
 
 ```{r}
 surveys_wp %>% 
@@ -256,39 +318,29 @@ surveys_wp %>%
   DT::datatable(escape = F, rownames = FALSE)
 ```
 
-## Survey count
-```{r survey_count}
-surveys_wp %>% plot_survey_count("West Pilbara")
-surveys_wp %>% list_survey_count("West Pilbara")
 
-surveys_bb %>% plot_survey_count("West Pilbara Bells Beach")
-surveys_bb %>% list_survey_count("West Pilbara Bells Beach")
+## Volunteer effort
+* Surveys including training runs represent volunteer effort.
+* There were **`r nrow(surveys_wp)` surveys** including training for a total duration
+  of **`r sum(surveys_wp_prod$duration_hours)` hours**.
+* At Bells Beach, assuming the round trip was 2 km,
+  **`r survey_ground_covered(surveys, 25, 2)` km** were walked 
+  in **`r survey_count(surveys_wp, 25)` surveys** including training.
 
-surveys_yc %>% plot_survey_count("West Pilbara Yacht Club Beach")
-surveys_yc %>% list_survey_count("West Pilbara Yacht Club Beach")
-```
+* At Yacht Club Beach, assuming the round trip was 1 km,
+  **`r survey_ground_covered(surveys, 27, 1)` km** were walked 
+  in **`r survey_count(surveys_wp, 27)` surveys ** including training.
 
-## Survey effort in hours
-```{r survey_effort}
-surveys_wp %>% plot_survey_effort("West Pilbara")
-surveys_wp %>% list_survey_effort("West Pilbara")
-
-surveys_bb %>% plot_survey_effort("West Pilbara Bells Beach")
-surveys_bb %>% list_survey_effort("West Pilbara Bells Beach")
-
-surveys_yc %>% plot_survey_effort("West Pilbara Yacht Club Beach")
-surveys_yc %>% list_survey_effort("West Pilbara Yacht Club Beach")
-```
-
-## Survey effort per primary reporter
-
-### Caveat
-This list only includes the primary reporter. 
+### Per person
+The following list only includes the primary reporter. 
 This leads to under-reporting of time spent by other volunteers attending the survey.
-Their names are listed in the Site Visit Start form field "comments" as free text, and from 2018, in the Site Visit Start form field "team".
+Their names are listed in the Site Visit Start form field "comments" as free text
+(surveys > start_comments), and from 2018, in the Site Visit Start form field "team".
+
 To correctly report on team member effort, curators have to read the list of 
-team members in the Site Visit "comments" field and attach the correct users 
-to the Survey team list. From 2018, this will be automated but still requires QA.
+team members in the Survey "start_comments" field and attach the correct users 
+to the Survey's team list. From 2018, this will be automated but still requires QA.
+
 Once the surveys are comprehensively attributed to all volunteers present, the code underneath this
 workbook has to be updated to include the Survey team's effort.
 
@@ -301,32 +353,59 @@ personal_effort <- surveys_wp %>% survey_hours_per_person()
 personal_effort %>% kable()
 ```
 
-## Survey effort in kilometers walked
-Number of surveys per sector times length of site.
-This includes local knowledge about distances on site.
-
-At Bells Beach, assuming the round trip was 2 km,
-`r survey_ground_covered(surveys, 25, 2)` km were walked 
-in `r survey_count(surveys_wp, 25)` surveys.
-
-At Yacht Club Beach, assuming the round trip was 1 km,
-`r survey_ground_covered(surveys, 27, 1)` km were walked 
-in `r survey_count(surveys_wp, 27)` surveys.
-
 # Data upload
 
-```{r data_upload}
-# d <- ckanr::package_show("turtle-tracks")
-ckanr::resource_update("1c57e04a-c29c-464c-b82d-a69e4ee0b199", "westpilbara_2017-18.html")
-```
+## Raw data
+* Raw data are exported into CSV spreadsheets.
+* Key figures are exported into .png raster files.
+* This report is rendered into a single HTML page.
 
-```{r data_export}
+```{r data_export_csv}
 tracks_wp %>% dplyr::select(-obs, -photos) %>% 
-  readr::write_csv(here::here("data", "tracks_wp.csv"))
-surveys_wp %>% readr::write_csv(here::here("data", "surveys_wp.csv"))
+  readr::write_csv(glue::glue("{prefix}_tracks.csv"))
+surveys_wp %>% readr::write_csv(glue::glue("{prefix}_surveys.csv"))
 dist_wp %>% dplyr::select(-photos) %>% 
-  readr::write_csv(here::here("data", "dist_wp.csv"))
+  readr::write_csv(glue::glue("{prefix}_disturbance.csv"))
 ```
 
-TODO: zip CSV and PDF/PNG exports, upload to a secure file share.
+## Data catalogue
+Data are uploaded to the [turtle nest census dataset](https://data.dpaw.wa.gov.au/dataset/turtle-tracks) 
+on the departmental data catalogue, accessible from the DBCA intranet only.
 
+```{r data_upload_ckan}
+# Package all output files into one ZIP archive.
+products_fn <- glue::glue("{prefix}_products.zip")
+if(file.exists(products_fn)) file.remove(products_fn)
+products <- list.files(pattern=prefix)
+zip(zipfile = products_fn, files = products)
+
+# Create a resource for the ZIP archive
+# d <- ckanr::package_show("turtle-tracks")
+# r <- resource_create(package_id=d$id, name="West Pilbara Turtle Program outputs", upload=products_fn)
+
+# Update resources on data catalogue 
+ckanr::resource_update("1c57e04a-c29c-464c-b82d-a69e4ee0b199", "westpilbara_2017-18.html")
+ckanr::resource_update("53fcc7fc-a974-4f26-a4d7-2d39c9111211", products_fn)
+```
+
+## Google Drive
+A copy of this report and all generated outputs is uploaded to Google Drive
+and shared via link with DBCA external collaborators.
+
+Every machine has to be authenticated with Google Drive once.
+As this process involves browser windows and pasting of approval codes into the 
+R Console, it is not run automatically when compiling this workbook.
+
+Running the following chunk manually once per machine will cache the authentication
+token locally for future use.
+
+```{r google_drive_auth, eval=F}
+googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
+```
+
+```{r data_upload_google}
+# googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
+googledrive::drive_ls("WPTP") %>% googledrive::drive_rm(.)
+googledrive::drive_upload("westpilbara_2017-18.html", path="WPTP/westpilbara_2017-18.html")
+products %>% purrr::map(googledrive::drive_upload, path=as_dribble("WPTP"))
+```
