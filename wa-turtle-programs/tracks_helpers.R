@@ -132,6 +132,11 @@ survey_ground_covered <- function(surveys, site_id, km_per_survey){
   survey_count(surveys, site_id) * km_per_survey
 }
 
+filter_surveys_requiring_qa <- . %>%
+  dplyr::filter(grepl("QA", start_comments) | grepl("QA", end_comments)) %>%
+  dplyr::select(site_name, reporter, date, start_time, end_time,
+                start_comments, end_comments, change_url)
+
 
 filter_2017 <- . %>% dplyr::filter(date > dmy("01/10/2017") & date < dmy("01/04/2018"))
 
