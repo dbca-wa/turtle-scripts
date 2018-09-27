@@ -1,0 +1,63 @@
+---
+title: "WA Turtles Quality Control"
+author: "Florian Mayer, WA Turtles DBCA"
+date: "9/20/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("tracks_setup.R")
+source("tracks_helpers.R")
+source("load_data.R")
+```
+
+# Missing sites
+* If tracks are just outside of known sites: Extend WAStD site polygons to include GPS error.
+* Add WAStD sites for new surveyed sites (production or training) and include those sites in existing or new report.
+* Change confirmed training records outside training areas to "Hatchback turtles" and mark as "curated" to
+  prevent from being overwritten by repeated data loading.
+* Note: re-run uncached data import after changing tracks.
+
+## Tracks outside known sites
+```{r tracks_missing_sites}
+tracks_all %>% 
+  filter_not_training() %>%
+  filter_nosite() %>%
+  add_nest_labels() %>% 
+  map_tracks()
+```
+
+## Disturbance outside known sites
+```{r dist_missing_sites}
+disturbance %>% filter_nosite() %>% map_dist()
+```
+
+
+
+## Missing surveys
+
+### Tracks with missing surveys
+```{r missing_surveys}
+missing_surveys <- tracks_all %>%
+  filter_nosurvey() %>%
+  dplyr::group_by(site_id, site_name, date) %>%
+  dplyr::summarise(earliest_record = min(datetime), 
+                   latest_record = max(datetime), 
+                   survey_start_time = min(datetime) - lubridate::minutes(30),
+                   survey_end_time = max(datetime) + lubridate::minutes(30),
+                   reporter = first(reporter),
+                   no_tracks = n()) %T>%
+  DT::datatable(.)
+```
+
+
+## Nest tags
+
+### Tagged nests
+Nest tags are often malformed. Use the "Update in WAStD" button and extract "tag name"" and 
+"date laid" into their own top level fields in WAStD.
+
+```{r nests_all}
+nests_all %>% map_nests()
+```
