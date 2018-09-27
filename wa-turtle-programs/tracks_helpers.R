@@ -132,6 +132,9 @@ survey_ground_covered <- function(surveys, site_id, km_per_survey){
   survey_count(surveys, site_id) * km_per_survey
 }
 
+dt <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE)
+
+# Filters
 filter_surveys_requiring_qa <- . %>%
   dplyr::filter(grepl("QA", start_comments) | grepl("QA", end_comments)) %>%
   dplyr::select(site_name, reporter, date, start_time, end_time,

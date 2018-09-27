@@ -5,4 +5,4 @@ rsconnect
 .httr-oauth*
 *.zip
 *.csv
-.httr-oauth-SUSPENDED
+*.gif

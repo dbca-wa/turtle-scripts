@@ -22,7 +22,7 @@ source("load_data.R")
 ## Tracks outside known sites
 ```{r tracks_missing_sites}
 tracks_all %>% 
-  filter_not_training() %>%
+  filter_realspecies() %>%
   filter_nosite() %>%
   add_nest_labels() %>% 
   map_tracks()
@@ -47,15 +47,15 @@ missing_surveys <- tracks_all %>%
                    survey_start_time = min(datetime) - lubridate::minutes(30),
                    survey_end_time = max(datetime) + lubridate::minutes(30),
                    reporter = first(reporter),
-                   no_tracks = n()) %T>%
-  DT::datatable(.)
+                   no_tracks = n()) 
+missing_surveys %>% dt
 ```
 
 
 ## Nest tags
 
 ### Tagged nests
-Nest tags are often malformed. Use the "Update in WAStD" button and extract "tag name"" and 
+Nest tags are often malformed. Use the "Update in WAStD" button and extract "tag name" and 
 "date laid" into their own top level fields in WAStD.
 
 ```{r nests_all}

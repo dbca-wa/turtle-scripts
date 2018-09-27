@@ -5,15 +5,16 @@ date: "`r Sys.time()`"
 output:
   html_document:
     toc: true
-    toc_depth: 2
+    toc_depth: 3
     toc_float: true
-    fig_width: 9
-    fig_height: 5
+    fig_width: 10
+    fig_height: 6
 ---
 
-```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 source("tracks_setup.R")
 source("tracks_helpers.R")
+source("load_data.R")
 ```
 
 # Caveat
@@ -41,9 +42,8 @@ Remaining QA tasks:
   and team roster.
 
 # Data
-```{r, eval=T}
-source("load_data.R")
-tracks_wp <- tracks_all %>% filter_wp() %>% filter_2017() %>% filter_realspecies()
+```{r load_data, eval=T}
+tracks_wp <- tracks_all %>% filter_wp() %>% filter_2017() %>% filter_realspecies() %>% add_nest_labels()
 # tracks_cw <- tracks_all %>% filter_cw %>% filter_2017() %>% filter_realspecies() # none yet
 tracks_bb <- tracks_all %>% filter_bb() %>% filter_2017() %>% filter_realspecies()
 tracks_yc <- tracks_all %>% filter_yc() %>% filter_2017() %>% filter_realspecies()
@@ -66,20 +66,20 @@ placename <- "Cape Lambert"
 
 Note: Jason reported the following counts for manual entry (not done yet, so not showing up in this report):
 
-```{r, eval=F}
+```{r new_data, eval=F}
 # 16/11:
 # 5 false crawls, 3 nests:
 # -20.61127   117.15553 below dune
 # -20.61067 117.15619 above high water
 # -20.61138 117.15530 right on the high water mark
-#  
+#
 # 22/11:
 # 11 false crawls, 4 nests:
 # -20.61144 117.15526 above high water
 # -20.61031 117.15677 below dune
 # -20.61119 117.15564 above high water
 # -20.61129 117.15547 above high water
-#  
+#
 # 23/11:
 # 2 false crawls, 2 nests:
 # -20.61149 117.15523 Above high water
@@ -101,10 +101,10 @@ Review whether there are stray tracks close to this program's sites.
 * Note: re-run uncached data import after changing tracks.
 
 ```{r tracks_missing_sites}
-tracks_all %>% 
+tracks_all %>%
   filter_nosite() %>%
   filter_realspecies() %>%
-  add_nest_labels() %>% 
+  add_nest_labels() %>%
   map_tracks()
 ```
 
@@ -142,19 +142,19 @@ Surveys with missing end contribute to an over-estimation of survey effort.
 
 This task will be automated soon.
   
-```{r}
-surveys_wp %>% 
+```{r surveys_missing_end}
+surveys_wp %>%
   dplyr::filter(is.na(end_source_id)) %>%
-  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>% 
-  DT::datatable(escape = FALSE, rownames = FALSE)
+  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>%
+  dt
 ```
 
-## Provided username mismatches WAStD users
+## Username mismatches
 TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data collectors vs 
 [WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
 
-```{r}
-surveys_wp %>% filter_surveys_requiring_qa %>% DT::datatable(escape = FALSE, rownames = FALSE)
+```{r name_mismatch}
+surveys_wp %>% filter_surveys_requiring_qa() %>% dt
 ```
 
 # Season summary
@@ -175,30 +175,38 @@ hours of mind-numbing data entry and proofreading work for
 
 ## Maps
 ```{r map_overall}
-tracks_wp <- tracks_wp %>% add_nest_labels() %T>% map_tracks()
-# tracks_bb %>% add_nest_labels() %>% map_tracks()
-# tracks_yc %>% add_nest_labels() %>% map_tracks()
+tracks_wp %>% map_tracks()
+# tracks_bb %>% map_tracks()
+# tracks_yc %>% map_tracks()
 ```
 
 ### Animated map
+A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
+be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
 ```{r map_animated}
+ggmap::register_google(key = Sys.getenv("GOOGLE_MAPS_APIKEY"))
+
 # basemap
 bbx <- ggmap::make_bbox(longitude, latitude, tracks_wp, f = 0.05)
 ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
 # basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
-basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>% ggmap::ggmap()
+basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>%
+  ggmap::ggmap()
 
 # tracks
 tracks_map <- suppressWarnings(
-  basemap + geom_point(aes(longitude, latitude, colour = nest_type), data = tracks_wp, alpha = 0.8)
+  basemap +
+    geom_point(aes(longitude, latitude, colour = nest_type),
+      data = tracks_wp, alpha = 0.8
+    )
 ) +
   ggplot2::ggtitle("Turtle Nesting", subtitle = "Turtle date: {frame_time}") +
   gganimate::transition_time(date) +
   gganimate::ease_aes("linear")
 
 # render and save
-gganimate::animate(tracks_map, fps=2) %T>%
+gganimate::animate(tracks_map, fps = 2) %T>%
   gganimate::anim_save(glue::glue("{prefix}_nesting.gif"), .)
 ```
 
@@ -227,7 +235,7 @@ tracks_yc %>% species_by_type() %>% kable()
 ## Nesting success
 All beaches.
 
-```{r nesting_success, fig.height=5, fig.width=7, warning = F}
+```{r nesting_success, warning = F}
 tracks_wp %>% tracks_ts(placename = placename, prefix = prefix)
 nests <- tracks_wp %>% track_success()
 nests %>% ggplot_track_success_by_date("natator-depressus", placename, prefix)
@@ -261,21 +269,22 @@ General signs of disturbance or predator presence are recorded through form
 ### Disturbance and predation of nests
 Turtle nests with recorded disturbance or predation. All beaches.
 
-```{r}
+```{r dist_nests}
 disturbed_nests_wp <- tracks_wp %>% filter(disturbance == "present")
-disturbed_nests_wp %>% add_nest_labels() %>% map_tracks()
+disturbed_nests_wp %>% map_tracks()
 ```
 
-There were **`r count(disturbed_nests_wp)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
+There were **`r count(disturbed_nests_wp)` reports** of disturbed nests. 
+Caveat: QA to exclude possible training records.
 
 Coming soon: details of disturbance to nests.
 
 ### General disturbance
 There were **`r count(dist_wp)` reports** of general disturbance or predator presence:
 
-```{r}
-dist_wp %>% dplyr::group_by(disturbance_cause) %>% dplyr::tally() %>% dplyr::arrange(-n) %>% kable
-dist_wp %>% map_dist
+```{r dist_general}
+dist_wp %>% dplyr::group_by(disturbance_cause) %>% dplyr::tally() %>% dplyr::arrange(-n) %>% kable()
+dist_wp %>% map_dist()
 ```
 
 
@@ -297,7 +306,7 @@ Highest level of aggregation: entire season.
 ### Per day effort
 Lowest level of aggregation: daily.
 
-```{r survey_count, fig.width=10, fig.height=5}
+```{r survey_count}
 surveys_wp %>% plot_survey_count(placename, prefix)
 surveys_wp %>% list_survey_count(placename)
 surveys_wp %>% plot_survey_effort(placename, prefix)
@@ -309,10 +318,10 @@ No aggregation: individual surveys.
 
 Note, a direct link to update each survey in WAStD is at the end of the table.
 
-```{r}
+```{r surveys_list}
 surveys_wp %>% 
   dplyr::select(-site_type, -site_id, -reporter_username, -id, -absolute_admin_url) %>% 
-  DT::datatable(escape = F, rownames = FALSE)
+  dt
 ```
 
 
@@ -358,10 +367,12 @@ personal_effort %>% kable()
 * This report is rendered into a single HTML page.
 
 ```{r data_export_csv}
-tracks_wp %>% dplyr::select(-obs, -photos) %>% 
+tracks_wp %>%
+  dplyr::select(-obs, -photos) %>%
   readr::write_csv(glue::glue("{prefix}_tracks.csv"))
 surveys_wp %>% readr::write_csv(glue::glue("{prefix}_surveys.csv"))
-dist_wp %>% dplyr::select(-photos) %>% 
+dist_wp %>%
+  dplyr::select(-photos) %>%
   readr::write_csv(glue::glue("{prefix}_disturbance.csv"))
 ```
 
@@ -372,15 +383,15 @@ on the departmental data catalogue, accessible from the DBCA intranet only.
 ```{r data_upload_ckan}
 # Package all output files into one ZIP archive.
 products_fn <- glue::glue("{prefix}_products.zip")
-if(file.exists(products_fn)) file.remove(products_fn)
-products <- list.files(pattern=prefix)
+if (file.exists(products_fn)) file.remove(products_fn)
+products <- list.files(pattern = prefix)
 zip(zipfile = products_fn, files = products)
 
 # Create a resource for the ZIP archive
 # d <- ckanr::package_show("turtle-tracks")
 # r <- resource_create(package_id=d$id, name="West Pilbara Turtle Program outputs", upload=products_fn)
 
-# Update resources on data catalogue 
+# Update resources on data catalogue
 ckanr::resource_update("1c57e04a-c29c-464c-b82d-a69e4ee0b199", "westpilbara_2017-18.html")
 ckanr::resource_update("53fcc7fc-a974-4f26-a4d7-2d39c9111211", products_fn)
 ```
@@ -397,12 +408,12 @@ Running the following chunk manually once per machine will cache the authenticat
 token locally for future use.
 
 ```{r google_drive_auth, eval=F}
-googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
+googledrive::drive_auth(reset = TRUE, use_oob = TRUE)
 ```
 
 ```{r data_upload_google}
-# googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
 googledrive::drive_ls("WPTP") %>% googledrive::drive_rm(.)
-googledrive::drive_upload("westpilbara_2017-18.html", path="WPTP/westpilbara_2017-18.html")
-products %>% purrr::map(googledrive::drive_upload, path=as_dribble("WPTP"))
+googledrive::drive_upload("westpilbara_2017-18.html", path = "WPTP/westpilbara_2017-18.html")
+products %>% purrr::map(googledrive::drive_upload, path = as_dribble("WPTP"))
 ```
+
