@@ -2,6 +2,7 @@ rsconnect
 *.html
 *.png
 *.pdf
-.httr-oauth
+.httr-oauth*
 *.zip
 *.csv
+.httr-oauth-SUSPENDED
