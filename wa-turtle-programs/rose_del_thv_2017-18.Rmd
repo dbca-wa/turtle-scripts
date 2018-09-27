@@ -17,18 +17,13 @@ source("tracks_helpers.R")
 ```
 
 # Caveat
-The data shown are pending QA and reconciliation with paper-based records. 
-Until this warning disappears, this dataset may contain duplicates from training runs, 
-effort attributed to the wrong operators, and possibly other issues and biases.
-
-Particular to Thevenard Island is that all training occurs at the accommodation area, which is registered 
-as a separate site, and explicitly not included in the data analysed here.
+Particular to Thevenard Island is that all training occurs at the accommodation 
+area, which is registered  as a separate site, and explicitly not included in 
+the data analysed here.
 
 Training and test data from Delambre Island are not yet separated out.
 
-No data returned from Rosemary Islands. Need to deliver better/more/stricter training.
-
-TODO: add beaches at Lalang Garram NP. Fix outlier tracks at Thv.
+Data from Rosemary Islands was stuck as unfinalised forms on devices. Delivered training refresher.
 
 # Data
 ```{r, eval=T}
@@ -37,7 +32,7 @@ filter_2017 <- . %>%
   dplyr::filter(date > dmy("01/10/2017") & 
                   date < dmy("01/04/2018"))
 
-tracks_2017 <- tracks_all %>% filter_2017()
+tracks_2017 <- tracks_all %>% filter_2017() %>% filter_realspecies()
 tracks_thv <- tracks_2017 %>% filter_thv()
 tracks_di <- tracks_2017 %>% filter_di()
 tracks_ri <- tracks_2017 %>% filter_ri()
@@ -49,46 +44,98 @@ surveys_ri <- surveys %>% filter_ri() %>% filter_2017()
 dist_thv <- disturbance %>% filter_thv() %>% filter_2017()
 dist_di <- disturbance %>% filter_di() %>% filter_2017()
 dist_ri <- disturbance %>% filter_ri() %>% filter_2017()
+
+prefix_thv <- "THV"
+prefix_di <- "DEL"
+prefix_ri <- "ROS"
+
+placename_thv <- "Thevenard Is"
+placename_del <- "Delambre Is"
+placename_ri <- "Rosemary Is"
 ```
 
+
 # QA
-This section identified tracks outside known sites and missing surveys.
-We show data from all regions.
+This section identifies tracks and disturbances outside known sites, missing surveys, and surveys requiring editing.
+We show data from all regions as not to miss any stray records - ignore data not relevant to this analysis.
 
 ## Tracks outside known sites
-Actions: 
+Review whether there are stray tracks close to this program's sites.
 
-* Extend site polygons to include GPS error.
-* Add sites for new surveyed beaches and create new report.
-* Add sites for known training areas.
-* Change training records outside training areas to "Hatchback turtles" and mark as "curated" to
-  prevent from being overwritten by repeated data loading.
+* WAStD sites missing (new sites) or boundaries set too narrow. 
+  Extend sites, re-save stray tracks to auto-repair their site affiliation.
+* Training records close to site (but not meant to be within site).
+  Change confirmed training records outside training areas to "Hatchback turtles" 
+  and mark as "curated" to prevent from being overwritten by repeated data loading.
 * Note: re-run uncached data import after changing tracks.
 
-```{r missing_sites}
+```{r tracks_missing_sites}
 tracks_all %>% 
-  filter(is.na(site_id)) %>%
+  filter_nosite() %>%
+  filter_realspecies() %>%
   add_nest_labels() %>% 
   map_tracks()
 ```
 
-## Tracks at known sites with missing surveys
-Actions:
+## Disturbance outside known sites
+Review disturbances close to this program's sites. It is safe to ignore other disturbances.
 
-* Filter datatable to site of interest by typing the site name into the "Search" box.
-* Create missing surveys, one for each row in the table. (This will be automated early 2019.)
-* Re-run uncached data import after adding surveys, as data for surveys, 
-  tracks and disturbance will change.
+Disturbances can either be legitimate, although opportunistic, records, or training
+records.
 
-```{r missing_surveys}
-tracks_all %>%
-  filter_2017 %>%
-  filter(is.na(survey_id)) %>%
-  dplyr::group_by(date, site_name) %>%
-  dplyr::tally() %>%
-  dplyr::mutate(number_of_tracks = n) %>%
-  dplyr::arrange(site_name) %>%
-  DT::datatable(.)
+* Training records: set to "Other, see comments", mention "training" in comments,
+  ideally instruct data collectors to photograph their writing board with "training"
+  written on it to make absolutely clear that this record is a training record.
+
+```{r dist_missing_sites}
+disturbance %>% filter_nosite() %>% map_dist()
+```
+
+## Surveys in WAStD
+Curators are to QA [all Thevenard surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=25,26,27,46,47) following the 
+[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
+
+Split up per site:
+
+* [Cooling Water Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=26)
+* [Bells Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=25)
+* [Yacht Club Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=27)
+* [Boat Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=46)
+* [Cleaverville Beach 1](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=47)
+
+## Surveys missing Site Visit End
+Where a "Site Visit End" form was forgotten, `end_source_id` is empty, and the duration is set to 6h. 
+These surveys should be closed a few minutes after the last recorded track or disturbance.
+
+Surveys with missing end contribute to an over-estimation of survey effort.
+
+This task will be automated soon.
+  
+```{r}
+surveys_thv %>% 
+  dplyr::filter(is.na(end_source_id)) %>%
+  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>% 
+  DT::datatable(escape = FALSE, rownames = FALSE)
+
+surveys_di %>% 
+  dplyr::filter(is.na(end_source_id)) %>%
+  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>% 
+  DT::datatable(escape = FALSE, rownames = FALSE)
+
+surveys_ri %>% 
+  dplyr::filter(is.na(end_source_id)) %>%
+  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>% 
+  DT::datatable(escape = FALSE, rownames = FALSE)
+```
+
+## Provided username mismatches WAStD users
+TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data collectors vs 
+[WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
+
+```{r}
+surveys_thv %>% filter_surveys_requiring_qa %>% DT::datatable(escape = FALSE, rownames = FALSE)
+surveys_di %>% filter_surveys_requiring_qa %>% DT::datatable(escape = FALSE, rownames = FALSE)
+surveys_ri %>% filter_surveys_requiring_qa %>% DT::datatable(escape = FALSE, rownames = FALSE)
 ```
 
 
@@ -98,7 +145,8 @@ Source: Milani Chaloupka, presentation to DBCA / NWS committee 8/5/2018.
 Demographic focus is essential for diagnosing population status and trend.
 Survival rates, conditional breeding rates, hatchling production rates, recruitment rates and population abundance.
 
-Three major flatback pops in Pilbara: Delambre 3.5k nesting/y, Mundabullangana 2.5k nesting /y, Barrow Is 2k/y.
+Three major flatback pops in Pilbara: Delambre 3.5k nesting/y, 
+Mundabullangana 2.5k nesting/y, Barrow Is 2k/y.
 Biggest pop in GBR is 700 nests/y.
 
 Milani presented: 

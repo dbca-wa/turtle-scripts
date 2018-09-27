@@ -98,10 +98,7 @@ TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data
 [WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
 
 ```{r}
-surveys_wp %>% 
-  dplyr::filter(grepl("QA", start_comments) | grepl("QA", end_comments)) %>%
-  dplyr::select(site_name, reporter, date, start_time, end_time, start_comments, end_comments, change_url) %>% 
-  DT::datatable(escape = FALSE, rownames = FALSE)
+surveys_wp %>% filter_surveys_requiring_qa %>% DT::datatable(escape = FALSE, rownames = FALSE)
 ```
 
 # Season summary
