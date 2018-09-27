@@ -19,11 +19,12 @@ source("tracks_helpers.R")
 # Data
 ```{r, eval=T}
 source("load_data.R")
-tracks_2017 <- tracks_all %>% filter_2017()
-tracks_pth <- tracks_2017 %>% filter_port_hedland_sites()
-tracks_pth_cem <- tracks_2017 %>% filter_port_hedland_cemetery()
-tracks_pth_ppo <- tracks_2017 %>% filter_port_hedland_prettypool()
+tracks_2017 <- tracks_all %>% filter_2017() %>% filter_realspecies()
+tracks_pth <- tracks_2017 %>% filter_port_hedland_sites() %>% filter_realspecies()
+tracks_pth_cem <- tracks_2017 %>% filter_port_hedland_cemetery() %>% filter_realspecies()
+tracks_pth_ppo <- tracks_2017 %>% filter_port_hedland_prettypool() %>% filter_realspecies()
 surveys_pth <- surveys %>% filter_port_hedland_sites() %>% filter_2017()
+surveys_pth_prod <- surveys_pth %>% filter_realsurveys()
 dist_pth <- disturbance %>% filter_port_hedland_sites() %>% filter_2017()
 
 prefix <- "CFH"

@@ -17,9 +17,7 @@ source("tracks_helpers.R")
 ```
 
 # Caveat
-The data shown are pending QA and reconciliation with paper-based records. 
-Until this warning disappears, this dataset may contain duplicates from training runs, effort attributed to the wrong operators, and possibly other issues and biases.
-
+The data shown are currently updated by the curators through Quality Assurance (QA).
 Update September 2018:
 
 * Some records were uploaded but not ingested. This happened because
@@ -29,9 +27,18 @@ Update September 2018:
 * Most tablets did have unfinalised, unsent forms. These required manual
   review (which is the purpose of leaving forms unfinalised), re-enabling
   of those old form versions both on the server and on the data ingest.
+  The option to leave unfinished records on the tablets has now been removed.
+* Missing surveys are automatically reconstructed.
+* Coming soon: surveys missing an end point (default length 6h) will be adjusted
+  to latest record plus buffer time. This will reduce over-estimation of survey effort.
   
 The data shown here now includes these two batches of observations.
 In situ tests in Sept 2018 have shown that 100% of the data collected digitally arrive in the database.
+
+Remaining QA tasks:
+
+* Reconcile reporter and team names from data as submitted (typos may lead to wrong match)
+  and team roster.
 
 # Data
 ```{r, eval=T}
@@ -84,10 +91,13 @@ This section identifies tracks and disturbances outside known sites, missing sur
 We show data from all regions as not to miss any stray records - ignore data not relevant to this analysis.
 
 ## Tracks outside known sites
-* If tracks are close to sites: Extend WAStD site polygons to include GPS error.
-* Add WAStD sites for new surveyed sites (production or training) and include those sites in existing or new report.
-* Change confirmed training records outside training areas to "Hatchback turtles" and mark as "curated" to
-  prevent from being overwritten by repeated data loading.
+Review whether there are stray tracks close to this program's sites.
+
+* WAStD sites missing (new sites) or boundaries set too narrow. 
+  Extend sites, re-save stray tracks to auto-repair their site affiliation.
+* Training records close to site (but not meant to be within site).
+  Change confirmed training records outside training areas to "Hatchback turtles" 
+  and mark as "curated" to prevent from being overwritten by repeated data loading.
 * Note: re-run uncached data import after changing tracks.
 
 ```{r tracks_missing_sites}
@@ -98,11 +108,21 @@ tracks_all %>%
   map_tracks()
 ```
 
+## Disturbance outside known sites
+Review disturbances close to this program's sites. It is safe to ignore other disturbances.
+
+Disturbances can either be legitimate, although opportunistic, records, or training
+records.
+
+* Training records: set to "Other, see comments", mention "training" in comments,
+  ideally instruct data collectors to photograph their writing board with "training"
+  written on it to make absolutely clear that this record is a training record.
+
 ```{r dist_missing_sites}
 disturbance %>% filter_nosite() %>% map_dist()
 ```
 
-### QA: Surveys
+## Surveys in WAStD
 Curators are to QA [all West Pilbara surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=25,26,27,46,47) following the 
 [QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
 
@@ -114,11 +134,13 @@ Split up per site:
 * [Boat Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=46)
 * [Cleaverville Beach 1](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=47)
 
-### QA: Surveys missing Site Visit End
-Where a "Site visit end" was forgotten, "end source id" is empty, and the duration is set to 6h. 
+## Surveys missing Site Visit End
+Where a "Site Visit End" form was forgotten, `end_source_id` is empty, and the duration is set to 6h. 
 These surveys should be closed a few minutes after the last recorded track or disturbance.
 
 Surveys with missing end contribute to an over-estimation of survey effort.
+
+This task will be automated soon.
   
 ```{r}
 surveys_wp %>% 
@@ -127,9 +149,10 @@ surveys_wp %>%
   DT::datatable(escape = FALSE, rownames = FALSE)
 ```
 
-### QA: Provided username mismatches WAStD users
+## Provided username mismatches WAStD users
 TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data collectors vs 
 [WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
+
 ```{r}
 surveys_wp %>% 
   dplyr::filter(grepl("QA", start_comments) | grepl("QA", end_comments)) %>%
@@ -155,9 +178,31 @@ hours of mind-numbing data entry and proofreading work for
 
 ## Maps
 ```{r map_overall}
-tracks_wp %>% add_nest_labels() %>% map_tracks()
+tracks_wp <- tracks_wp %>% add_nest_labels() %T>% map_tracks()
 # tracks_bb %>% add_nest_labels() %>% map_tracks()
 # tracks_yc %>% add_nest_labels() %>% map_tracks()
+```
+
+### Animated map
+
+```{r map_animated}
+# basemap
+bbx <- ggmap::make_bbox(longitude, latitude, tracks_wp, f = 0.05)
+ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
+# basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
+basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>% ggmap::ggmap()
+
+# tracks
+tracks_map <- suppressWarnings(
+  basemap + geom_point(aes(longitude, latitude, colour = nest_type), data = tracks_wp, alpha = 0.8)
+) +
+  ggplot2::ggtitle("Turtle Nesting", subtitle = "Turtle date: {frame_time}") +
+  gganimate::transition_time(date) +
+  gganimate::ease_aes("linear")
+
+# render and save
+gganimate::animate(tracks_map, fps=2) %T>%
+  gganimate::anim_save(glue::glue("{prefix}_nesting.gif"), .)
 ```
 
 ## Nesting abundance
@@ -315,7 +360,7 @@ personal_effort %>% kable()
 * Key figures are exported into .png raster files.
 * This report is rendered into a single HTML page.
 
-```{r data_export}
+```{r data_export_csv}
 tracks_wp %>% dplyr::select(-obs, -photos) %>% 
   readr::write_csv(glue::glue("{prefix}_tracks.csv"))
 surveys_wp %>% readr::write_csv(glue::glue("{prefix}_surveys.csv"))
@@ -346,6 +391,17 @@ ckanr::resource_update("53fcc7fc-a974-4f26-a4d7-2d39c9111211", products_fn)
 ## Google Drive
 A copy of this report and all generated outputs is uploaded to Google Drive
 and shared via link with DBCA external collaborators.
+
+Every machine has to be authenticated with Google Drive once.
+As this process involves browser windows and pasting of approval codes into the 
+R Console, it is not run automatically when compiling this workbook.
+
+Running the following chunk manually once per machine will cache the authentication
+token locally for future use.
+
+```{r google_drive_auth, eval=F}
+googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
+```
 
 ```{r data_upload_google}
 # googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
