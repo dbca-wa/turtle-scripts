@@ -19,14 +19,14 @@ source("load_data.R")
 
 # Data
 ```{r load_data}
-tracks_2017 <- tracks_all %>% filter_2017() %>% filter_realspecies() %>% add_nest_labels()
-tracks_pth <- tracks_2017 %>% filter_port_hedland_sites()
-tracks_pth_cem <- tracks_2017 %>% filter_port_hedland_cemetery()
-tracks_pth_ppo <- tracks_2017 %>% filter_port_hedland_prettypool()
-surveys_pth <- surveys %>% filter_port_hedland_sites() %>% filter_2017()
+tr <- tracks_all %>% filter_realspecies() %>% add_nest_labels()
+tracks_pth <- tr %>% filter_port_hedland_sites()
+tracks_pth_cem <- tr %>% filter_port_hedland_cemetery()
+tracks_pth_ppo <- tr %>% filter_port_hedland_prettypool()
+surveys_pth <- surveys %>% filter_port_hedland_sites()
 surveys_pth_prod <- surveys_pth %>% filter_realsurveys()
-dist_pth <- disturbance %>% filter_port_hedland_sites() %>% filter_2017()
-nests_pth <- nests_all %>% filter_port_hedland_sites() %>% filter_2017()
+dist_pth <- disturbance %>% filter_port_hedland_sites()
+nests_pth <- nests_all %>% filter_port_hedland_sites()
 
 prefix <- "CFH"
 placename <- "Port Hedland"
@@ -120,13 +120,13 @@ This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra
 ### Nesting at Cemetery Beach
 
 ```{r map_cem}
-tracks_pth_cem %>% map_tracks()
+tracks_pth_cem %>% filter_2017() %>% map_tracks()
 ```
 
 ### Nesting at Pretty Pool Beach
 
 ```{r map_ppo}
-tracks_pth_ppo %>% map_tracks()
+tracks_pth_ppo %>% filter_2017() %>% map_tracks()
 ```
 
 
@@ -152,7 +152,7 @@ tracks_map <- suppressWarnings(
     )
 ) +
   ggplot2::ggtitle("Turtle Nesting", subtitle = "Turtle date: {frame_time}") +
-  gganimate::transition_time(date) +
+  gganimate::transition_time(turtle_date) +
   gganimate::ease_aes("linear")
 
 # render and save
@@ -206,10 +206,7 @@ nests %>% track_success_by_species() %>% DT::datatable(.,
 ```{r hatching_emergence_success}
 tracks_pth %>%
   hatching_emergence_success() %>%
-  DT::datatable(.,
-    caption = "Hatching and emergence success summary",
-    options = list(paging = F)
-  )
+  kable
 ```
 
 ## Disturbance and predation
@@ -223,7 +220,7 @@ General signs of disturbance or predator presence are recorded through form
 Turtle nests with recorded disturbance or predation.
 
 ```{r dist_nests}
-disturbed_nests_pth <- tracks_pth %>% filter(disturbance == "present")
+disturbed_nests_pth <- tracks_pth %>% filter_2017() %>% filter(disturbance == "present")
 disturbed_nests_pth %>% map_tracks()
 ```
 
@@ -236,7 +233,7 @@ Coming soon: details of disturbance to nests.
 There were **`r count(dist_pth)` reports** of general disturbance or predator presence.
 
 ```{r map_dist}
-dist_pth %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_pth %>% filter_2017 %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
 dist_pth %>% map_dist
 ```
 
@@ -279,12 +276,13 @@ surveys_pth %>%
 
 ## Volunteer effort
 * Surveys including training runs represent volunteer effort.
-* There were **`r nrow(surveys_pth)` surveys** including training for a total duration
-  of **`r sum(surveys_pth_prod$duration_hours)` hours**.
-* At Cemetery Beach, **`r survey_ground_covered(surveys, 35, 1.6)` km** were walked 
-  in **`r survey_count(surveys_pth, 35)`** surveys.
-* At Pretty Pool Beach, **`r survey_ground_covered(surveys, 45, 1.8)` km** were walked 
-  in **`r survey_count(surveys_pth, 45)`** surveys.
+* There were **`r surveys_pth %>% filter_2017() %>% nrow` surveys** 
+  including training for a total duration of 
+  **`r sum(filter_2017(surveys_pth_prod)$duration_hours)` hours**.
+* At Cemetery Beach, **`r survey_ground_covered(surveys, 35, 1.6, season=2017)` km** were walked 
+  in **`r survey_count(surveys_pth, 35, season=2017)`** surveys.
+* At Pretty Pool Beach, **`r survey_ground_covered(surveys, 45, 1.8, season=2017)` km** were walked 
+  in **`r survey_count(surveys_pth, 45, season=2017)`** surveys.
 
 ### Per person
 The following list only includes the primary reporter. 
@@ -304,7 +302,7 @@ their survey effort on that day is incorrectly attributed to the previous report
 The only way to reconcile attribution is to manually compare survey usernames with team rosters.
 
 ```{r survey_effort_by_person}
-personal_effort <- surveys_pth %>% survey_hours_per_person()
+personal_effort <- surveys_pth %>% filter_2017 %>% survey_hours_per_person()
 personal_effort %>% kable()
 ```
 
