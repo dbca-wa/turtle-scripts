@@ -65,7 +65,7 @@ records.
   written on it to make absolutely clear that this record is a training record.
 
 ```{r dist_missing_sites}
-disturbance %>% filter_nosite() %>% map_dist()
+disturbance %>% filter_nosite() %>% wastdr::map_dist()
 ```
 
 ## Surveys in WAStD
@@ -250,7 +250,7 @@ dist_pth %>% map_dist
 Highest level of aggregation: entire season.
 
 * Excluding training, there were **`r nrow(surveys_pth_prod)` surveys** to all beaches
-  of the WPTP (Bells, Yacht Club, coming 2018: Cleaverville, not included: cooling water)
+  of the CfH program (Cemetery Beach and Pretty Pool Beach) over a period of **XXX days**.
   for a total duration of **`r sum(surveys_pth_prod$duration_hours)` hours**.
 * Caveat: all training surveys must be marked as "not production" manually in WAStD.
   Above data currently may include training effort.

@@ -5,15 +5,16 @@ date: "`r Sys.time()`"
 output:
   html_document:
     toc: true
-    toc_depth: 2
+    toc_depth: 3
     toc_float: true
-    fig_width: 9
-    fig_height: 5
+    fig_width: 10
+    fig_height: 6
 ---
 
-```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 source("tracks_setup.R")
 source("tracks_helpers.R")
+source("load_data.R")
 ```
 
 # Caveat
@@ -22,14 +23,88 @@ Until this warning disappears, this dataset may contain duplicates from training
 
 # Data
 Eighy Mile Beach is surveyed at sites Anna Plains and Caravan Park.
-```{r, eval=T}
-source("load_data.R")
-tracks_2017 <- tracks_all %>% filter_2017()
+```{r load_data}
+tracks_2017 <- tracks_all %>% filter_2017() %>% filter_realspecies() %>% add_nest_labels()
 tracks_emb <- tracks_2017 %>% filter_emb()
-tracks_ap <- tracks_2017 %>% filter_emb_ap()
-tracks_cv <- tracks_2017 %>% filter_emb_cvp()
-surveys_emb <- surveys %>% filter_2017() %>% filter_emb()
+tracks_emb_ap <- tracks_2017 %>% filter_emb_ap()
+tracks_emb_cv <- tracks_2017 %>% filter_emb_cvp()
 dist_emb <- disturbance %>% filter_2017() %>% filter_emb()
+surveys_emb <- surveys %>% filter_2017() %>% filter_emb()
+surveys_emb_prod <- surveys_emb %>% filter_realsurveys()
+nests_emb <- nests_all %>% filter_2017() %>% filter_emb()
+
+prefix <- "EMB"
+placename <- "Eighty Mile Beach"
+```
+
+
+# QA
+This section identifies tracks and disturbances outside known sites, missing surveys, and surveys requiring editing.
+We show data from all regions as not to miss any stray records - ignore data not relevant to this analysis.
+
+## Tracks outside known sites
+Review whether there are stray tracks close to this program's sites.
+
+* WAStD sites missing (new sites) or boundaries set too narrow. 
+  Extend sites, re-save stray tracks to auto-repair their site affiliation.
+* Training records close to site (but not meant to be within site).
+  Change confirmed training records outside training areas to "Hatchback turtles" 
+  and mark as "curated" to prevent from being overwritten by repeated data loading.
+* Note: re-run uncached data import after changing tracks.
+
+```{r tracks_missing_sites}
+tracks_all %>% 
+  filter_nosite() %>%
+  filter_realspecies() %>%
+  add_nest_labels() %>% 
+  map_tracks()
+```
+
+## Disturbance outside known sites
+Review disturbances close to this program's sites. It is safe to ignore other disturbances.
+
+Disturbances can either be legitimate, although opportunistic, records, or training
+records.
+
+* Training records: set to "Other, see comments", mention "training" in comments,
+  ideally instruct data collectors to photograph their writing board with "training"
+  written on it to make absolutely clear that this record is a training record.
+
+```{r dist_missing_sites}
+disturbance %>% filter_nosite() %>% map_dist()
+```
+
+## Surveys in WAStD
+Curators are to QA 
+[all `r placename` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=36,37) following the 
+[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
+
+Split up per site:
+
+* [Caravan Park](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=36)
+* [Anna Plains](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=37)
+
+## Surveys missing end
+Where a "Site Visit End" form was forgotten, `end_source_id` is empty, and the duration is set to 6h. 
+These surveys should be closed a few minutes after the last recorded track or disturbance.
+
+Surveys with missing end contribute to an over-estimation of survey effort.
+
+This task will be automated soon.
+  
+```{r surveys_missing_end}
+surveys_emb %>% 
+  dplyr::filter(is.na(end_source_id)) %>%
+  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>% 
+  dt
+```
+
+## Provided username mismatches WAStD users
+TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data collectors vs 
+[WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
+
+```{r name_mismatch}
+surveys_emb %>% filter_surveys_requiring_qa %>% dt
 ```
 
 # Season summary
@@ -44,49 +119,56 @@ By going digital, data entry and proofreading are fully automated.
 This season, the Volunteers have saved 
 `r (nrow(tracks_emb) + nrow(surveys_emb)*2 + nrow(dist_emb)) * 2 /60` hours of 
 mind-numbing data entry and proofreading work for `r nrow(tracks_emb)` Track or Treats and 
-`r nrow(surveys_emb)*2` Site Visit Starts/Ends. 
-
-## QA
-### Tracks outside known sites
-Actions: 
-
-* Extend site polygons to include GPS error.
-* Add sites for new surveyed beaches and create new report.
-* Add sites for known training areas.
-* Change training records outside training areas to "Hatchback turtles" and mark as "curated" to
-  prevent from being overwritten by repeated data loading.
-* Note: re-run uncached data import after changing tracks.
-
-```{r missing_sites}
-tracks_all %>% 
-  filter(is.na(site_id)) %>%
-  add_nest_labels() %>% 
-  map_tracks()
-```
-
-### Tracks at known sites with missing surveys
-Actions:
-
-* Filter datatable to site of interest.
-* Create missing surveys. This might be automatable.
-* NNote: re-run uncached data import after adding surveys.
-
-```{r missing_surveys}
-tracks_all %>%
-  filter_2017 %>%
-  filter(is.na(survey_id)) %>%
-  dplyr::group_by(date, site_name) %>%
-  tally() %>%
-  dplyr::arrange(site_name) %>%
-  DT::datatable(.)
-```
+`r nrow(surveys_emb)*2` Site Visit Starts/Ends.
 
 ## Maps
 ```{r map_overall}
-tracks_emb %>% add_nest_labels() %>% map_tracks()
-tracks_ap %>% add_nest_labels() %>% map_tracks()
-tracks_cv %>% add_nest_labels() %>% map_tracks()
+tracks_emb %>% map_tracks()
+# tracks_ap %>% map_tracks()
+# tracks_cv %>% map_tracks()
 ```
+
+
+### Animated map
+A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
+be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
+
+```{r map_animated}
+ggmap::register_google(key = Sys.getenv("GOOGLE_MAPS_APIKEY"))
+
+# basemap
+bbx <- ggmap::make_bbox(longitude, latitude, tracks_emb, f = 0.05)
+ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
+# basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
+basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>%
+  ggmap::ggmap()
+
+# tracks
+tracks_map <- suppressWarnings(
+  basemap +
+    geom_point(aes(longitude, latitude, colour = nest_type),
+      data = tracks_pth, alpha = 0.8
+    )
+) +
+  ggplot2::ggtitle("Turtle Nesting", subtitle = "Turtle date: {frame_time}") +
+  gganimate::transition_time(date) +
+  gganimate::ease_aes("linear")
+
+# render and save
+gganimate::animate(tracks_map, fps = 2) %T>%
+  gganimate::anim_save(glue::glue("{prefix}_nesting.gif"), .)
+```
+
+
+### Tagged nests
+2017-18: no tagged nests.
+
+The map (once enabled) is saved as a PNG file `r glue::glue(prefix, "_tagged_nests.png")`.
+
+```{r nests_all, eval=F}
+nests_emb %>% map_nests() %>% mapview::mapshot(file=glue::glue("{prefix}_tagged_nests.png"))
+```
+
 
 ## Nesting abundance
 ```{r tracks_all_sectors}
@@ -94,30 +176,32 @@ tracks_emb %>% species_by_type() %>% kable(.)
 ```
 
 ```{r tracks_ap}
-tracks_ap %>% species_by_type() %>% kable()
+tracks_emb_ap %>% species_by_type() %>% kable()
 ```
 
 ```{r tracks_cv}
-tracks_cv %>% species_by_type() %>% kable()
+tracks_emb_cv %>% species_by_type() %>% kable()
 ```
 
 ## Nesting success 
-```{r nesting_success, fig.height=5, fig.width=7, warning = F}
-# tracks_emb %>% tracks_ts()
-```
+Split into CVP and APL?
 
-```{r}
-nests <- tracks_ap %>% track_success()
-label <- "Anna Plains"
+```{r nesting_success, warning = F}
+tracks_emb %>% tracks_ts()
 
-nests %>% ggplot_track_success_by_date("natator-depressus", label)
-# nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
-nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
-# nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
-nests %>% track_success_by_species() %>% datatable(.,
+tracks_emb %>% tracks_ts(placename, prefix)
+tracks_emb_ap %>% tracks_ts("Cemetery Beach", prefix)
+tracks_emb_cp %>% tracks_ts("Pretty Pool Beach", prefix)
+
+nests <- tracks_emb %>% track_success()
+
+nests %>% ggplot_track_success_by_date("natator-depressus", placename, prefix)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", placename, prefix)
+nests %>% track_success_by_species() %>% DT::datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
 ```
+
 
 ```{r}
 nests <- tracks_cv %>% track_success()
