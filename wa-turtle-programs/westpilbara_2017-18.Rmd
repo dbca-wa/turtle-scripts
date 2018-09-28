@@ -43,18 +43,18 @@ Remaining QA tasks:
 
 # Data
 ```{r load_data, eval=T}
-tracks_wp <- tracks_all %>% filter_wp() %>% filter_2017() %>% filter_realspecies() %>% add_nest_labels()
-# tracks_cw <- tracks_all %>% filter_cw %>% filter_2017() %>% filter_realspecies() # none yet
-tracks_bb <- tracks_all %>% filter_bb() %>% filter_2017() %>% filter_realspecies()
-tracks_yc <- tracks_all %>% filter_yc() %>% filter_2017() %>% filter_realspecies()
+tracks_wp <- tracks_all %>% filter_wp() %>% filter_realspecies() %>% add_nest_labels()
+# tracks_cw <- tracks_all %>% filter_cw %>% filter_realspecies() # none yet
+tracks_bb <- tracks_all %>% filter_bb() %>% filter_realspecies()
+tracks_yc <- tracks_all %>% filter_yc() %>% filter_realspecies()
 
-surveys_wp <- surveys %>% filter_wp() %>% filter_2017()
+surveys_wp <- surveys %>% filter_wp()
 surveys_wp_prod <- surveys_wp %>% filter_realsurveys()
-# surveys_cw <- surveys %>% filter_cw %>% filter_2017()
-surveys_bb <- surveys %>% filter_bb() %>% filter_2017()
-surveys_yc <- surveys %>% filter_yc() %>% filter_2017()
+# surveys_cw <- surveys %>% filter_cw
+surveys_bb <- surveys %>% filter_bb()
+surveys_yc <- surveys %>% filter_yc()
 
-dist_wp <- disturbance %>% filter_wp() %>% filter_2017()
+dist_wp <- disturbance %>% filter_wp()
 
 nests_wp <- nests_all %>% filter_wp() # none yet
 nests_bb <- nests_all %>% filter_bb() # none yet
@@ -146,7 +146,7 @@ This task will be automated soon.
 surveys_wp %>%
   dplyr::filter(is.na(end_source_id)) %>%
   dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>%
-  dt
+  dt()
 ```
 
 ## Username mismatches
@@ -154,7 +154,7 @@ TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data
 [WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
 
 ```{r name_mismatch}
-surveys_wp %>% filter_surveys_requiring_qa() %>% dt
+surveys_wp %>% filter_surveys_requiring_qa() %>% dt()
 ```
 
 # Season summary
@@ -173,9 +173,9 @@ hours of mind-numbing data entry and proofreading work for
 `r nrow(dist_wp)` Disturbances, and 
 `r nrow(surveys_wp)*2` Site Visit Starts/Ends. 
 
-## Maps
-```{r map_overall}
-tracks_wp %>% map_tracks()
+## Maps Current Season
+```{r map_current_season}
+tracks_wp %>% filter_2017() %>% map_tracks()
 # tracks_bb %>% map_tracks()
 # tracks_yc %>% map_tracks()
 ```
@@ -184,7 +184,7 @@ tracks_wp %>% map_tracks()
 A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
 be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
-```{r map_animated}
+```{r map_animated, warning=FALSE}
 ggmap::register_google(key = Sys.getenv("GOOGLE_MAPS_APIKEY"))
 
 # basemap
@@ -198,7 +198,7 @@ basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %
 tracks_map <- suppressWarnings(
   basemap +
     geom_point(aes(longitude, latitude, colour = nest_type),
-      data = tracks_wp, alpha = 0.8
+      data = filter_2017(tracks_wp), alpha = 0.8
     )
 ) +
   ggplot2::ggtitle("Turtle Nesting", subtitle = "Turtle date: {frame_time}") +
@@ -217,7 +217,10 @@ gganimate::animate(tracks_map, fps = 2) %T>%
 The map (once enabled) is saved as a PNG file `r glue::glue(prefix, "_tagged_nests.png")`.
 
 ```{r nests_all, eval=F}
-nests_wp %>% map_nests() %>% mapview::mapshot(file=glue::glue("{prefix}_tagged_nests.png"))
+nests_wp %>%
+  filter_2018() %>%
+  map_nests() %>%
+  mapview::mapshot(file = glue::glue("{prefix}_tagged_nests.png"))
 ```
 
 
@@ -281,8 +284,8 @@ General signs of disturbance or predator presence are recorded through form
 Turtle nests with recorded disturbance or predation. All beaches.
 
 ```{r dist_nests}
-disturbed_nests_wp <- tracks_wp %>% filter(disturbance == "present")
-disturbed_nests_wp %>% map_tracks()
+disturbed_nests_wp <- tracks_wp %>% filter_2017() %>% filter(disturbance == "present")
+disturbed_nests_wp %>% filter_2017() %>% map_tracks()
 ```
 
 There were **`r count(disturbed_nests_wp)` reports** of disturbed nests. 
@@ -294,8 +297,12 @@ Coming soon: details of disturbance to nests.
 There were **`r count(dist_wp)` reports** of general disturbance or predator presence:
 
 ```{r dist_general}
-dist_wp %>% dplyr::group_by(disturbance_cause) %>% dplyr::tally() %>% dplyr::arrange(-n) %>% kable()
-dist_wp %>% map_dist()
+dist_wp %>%
+  dplyr::group_by(season, disturbance_cause) %>%
+  dplyr::tally() %>%
+  dplyr::arrange(-n) %>%
+  kable()
+dist_wp %>% filter_2017() %>% map_dist()
 ```
 
 
@@ -317,7 +324,8 @@ Highest level of aggregation: entire season.
 ### Per day effort
 Lowest level of aggregation: daily.
 
-```{r survey_count}
+TODO: update wastdr - turtle_date, season
+```{r survey_count, eval=F}
 surveys_wp %>% plot_survey_count(placename, prefix)
 surveys_wp %>% list_survey_count(placename)
 surveys_wp %>% plot_survey_effort(placename, prefix)
@@ -330,23 +338,26 @@ No aggregation: individual surveys.
 Note, a direct link to update each survey in WAStD is at the end of the table.
 
 ```{r surveys_list}
-surveys_wp %>% 
-  dplyr::select(-site_type, -site_id, -reporter_username, -id, -absolute_admin_url) %>% 
-  dt
+surveys_wp %>%
+  dplyr::select(
+    -site_type, -site_id, -reporter_username, -id, -absolute_admin_url
+  ) %>%
+  dt()
 ```
 
 
 ## Volunteer effort
 * Surveys including training runs represent volunteer effort.
-* There were **`r nrow(surveys_wp)` surveys** including training for a total duration
-  of **`r sum(surveys_wp_prod$duration_hours)` hours**.
+* There were **`r surveys_wp %>% filter_2017() %>% nrow` surveys** 
+  including training for a total duration
+  of **`r sum(filter_2017(surveys_wp_prod)$duration_hours)` hours**.
 * At Bells Beach, assuming the round trip was 2 km,
-  **`r survey_ground_covered(surveys, 25, 2)` km** were walked 
-  in **`r survey_count(surveys_wp, 25)` surveys** including training.
+  **`r survey_ground_covered(surveys, 25, 2, season=2017)` km** were walked 
+  in **`r survey_count(surveys, 25, season=2017)` surveys** including training.
 
 * At Yacht Club Beach, assuming the round trip was 1 km,
-  **`r survey_ground_covered(surveys, 27, 1)` km** were walked 
-  in **`r survey_count(surveys_wp, 27)` surveys ** including training.
+  **`r survey_ground_covered(surveys, 27, 1, season=2017)` km** were walked 
+  in **`r survey_count(surveys_wp, 27, season=2017)` surveys ** including training.
 
 ### Per person
 The following list only includes the primary reporter. 
@@ -427,4 +438,5 @@ googledrive::drive_ls("WPTP") %>% googledrive::drive_rm(.)
 googledrive::drive_upload("westpilbara_2017-18.html", path = "WPTP/westpilbara_2017-18.html")
 products %>% purrr::map(googledrive::drive_upload, path = as_dribble("WPTP"))
 ```
+
 

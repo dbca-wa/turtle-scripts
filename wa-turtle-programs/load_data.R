@@ -8,8 +8,8 @@ if (file.exists(here::here("data", "tracks.Rda"))) {
   animals <- wastdr::parse_animal_encounters(animal_records)
   track_records <- wastdr::wastd_GET("turtle-nest-encounters")
   tracks_all <- wastdr::parse_turtle_nest_encounters(track_records)
-  disturbance <- wastdr::wastd_GET("disturbance-observations") %>%
-    wastdr::parse_disturbance_observations()
+  disturbance_records <- wastdr::wastd_GET("disturbance-observations")
+  disturbance <- disturbance_records %>% wastdr::parse_disturbance_observations()
   survey_records <- wastd_GET("surveys")
   surveys <- survey_records %>%
     wastdr::parse_surveys() %>%
@@ -22,6 +22,7 @@ if (file.exists(here::here("data", "tracks.Rda"))) {
     animals,
     tracks_all,
     track_records,
+    disturbance_records,
     disturbance,
     survey_records,
     surveys,

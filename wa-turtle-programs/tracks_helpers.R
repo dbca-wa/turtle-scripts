@@ -1,6 +1,6 @@
 daily_species_by_type <- . %>%
   filter(nest_age == "fresh") %>%
-  group_by(date, species, nest_type) %>%
+  group_by(season, turtle_date, species, nest_type) %>%
   tally() %>%
   ungroup()
 
@@ -11,7 +11,7 @@ daily_summary <- . %>%
 
 species_by_type <- . %>%
   filter(nest_age == "fresh") %>%
-  group_by(species, nest_type) %>%
+  group_by(season, species, nest_type) %>%
   tally() %>%
   ungroup() %>%
   tidyr::spread(nest_type, n, fill = 0)
@@ -20,10 +20,11 @@ tracks_ts <- function(data, placename="", prefix="") {
   data %>%
   daily_species_by_type() %>%
   {
-    ggplot2::ggplot(data = ., aes(x = date, y = n, colour = nest_type)) +
+    ggplot2::ggplot(data = ., aes(x = turtle_date, y = n, colour = nest_type)) +
       ggplot2::geom_point() +
       ggplot2::geom_smooth(method = "auto") +
       # ggplot2::geom_line() +
+      ggplot2::facet_grid(rows = vars(season)) +
       ggplot2::ylab("Number of turtle tracks or nests") +
       ggplot2::ggtitle("Nesting activity", subtitle="Number counted per day") +
       ggplot2::scale_x_date(
@@ -31,7 +32,7 @@ tracks_ts <- function(data, placename="", prefix="") {
         date_minor_breaks = "1 week",
         labels = scales::date_format("%d %b %Y")) +
       ggplot2::scale_y_continuous(limits = c(0, NA)) +
-      ggplot2::xlab("Date") +
+      ggplot2::xlab("Turtle date") +
       ggplot2::theme_classic() +
       ggsave(glue::glue("{prefix}_track_abundance_{wastdr::urlize(placename)}.png"), width = 7, height = 5) +
       NULL
@@ -43,7 +44,7 @@ tracks_ts <- function(data, placename="", prefix="") {
 hatching_emergence_success <- . %>%
   filter(nest_type=="hatched-nest") %>%
   dplyr::filter(hatching_success >= 0) %>%
-  group_by(species) %>%
+  group_by(season, species) %>%
   dplyr::summarize(
     "count" = n(),
     "clutch_size_mean" = mean(clutch_size) %>% round(digits = 2),
@@ -63,14 +64,14 @@ hatching_emergence_success <- . %>%
 
 ggplot_track_success_by_date <- function(data, speciesname, placename="", prefix="") {
   data %>%
-    filter(species == speciesname) %>%
-    ggplot(aes(x = date)) +
-    geom_bar(aes(y = all), stat = "identity", color = "black", fill = "grey") +
-    geom_bar(aes(y = successful), stat = "identity", color = "black", fill = "green") +
+    dplyr::filter(species == speciesname) %>%
+    ggplot2::ggplot(aes(x = turtle_date)) +
+    ggplot2::facet_grid(rows = vars(season)) +
+    ggplot2::geom_bar(aes(y = all), stat = "identity", color = "black", fill = "grey") +
+    ggplot2::geom_bar(aes(y = successful), stat = "identity", color = "black", fill = "green") +
     labs(x = "Date", y = "Number of all and successful tracks") +
-    ggtitle(paste("Nesting effort of", speciesname %>% humanize),
+    ggplot2::ggtitle(paste("Nesting effort of", speciesname %>% humanize),
             subtitle = "Number of all (grey) and successful (green) tracks") +
-    labs(x = "Date", y = "Number of all and successful tracks") +
     ggplot2::scale_x_date(
       date_breaks = "1 month",
       date_minor_breaks = "1 week",
@@ -82,11 +83,12 @@ ggplot_track_success_by_date <- function(data, speciesname, placename="", prefix
 
 ggplot_track_successrate_by_date <- function(data, speciesname, placename="", prefix="") {
   data %>%
-    filter(species == speciesname) %>%
-    ggplot(aes(x = date)) +
-    geom_bar(aes(y = track_success), stat = "identity", color = "black", fill = "grey") +
+    dplyr::filter(species == speciesname) %>%
+    ggplot2::ggplot(aes(x = turtle_date)) +
+    ggplot2::facet_grid(rows = vars(season)) +
+    ggplot2::geom_bar(aes(y = track_success), stat = "identity", color = "black", fill = "grey") +
     labs(x = "Date", y = "Fraction of tracks with nest") +
-    ggtitle(paste("Nesting success of", speciesname %>% humanize),
+    ggplot2::ggtitle(paste("Nesting success of", speciesname %>% humanize),
             subtitle = "Fraction of successful over total nesting crawls") +
     ggplot2::scale_x_date(
       date_breaks = "1 month",
@@ -103,33 +105,41 @@ track_success <- function(tracks){
                                    "false-crawl",
                                    "track-unsure",
                                    "track-not-assessed")) %>%
-    group_by(date, species) %>% tally() %>% ungroup() %>% rename(all = n)
+    dplyr::group_by(season, turtle_date, species) %>%
+    dplyr::tally() %>%
+    dplyr::ungroup() %>%
+    dplyr::rename(all = n)
 
   successful_tracks_by_date <- tracks %>%
     dplyr::filter(nest_type == 'successful-crawl') %>%
-    group_by(date, species) %>% tally() %>% ungroup() %>% rename(successful = n)
+    dplyr::group_by(season, turtle_date, species) %>%
+    dplyr::tally() %>%
+    dplyr::ungroup() %>%
+    dplyr::rename(successful = n)
 
   all_tracks_by_date %>%
-    left_join(successful_tracks_by_date, by = c('date','species')) %>%
-    mutate(successful = ifelse(is.na(successful), 0, successful),
-           track_success = 100 * successful/all)
+    dplyr::left_join(successful_tracks_by_date, by = c('turtle_date','species', 'season')) %>%
+    dplyr::mutate(
+      successful = ifelse(is.na(successful), 0, successful),
+      track_success = 100 * successful/all
+      )
 }
 
 track_success_by_species <- function(track_success) {
   track_success %>%
-  group_by(species) %>%
+  group_by(season, species) %>%
   dplyr::summarise(
     mean_nesting_success = mean(track_success) %>% round(digits = 2),
     sd_nesting_success = sd(track_success) %>% round(digits = 2)
   )
 }
 
-survey_count <- function(surveys, sid){
-  nrow(filter(surveys, site_id==sid))
+survey_count <- function(surveys, sid, season=2017){
+  nrow(filter(surveys, site_id==sid, season==season))
 }
 
-survey_ground_covered <- function(surveys, site_id, km_per_survey){
-  survey_count(surveys, site_id) * km_per_survey
+survey_ground_covered <- function(surveys, site_id, km_per_survey, season=2017){
+  survey_count(surveys, site_id, season) * km_per_survey
 }
 
 dt <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE)
@@ -137,11 +147,12 @@ dt <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE)
 # Filters
 filter_surveys_requiring_qa <- . %>%
   dplyr::filter(grepl("QA", start_comments) | grepl("QA", end_comments)) %>%
-  dplyr::select(site_name, reporter, date, start_time, end_time,
+  dplyr::select(site_name, reporter, season, turtle_date, start_time, end_time,
                 start_comments, end_comments, change_url)
 
 
-filter_2017 <- . %>% dplyr::filter(date > dmy("01/10/2017") & date < dmy("01/04/2018"))
+filter_2017 <- . %>% dplyr::filter(season==2017)
+filter_2018 <- . %>% dplyr::filter(season==2018)
 
 filter_broome <- . %>% dplyr::filter(area_name=="Cable Beach Broome")
 filter_broome_sites <- . %>% dplyr::filter(site_id %in% c(22, 23, 24))
