@@ -5,15 +5,16 @@ date: "`r Sys.time()`"
 output:
   html_document:
     toc: true
-    toc_depth: 2
+    toc_depth: 3
     toc_float: true
-    fig_width: 9
-    fig_height: 5
+    fig_width: 10
+    fig_height: 6
 ---
 
-```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 source("tracks_setup.R")
 source("tracks_helpers.R")
+source("load_data.R")
 ```
 
 # Caveat
@@ -26,24 +27,18 @@ Training and test data from Delambre Island are not yet separated out.
 Data from Rosemary Islands was stuck as unfinalised forms on devices. Delivered training refresher.
 
 # Data
-```{r, eval=T}
-source("load_data.R")
-filter_2017 <- . %>% 
-  dplyr::filter(date > dmy("01/10/2017") & 
-                  date < dmy("01/04/2018"))
+```{r load_data}
+tracks_thv <- tracks_all %>% filter_thv() %>% filter_realspecies() %>% add_nest_labels()
+tracks_di <- tracks_all %>% filter_di() %>% filter_realspecies() %>% add_nest_labels()
+tracks_ri <- tracks_all %>% filter_ri() %>% filter_realspecies() %>% add_nest_labels()
 
-tracks_2017 <- tracks_all %>% filter_2017() %>% filter_realspecies()
-tracks_thv <- tracks_2017 %>% filter_thv()
-tracks_di <- tracks_2017 %>% filter_di()
-tracks_ri <- tracks_2017 %>% filter_ri()
+surveys_thv <- surveys %>% filter_thv()
+surveys_di <- surveys %>% filter_di()
+surveys_ri <- surveys %>% filter_ri()
 
-surveys_thv <- surveys %>% filter_thv() %>% filter_2017()
-surveys_di <- surveys %>% filter_di() %>% filter_2017()
-surveys_ri <- surveys %>% filter_ri() %>% filter_2017()
-
-dist_thv <- disturbance %>% filter_thv() %>% filter_2017()
-dist_di <- disturbance %>% filter_di() %>% filter_2017()
-dist_ri <- disturbance %>% filter_ri() %>% filter_2017()
+dist_thv <- disturbance %>% filter_thv()
+dist_di <- disturbance %>% filter_di()
+dist_ri <- disturbance %>% filter_ri()
 
 prefix_thv <- "THV"
 prefix_di <- "DEL"
@@ -88,10 +83,59 @@ records.
   written on it to make absolutely clear that this record is a training record.
 
 ```{r dist_missing_sites}
-disturbance %>% filter_nosite() %>% map_dist()
+disturbance %>% filter_nosite() %>% wastdr::map_dist()
 ```
 
 ## Surveys in WAStD
+TODO change to islands
+
+Curators are to QA 
+[all `r placename` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=35,45) following the 
+[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
+
+Split up per site:
+
+* [Cemetary Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=35)
+* [Pretty Pool Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=45)
+
+## Surveys missing end
+Where a "Site Visit End" form was forgotten, `end_source_id` is empty, and the duration is set to 6h. 
+These surveys should be closed a few minutes after the last recorded track or disturbance.
+
+Surveys with missing end contribute to an over-estimation of survey effort.
+
+This task will be automated soon.
+  
+```{r surveys_missing_end}
+surveys_thv %>% 
+  dplyr::filter(is.na(end_source_id)) %>%
+  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>% 
+  dt
+
+surveys_di %>% 
+  dplyr::filter(is.na(end_source_id)) %>%
+  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>% 
+  dt
+
+surveys_ri %>% 
+  dplyr::filter(is.na(end_source_id)) %>%
+  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>% 
+  dt
+```
+
+## Provided username mismatches WAStD users
+TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data collectors vs 
+[WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
+
+```{r name_mismatch}
+surveys_thv %>% filter_surveys_requiring_qa %>% dt
+surveys_di %>% filter_surveys_requiring_qa %>% dt
+surveys_ri %>% filter_surveys_requiring_qa %>% dt
+```
+
+
+## Surveys in WAStD
+TODO change to islands
 Curators are to QA [all Thevenard surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=25,26,27,46,47) following the 
 [QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
 
@@ -167,11 +211,13 @@ and proofreading work for `r nrow(tracks_thv)` Track or Treats and
 Time savings Delambre: `r (nrow(tracks_di) + nrow(surveys_di)*2 + nrow(dist_di)) * 2 / 60` hours for `r nrow(tracks_di)` Track or Treats and 
 `r nrow(surveys_di)*2` Site Visit Starts/Ends. 
 
+TODO RI
+
 ## Maps
 ```{r map_overall}
-tracks_thv %>% add_nest_labels() %>% map_tracks()
-tracks_di %>% add_nest_labels() %>% map_tracks()
-tracks_ri %>% add_nest_labels() %>% map_tracks()
+tracks_thv %>% map_tracks()
+tracks_di %>% map_tracks()
+tracks_ri %>% map_tracks()
 ```
 
 ## Nesting abundance
@@ -193,13 +239,13 @@ tracks_thv %>%
   )
 ```
 
-```{r plot_track_effort_thv, fig.height=5, fig.width=7, warning = F}
+```{r plot_track_effort_thv, warning = F}
 label <- "thv"
 nests <- tracks_thv %>% track_success()
-nests %>% ggplot_track_success_by_date("natator-depressus", label)
-nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
-nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
-nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+nests %>% ggplot_track_success_by_date("natator-depressus", placename_thv, prefix_thv)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", placename_thv, prefix_thv)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_thv, prefix_thv)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename_thv, prefix_thv)
 nests %>% track_success_by_species() %>% datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
@@ -241,12 +287,10 @@ ggplot(nests_with_hs_di, aes(group = date, x = date)) +
 
 ```{r plot_track_effort_di, fig.height=5, fig.width=7, warning = F}
 nests <- tracks_di %>% track_success()
-label <- "di"
-
-nests %>% ggplot_track_success_by_date("natator-depressus", label)
-nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
-nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
-nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+nests %>% ggplot_track_success_by_date("natator-depressus", placename_di, prefix_di)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", placename_di, prefix_di)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_di, prefix_di)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename_di, prefix_di)
 nests %>% track_success_by_species() %>% datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
@@ -300,12 +344,10 @@ ggplot(nests_with_hs_ri, aes(group = date, x = date)) +
 
 ```{r plot_track_effort_ri, fig.height=5, fig.width=7, warning = F}
 nests <- tracks_ri %>% track_success()
-label <- "ri"
-
-nests %>% ggplot_track_success_by_date("natator-depressus", label)
-nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
-nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
-nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
+nests %>% ggplot_track_success_by_date("natator-depressus", placename_ri, prefix_ri)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", placename_ri, prefix_ri)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_ri, prefix_ri)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename_ri, prefix_ri)
 nests %>% track_success_by_species() %>% datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
@@ -334,7 +376,7 @@ Turtle nests with recorded disturbance or predation.
 
 ```{r}
 disturbed_nests_thv <- tracks_thv %>% filter(disturbance == "present")
-disturbed_nests_thv %>% add_nest_labels() %>% map_tracks()
+disturbed_nests_thv %>%map_tracks()
 ```
 
 There were **`r count(disturbed_nests_thv)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
@@ -345,7 +387,7 @@ Turtle nests with recorded disturbance or predation.
 
 ```{r}
 disturbed_nests_di <- tracks_di %>% filter(disturbance == "present")
-disturbed_nests_di %>% add_nest_labels() %>% map_tracks()
+disturbed_nests_di %>% map_tracks()
 ```
 
 There were **`r count(disturbed_nests_di)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
@@ -355,7 +397,7 @@ Turtle nests with recorded disturbance or predation.
 
 ```{r}
 disturbed_nests_ri <- tracks_ri %>% filter(disturbance == "present")
-disturbed_nests_ri %>% add_nest_labels() %>% map_tracks()
+disturbed_nests_ri %>% map_tracks()
 ```
 
 There were **`r count(disturbed_nests_ri)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
@@ -369,13 +411,13 @@ Coming soon: map.
 There were **`r count(dist_thv)` reports** of general disturbance or predator presence on Thevenard Is, and **`r count(dist_di)` reports** on Delambre Is.
 
 ```{r}
-dist_thv %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_thv %>% group_by(disturbance_cause, season) %>% tally %>% arrange(-n) %>% kable
 dist_thv %>% map_dist
 
-dist_di %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_di %>% group_by(disturbance_cause, season) %>% tally %>% arrange(-n) %>% kable
 dist_di %>% map_dist
 
-dist_ri %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_ri %>% group_by(disturbance_cause, season) %>% tally %>% arrange(-n) %>% kable
 dist_ri %>% map_dist
 ```
 
@@ -389,9 +431,8 @@ This contributes to over-estimation of effort, but shows actual boots on the
 ground - training is also an effort!
 
 ```{r survey_count}
-place <- "Thevenard Is"
-surveys_thv %>% plot_survey_count(place)
-surveys_thv %>% list_survey_count(place)
+surveys_thv %>% plot_survey_count(placename_thv, prefix_thv)
+surveys_thv %>% list_survey_count(placename_thv)
 
 place <- "Delambre Is"
 surveys_di %>% plot_survey_count(place)
@@ -412,14 +453,14 @@ Q How many hours did volunteers survey, how many kilometers were walked?
 Both factors contribute to over-estimation of effort.
 
 ```{r survey_effort}
-surveys_thv %>% plot_survey_effort("Thevenard Is")
-surveys_thv %>% list_survey_effort("Thevenard Is")
+surveys_thv %>% plot_survey_effort(placename_thv, prefix_thv)
+surveys_thv %>% list_survey_effort(placename_thv)
 
-surveys_di %>% plot_survey_effort("Delambre Is")
-surveys_di %>% list_survey_effort("Delambre Is")
+surveys_di %>% plot_survey_effort(placename_di, prefix_di)
+surveys_di %>% list_survey_effort(placename_di)
 
-surveys_ri %>% plot_survey_effort("Rosemary Is")
-surveys_ri %>% list_survey_effort("Rosemary Is")
+surveys_ri %>% plot_survey_effort(placename_ri, prefix_ri)
+surveys_ri %>% list_survey_effort(placename_ri)
 ```
 
 ## Survey effort per primary reporter
@@ -455,20 +496,20 @@ personal_effort_ri %>% kable()
 Number of surveys per sector times length of site.
 
 At Thevenard North Beach, assuming the trip was 6 km,
-`r survey_ground_covered(surveys, 28, 6)` km were walked 
-in `r survey_count(surveys, 28)` surveys.
+`r survey_ground_covered(surveys, 28, 6, season=2017)` km were walked 
+in `r survey_count(surveys, 28, season=2017)` surveys.
 
 At Thevenard South Beach, assuming the trip was 6 km,
-`r survey_ground_covered(surveys, 29, 6)` km were walked 
-in `r survey_count(surveys, 29)` surveys.
+`r survey_ground_covered(surveys, 29, 6, season=2017)` km were walked 
+in `r survey_count(surveys, 29, season=2017)` surveys.
 
 At Thevenard Nesting Beach, assuming the trip was 1 km,
-`r survey_ground_covered(surveys, 20, 1)` km were walked 
-in `r survey_count(surveys, 20)` surveys.
+`r survey_ground_covered(surveys, 20, 1, season=2017)` km were walked 
+in `r survey_count(surveys, 20, season=2017)` surveys.
 
 At Delambre, assuming the trip was 4 km,
-`r survey_ground_covered(surveys, 39, 4)` km were walked 
-in `r survey_count(surveys, 39)` surveys.
+`r survey_ground_covered(surveys, 39, 4, season=2017)` km were walked 
+in `r survey_count(surveys, 39, season=2017)` surveys.
 
 TODO RI
 
