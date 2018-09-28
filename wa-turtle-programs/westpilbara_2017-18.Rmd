@@ -198,11 +198,11 @@ basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %
 tracks_map <- suppressWarnings(
   basemap +
     geom_point(aes(longitude, latitude, colour = nest_type),
-      data = filter_2017(tracks_wp), alpha = 0.8
+      data = tracks_wp, alpha = 0.8
     )
 ) +
   ggplot2::ggtitle("Turtle Nesting", subtitle = "Turtle date: {frame_time}") +
-  gganimate::transition_time(date) +
+  gganimate::transition_time(turtle_date) +
   gganimate::ease_aes("linear")
 
 # render and save
@@ -230,6 +230,10 @@ The next table includes all tracks from Bells and Yacht Club beach combined.
 
 ```{r tracks_all_sectors}
 tracks_wp %>% species_by_type() %>% kable()
+
+t <- tracks_all %>%  add_nest_labels() %>% dplyr::filter(is.na(season))
+t[1,]$datetime %>% httpdate_as_season()
+
 ```
 
 ### Bells Beach
@@ -324,8 +328,7 @@ Highest level of aggregation: entire season.
 ### Per day effort
 Lowest level of aggregation: daily.
 
-TODO: update wastdr - turtle_date, season
-```{r survey_count, eval=F}
+```{r survey_count}
 surveys_wp %>% plot_survey_count(placename, prefix)
 surveys_wp %>% list_survey_count(placename)
 surveys_wp %>% plot_survey_effort(placename, prefix)
