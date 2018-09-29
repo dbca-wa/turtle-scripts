@@ -2,6 +2,7 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+# devtools::install_github('Ather-Energy/ggTimeSeries')
 library(here)
 library(wastdr)
 library(dplyr)
@@ -14,6 +15,7 @@ library(lubridate)
 library(listviewer)
 library(DT)
 library(ggplot2)
+library(ggTimeSeries)
 library(ckanr)
 library(googledrive)
 library(ggmap)

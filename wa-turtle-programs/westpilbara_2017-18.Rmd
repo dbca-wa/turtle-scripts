@@ -254,8 +254,8 @@ tracks_wp %>% nesting_type_by_season_week_species() %>% kable()
 ```
 
 
-## Nesting success
-The next table includes all tracks from Bells and Yacht Club beach combined.
+## Nesting by day
+This section shows data from all sites.
 
 ```{r nesting_success_all_beaches, warning = F}
 tracks_wp %>% tracks_ts(placename = placename, prefix = prefix)
@@ -331,9 +331,9 @@ Highest level of aggregation: entire season.
 Lowest level of aggregation: daily.
 
 ```{r survey_count}
-surveys_wp %>% plot_survey_count(placename, prefix)
+surveys_wp %>% survey_count_heatmap(placename, prefix)
 surveys_wp %>% list_survey_count(placename)
-surveys_wp %>% plot_survey_effort(placename, prefix)
+surveys_wp %>% survey_hours_heatmap(placename, prefix)
 surveys_wp %>% list_survey_effort(placename)
 ```
 

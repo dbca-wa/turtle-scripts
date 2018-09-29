@@ -60,7 +60,7 @@ tracks_ts <- function(data, placename="", prefix="") {
       ggplot2::scale_y_continuous(limits = c(0, NA)) +
       ggplot2::xlab("Turtle date") +
       ggplot2::theme_classic() +
-      ggsave(glue::glue("{prefix}_track_abundance_{wastdr::urlize(placename)}.png"), width = 7, height = 5) +
+      ggsave(glue::glue("{prefix}_track_abundance_{wastdr::urlize(placename)}.png"), width = 10, height = 6) +
       NULL
   }
 }
@@ -104,7 +104,7 @@ ggplot_track_success_by_date <- function(data, speciesname, placename="", prefix
       labels = scales::date_format("%d %b %Y")) +
     ggplot2::scale_y_continuous(limits = c(0, NA)) +
     ggplot2::theme_classic() +
-    ggsave(glue::glue("{prefix}_track_effort_{wastdr::urlize(placename)}_{speciesname}.png"), width = 7, height = 5)
+    ggsave(glue::glue("{prefix}_track_effort_{wastdr::urlize(placename)}_{speciesname}.png"), width = 10, height = 6)
 }
 
 ggplot_track_successrate_by_date <- function(data, speciesname, placename="", prefix="") {
@@ -122,7 +122,7 @@ ggplot_track_successrate_by_date <- function(data, speciesname, placename="", pr
       labels = scales::date_format("%d %b %Y")) +
     ggplot2::scale_y_continuous(limits = c(0, NA)) +
     ggplot2::theme_classic() +
-    ggsave(glue::glue("{prefix}_track_success_{wastdr::urlize(placename)}_{speciesname}.png"), width = 7, height = 5)
+    ggsave(glue::glue("{prefix}_track_success_{wastdr::urlize(placename)}_{speciesname}.png"), width = 10, height = 6)
 }
 
 track_success <- function(tracks){
@@ -168,6 +168,33 @@ survey_ground_covered <- function(surveys, site_id, km_per_survey, season=2017){
   survey_count(surveys, site_id, season) * km_per_survey
 }
 
+survey_count_heatmap <- function(surveys, placename, prefix){
+  surveys %>%
+  wastdr::surveys_per_site_name_and_date(.) %>%
+  ggTimeSeries::ggplot_calendar_heatmap('turtle_date', 'n') +
+  ggplot2::scale_fill_continuous(low = 'green', high = 'red') +
+  ggplot2::facet_wrap(~Year, ncol = 1) +
+  ggplot2::ggtitle(glue::glue("Survey effort at {placename}")) +
+  xlab(NULL) + ylab(NULL) +
+  ggplot2::theme_classic() +
+  ggsave(
+    glue::glue("{prefix}_survey_count_heatmap_{wastdr::urlize(placename)}.png"),
+    width = 10, height = 6)
+}
+
+survey_hours_heatmap <- function(surveys, placename, prefix){
+  surveys %>%
+    wastdr::survey_hours_per_site_name_and_date(.) %>%
+    ggTimeSeries::ggplot_calendar_heatmap('turtle_date', 'hours_surveyed') +
+    ggplot2::scale_fill_continuous(low = 'green', high = 'red') +
+    ggplot2::facet_wrap(~Year, ncol = 1) +
+    ggplot2::ggtitle(glue::glue("Survey effort at {placename}")) +
+    xlab(NULL) + ylab(NULL) +
+    ggplot2::theme_classic() +
+    ggsave(
+      glue::glue("{prefix}_survey_hours_heatmap_{wastdr::urlize(placename)}.png"),
+      width = 10, height = 6)
+}
 
 # disturbance
 disturbance_by_season <- . %>%

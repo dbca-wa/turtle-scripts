@@ -257,9 +257,9 @@ Highest level of aggregation: entire season.
 Lowest level of aggregation: daily.
 
 ```{r survey_count}
-surveys_pth %>% plot_survey_count(placename, prefix)
+surveys_pth %>% survey_count_heatmap(placename, prefix)
 surveys_pth %>% list_survey_count(placename)
-surveys_pth %>% plot_survey_effort(placename, prefix)
+surveys_pth %>% survey_hours_heatmap(placename, prefix)
 surveys_pth %>% list_survey_effort(placename)
 ```
 

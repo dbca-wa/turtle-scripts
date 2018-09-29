@@ -45,7 +45,7 @@ prefix_di <- "DEL"
 prefix_ri <- "ROS"
 
 placename_thv <- "Thevenard Is"
-placename_del <- "Delambre Is"
+placename_di <- "Delambre Is"
 placename_ri <- "Rosemary Is"
 ```
 
@@ -425,41 +425,25 @@ dist_ri %>% map_dist
 ## Survey count
 
 ### Caveat
-* Data includes training surveys.
-
-This contributes to over-estimation of effort, but shows actual boots on the 
-ground - training is also an effort!
-
-```{r survey_count}
-surveys_thv %>% plot_survey_count(placename_thv, prefix_thv)
-surveys_thv %>% list_survey_count(placename_thv)
-
-place <- "Delambre Is"
-surveys_di %>% plot_survey_count(place)
-surveys_di %>% list_survey_count(place)
-
-place <- "Rosemary Is"
-surveys_ri %>% plot_survey_count(place)
-surveys_ri %>% list_survey_count(place)
-```
-
-## Survey effort in hours
-Q How many hours did volunteers survey, how many kilometers were walked?
-
-### Caveat
-* Surveys with missing end points are auto-closed after 5 hours. 
+* Surveys with missing end points are auto-closed after 6 hours. 
 * Data includes training surveys.
 
 Both factors contribute to over-estimation of effort.
 
-```{r survey_effort}
-surveys_thv %>% plot_survey_effort(placename_thv, prefix_thv)
+```{r survey_count}
+surveys_thv %>% survey_count_heatmap(placename_thv, prefix_thv)
+surveys_thv %>% list_survey_count(placename_thv)
+surveys_thv %>% survey_hours_heatmap(placename_thv, prefix_thv)
 surveys_thv %>% list_survey_effort(placename_thv)
 
-surveys_di %>% plot_survey_effort(placename_di, prefix_di)
+surveys_di %>% survey_count_heatmap(placename_di, prefix_di)
+surveys_di %>% list_survey_count(placename_di)
+surveys_di %>% survey_hours_heatmap(placename_di, prefix_di)
 surveys_di %>% list_survey_effort(placename_di)
 
-surveys_ri %>% plot_survey_effort(placename_ri, prefix_ri)
+surveys_ri %>% survey_count_heatmap(placename_ri, prefix_ri)
+surveys_ri %>% list_survey_count(placename_ri)
+surveys_ri %>% survey_hours_heatmap(placename_ri, prefix_ri)
 surveys_ri %>% list_survey_effort(placename_ri)
 ```
 
