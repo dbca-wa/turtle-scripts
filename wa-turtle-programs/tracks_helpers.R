@@ -1,14 +1,17 @@
+# Deprecated
 daily_species_by_type <- . %>%
   filter(nest_age == "fresh") %>%
   group_by(season, turtle_date, species, nest_type) %>%
   tally() %>%
   ungroup()
 
+# Deprecated
 daily_summary <- . %>%
   daily_species_by_type() %>%
   tidyr::spread(nest_type, n, fill = 0) %>%
   DT::datatable(.)
 
+# Deprecated, use nesting_type_by_season_species
 species_by_type <- . %>%
   filter(nest_age == "fresh") %>%
   group_by(season, species, nest_type) %>%
@@ -16,9 +19,32 @@ species_by_type <- . %>%
   ungroup() %>%
   tidyr::spread(nest_type, n, fill = 0)
 
+# Pivot table of nesting type by season and species
+nesting_type_by_season_species <- . %>%
+  filter(nest_age == "fresh") %>%
+  group_by(season, species, nest_type) %>%
+  tally() %>%
+  ungroup() %>%
+  tidyr::spread(nest_type, n, fill = 0)
+
+# Pivot table of nesting type by season, week and species
+nesting_type_by_season_week_species <- . %>%
+  filter(nest_age == "fresh") %>%
+  group_by(season, week, species, nest_type) %>%
+  tally() %>%
+  ungroup() %>%
+  tidyr::spread(nest_type, n, fill = 0)
+
+# Pivot table of nesting type by season, turtle date and species
+nesting_type_by_season_day_species <- . %>%
+  filter(nest_age == "fresh") %>%
+  group_by(season, turtle_date, species, nest_type) %>%
+  tally() %>%
+  ungroup()
+
 tracks_ts <- function(data, placename="", prefix="") {
   data %>%
-  daily_species_by_type() %>%
+    nesting_type_by_season_day_species() %>%
   {
     ggplot2::ggplot(data = ., aes(x = turtle_date, y = n, colour = nest_type)) +
       ggplot2::geom_point() +
@@ -142,18 +168,31 @@ survey_ground_covered <- function(surveys, site_id, km_per_survey, season=2017){
   survey_count(surveys, site_id, season) * km_per_survey
 }
 
+
+# disturbance
+disturbance_by_season <- . %>%
+dplyr::group_by(season, disturbance_cause) %>%
+  dplyr::tally() %>%
+  dplyr::arrange(-n)
+
 dt <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE)
 
-# Filters
+# Filters -----------------------------------------------------------------------------------------#
+# Surveys
 filter_surveys_requiring_qa <- . %>%
   dplyr::filter(grepl("QA", start_comments) | grepl("QA", end_comments)) %>%
   dplyr::select(site_name, reporter, season, turtle_date, start_time, end_time,
                 start_comments, end_comments, change_url)
 
+filter_surveys_missing_end <- . %>%
+  dplyr::filter(is.na(end_source_id)) %>%
+  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url)
 
+# Seasons
 filter_2017 <- . %>% dplyr::filter(season==2017)
 filter_2018 <- . %>% dplyr::filter(season==2018)
 
+# Sites
 filter_broome <- . %>% dplyr::filter(area_name=="Cable Beach Broome")
 filter_broome_sites <- . %>% dplyr::filter(site_id %in% c(22, 23, 24))
 filter_cbb1 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 1")

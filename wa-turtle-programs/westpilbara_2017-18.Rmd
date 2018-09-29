@@ -45,8 +45,8 @@ Remaining QA tasks:
 ```{r load_data, eval=T}
 tracks_wp <- tracks_all %>% filter_wp() %>% filter_realspecies() %>% add_nest_labels()
 # tracks_cw <- tracks_all %>% filter_cw %>% filter_realspecies() # none yet
-tracks_bb <- tracks_all %>% filter_bb() %>% filter_realspecies()
-tracks_yc <- tracks_all %>% filter_yc() %>% filter_realspecies()
+tracks_bb <- tracks_wp %>% filter_bb()
+tracks_yc <- tracks_wp %>% filter_yc()
 
 surveys_wp <- surveys %>% filter_wp()
 surveys_wp_prod <- surveys_wp %>% filter_realsurveys()
@@ -143,10 +143,7 @@ Surveys with missing end contribute to an over-estimation of survey effort.
 This task will be automated soon.
   
 ```{r surveys_missing_end}
-surveys_wp %>%
-  dplyr::filter(is.na(end_source_id)) %>%
-  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>%
-  dt()
+surveys_wp %>% filter_surveys_missing_end %>% dt()
 ```
 
 ## Username mismatches
@@ -176,8 +173,6 @@ hours of mind-numbing data entry and proofreading work for
 ## Maps Current Season
 ```{r map_current_season}
 tracks_wp %>% filter_2017() %>% map_tracks()
-# tracks_bb %>% map_tracks()
-# tracks_yc %>% map_tracks()
 ```
 
 ### Animated map
@@ -197,13 +192,16 @@ basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %
 # tracks
 tracks_map <- suppressWarnings(
   basemap +
-    geom_point(aes(longitude, latitude, colour = nest_type),
-      data = tracks_wp, alpha = 0.8
+    geom_point(
+      aes(longitude, latitude, colour = nest_type),
+      data = tracks_wp, 
+      # alpha = 0.8
     )
 ) +
   ggplot2::ggtitle("Turtle Nesting", subtitle = "Turtle date: {frame_time}") +
   gganimate::transition_time(turtle_date) +
-  gganimate::ease_aes("linear")
+  gganimate::ease_aes("elastic-in") +
+  gganimate::exit_fade()
 
 # render and save
 gganimate::animate(tracks_map, fps = 2) %T>%
@@ -224,36 +222,42 @@ nests_wp %>%
 ```
 
 
-## Nesting abundance
-### All sectors
+## Nesting by season
+### All beaches
 The next table includes all tracks from Bells and Yacht Club beach combined.
 
 ```{r tracks_all_sectors}
-tracks_wp %>% species_by_type() %>% kable()
-
-t <- tracks_all %>%  add_nest_labels() %>% dplyr::filter(is.na(season))
-t[1,]$datetime %>% httpdate_as_season()
-
+tracks_wp %>% nesting_type_by_season_species() %>% kable()
 ```
 
 ### Bells Beach
 Only Bells Beach tracks.
 
 ```{r tracks_bb}
-tracks_bb %>% species_by_type() %>% kable()
+tracks_bb %>% nesting_type_by_season_species() %>% kable()
 ```
 
 ### Yacht Club Beach
 Only Yacht Club Beach tracks.
 
 ```{r tracks_yc}
-tracks_yc %>% species_by_type() %>% kable()
+tracks_yc %>% nesting_type_by_season_species() %>% kable()
 ```
 
-## Nesting success
-All beaches.
 
-```{r nesting_success, warning = F}
+## Nesting by week
+### All beaches
+The next table includes all tracks from Bells and Yacht Club beach combined.
+
+```{r tracks_all_beaches_by_week}
+tracks_wp %>% nesting_type_by_season_week_species() %>% kable()
+```
+
+
+## Nesting success
+The next table includes all tracks from Bells and Yacht Club beach combined.
+
+```{r nesting_success_all_beaches, warning = F}
 tracks_wp %>% tracks_ts(placename = placename, prefix = prefix)
 nests <- tracks_wp %>% track_success()
 nests %>% ggplot_track_success_by_date("natator-depressus", placename, prefix)
@@ -288,8 +292,10 @@ General signs of disturbance or predator presence are recorded through form
 Turtle nests with recorded disturbance or predation. All beaches.
 
 ```{r dist_nests}
-disturbed_nests_wp <- tracks_wp %>% filter_2017() %>% filter(disturbance == "present")
-disturbed_nests_wp %>% filter_2017() %>% map_tracks()
+disturbed_nests_wp <- tracks_wp %>% 
+  filter_2017() %>% 
+  dplyr::filter(disturbance == "present")
+disturbed_nests_wp %>% map_tracks()
 ```
 
 There were **`r count(disturbed_nests_wp)` reports** of disturbed nests. 
@@ -301,11 +307,7 @@ Coming soon: details of disturbance to nests.
 There were **`r count(dist_wp)` reports** of general disturbance or predator presence:
 
 ```{r dist_general}
-dist_wp %>%
-  dplyr::group_by(season, disturbance_cause) %>%
-  dplyr::tally() %>%
-  dplyr::arrange(-n) %>%
-  kable()
+dist_wp %>% disturbance_by_season() %>% dt()
 dist_wp %>% filter_2017() %>% map_dist()
 ```
 
@@ -343,7 +345,7 @@ Note, a direct link to update each survey in WAStD is at the end of the table.
 ```{r surveys_list}
 surveys_wp %>%
   dplyr::select(
-    -site_type, -site_id, -reporter_username, -id, -absolute_admin_url
+    -id, -site_type, -site_id, -reporter_username, -absolute_admin_url
   ) %>%
   dt()
 ```
