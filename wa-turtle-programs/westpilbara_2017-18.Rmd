@@ -43,22 +43,25 @@ Remaining QA tasks:
 
 # Data
 ```{r load_data, eval=T}
-tracks_wp <- tracks_all %>% filter_wp() %>% filter_realspecies() %>% add_nest_labels()
-# tracks_cw <- tracks_all %>% filter_cw %>% filter_realspecies() # none yet
-tracks_bb <- tracks_wp %>% filter_bb()
-tracks_yc <- tracks_wp %>% filter_yc()
+tracks_wp <- tracks_all %>% filter_wp() %>% filter_exclude_training_species() %>% add_nest_labels()
+# tracks_cw <- tracks_wp %>% filter_wp_coolingwater() # none yet
+tracks_bb <- tracks_wp %>% filter_wp_bells()
+tracks_yc <- tracks_wp %>% filter_wp_yachtblub()
+# tracks_bt <- tracks_wp %>% filter_wp_boat() # none yet
+# tracks_cl <- tracks_wp %>% filter_wp_cleaverville() # none yet
 
 surveys_wp <- surveys %>% filter_wp()
-surveys_wp_prod <- surveys_wp %>% filter_realsurveys()
-# surveys_cw <- surveys %>% filter_cw
-surveys_bb <- surveys %>% filter_bb()
-surveys_yc <- surveys %>% filter_yc()
+surveys_wp_prod <- surveys_wp %>% filter_surveys_exclude_training()
 
 dist_wp <- disturbance %>% filter_wp()
 
-nests_wp <- nests_all %>% filter_wp() # none yet
-nests_bb <- nests_all %>% filter_bb() # none yet
-nests_yc <- nests_all %>% filter_yc() # none yet
+# No nests yet
+# nests_wp <- nests_all %>% filter_wp()
+# nests_cw <- nests_all %>% filter_wp_coolingwater()
+# nests_bb <- nests_all %>% filter_wp_bells()
+# nests_yc <- nests_all %>% filter_wp_yachtblub()
+# nests_bt <- nests_all %>% filter_wp_boat()
+# nests_cl <- nests_all %>% filter_wp_cleaverville()
 
 prefix <- "WPTP"
 placename <- "Cape Lambert"
@@ -87,64 +90,10 @@ Note: Jason reported the following counts for manual entry (not done yet, so not
 ```
 
 # QA
-This section identifies tracks and disturbances outside known sites, missing surveys, and surveys requiring editing.
-We show data from all regions as not to miss any stray records - ignore data not relevant to this analysis.
+Most QA is done across all WA records and programs in the separate QA workbook.
 
-## Tracks outside known sites
-Review whether there are stray tracks close to this program's sites.
 
-* WAStD sites missing (new sites) or boundaries set too narrow. 
-  Extend sites, re-save stray tracks to auto-repair their site affiliation.
-* Training records close to site (but not meant to be within site).
-  Change confirmed training records outside training areas to "Hatchback turtles" 
-  and mark as "curated" to prevent from being overwritten by repeated data loading.
-* Note: re-run uncached data import after changing tracks.
-
-```{r tracks_missing_sites}
-tracks_all %>%
-  filter_nosite() %>%
-  filter_realspecies() %>%
-  add_nest_labels() %>%
-  map_tracks()
-```
-
-## Disturbance outside known sites
-Review disturbances close to this program's sites. It is safe to ignore other disturbances.
-
-Disturbances can either be legitimate, although opportunistic, records, or training
-records.
-
-* Training records: set to "Other, see comments", mention "training" in comments,
-  ideally instruct data collectors to photograph their writing board with "training"
-  written on it to make absolutely clear that this record is a training record.
-
-```{r dist_missing_sites}
-disturbance %>% filter_nosite() %>% map_dist()
-```
-
-## Surveys in WAStD
-Curators are to QA [all West Pilbara surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=25,26,27,46,47) following the 
-[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
-
-Split up per site:
-
-* [Cooling Water Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=26)
-* [Bells Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=25)
-* [Yacht Club Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=27)
-* [Boat Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=46)
-* [Cleaverville Beach 1](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=47)
-
-## Surveys missing Site Visit End
-Where a "Site Visit End" form was forgotten, `end_source_id` is empty, and the duration is set to 6h. 
-These surveys should be closed a few minutes after the last recorded track or disturbance.
-
-Surveys with missing end contribute to an over-estimation of survey effort.
-
-This task will be automated soon.
-  
-```{r surveys_missing_end}
-surveys_wp %>% filter_surveys_missing_end %>% dt()
-```
+This section identifies data requiring editing.
 
 ## Username mismatches
 TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data collectors vs 
@@ -170,9 +119,10 @@ hours of mind-numbing data entry and proofreading work for
 `r nrow(dist_wp)` Disturbances, and 
 `r nrow(surveys_wp)*2` Site Visit Starts/Ends. 
 
-## Maps Current Season
+## Maps
 ```{r map_current_season}
 tracks_wp %>% filter_2017() %>% map_tracks()
+# tracks_wp %>% filter_2018() %>% map_tracks()
 ```
 
 ### Animated map
@@ -180,39 +130,16 @@ A [Google API key](https://developers.google.com/maps/documentation/geocoding/st
 be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
 ```{r map_animated, warning=FALSE}
-ggmap::register_google(key = Sys.getenv("GOOGLE_MAPS_APIKEY"))
-
-# basemap
-bbx <- ggmap::make_bbox(longitude, latitude, tracks_wp, f = 0.05)
-ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
-# basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
-basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>%
-  ggmap::ggmap()
-
-# tracks
-tracks_map <- suppressWarnings(
-  basemap +
-    geom_point(
-      aes(longitude, latitude, colour = nest_type),
-      data = tracks_wp, 
-      # alpha = 0.8
-    )
-) +
-  ggplot2::ggtitle("Turtle Nesting", subtitle = "Turtle date: {frame_time}") +
-  gganimate::transition_time(turtle_date) +
-  gganimate::ease_aes("elastic-in") +
-  gganimate::exit_fade()
-
-# render and save
-gganimate::animate(tracks_map, fps = 2) %T>%
-  gganimate::anim_save(glue::glue("{prefix}_nesting.gif"), .)
+gganimate_tracks(tracks_wp, placename, prefix)
+# gganimate_tracks(tracks_cl, placename, prefix)
 ```
 
 
 ### Tagged nests
 2017-18: no tagged nests.
 
-The map (once enabled) is saved as a PNG file `r glue::glue(prefix, "_tagged_nests.png")`.
+The map (once enabled) is saved as a PNG file `r glue::glue(prefix, "_tagged_nests.png")`.\
+This map can be printed and used to navigate back to the nests.
 
 ```{r nests_all, eval=F}
 nests_wp %>%
@@ -221,10 +148,9 @@ nests_wp %>%
   mapview::mapshot(file = glue::glue("{prefix}_tagged_nests.png"))
 ```
 
-
 ## Nesting by season
 ### All beaches
-The next table includes all tracks from Bells and Yacht Club beach combined.
+The next table includes all tracks from all sites combined.
 
 ```{r tracks_all_sectors}
 tracks_wp %>% nesting_type_by_season_species() %>% kable()
@@ -244,6 +170,11 @@ Only Yacht Club Beach tracks.
 tracks_yc %>% nesting_type_by_season_species() %>% kable()
 ```
 
+## Boat Beach
+Coming 2018.
+
+## Cleaverville Beach 1
+Coming 2018.
 
 ## Nesting by week
 ### All beaches
@@ -270,7 +201,7 @@ nests %>% track_success_by_species() %>% datatable(.,
 ```
 
 ## Hatching and emergence success
-Not monitored consistently. The following data are opportunistic observations.
+Coming 2018?
 
 ```{r hatching_emergence_success}
 tracks_wp %>%
@@ -292,9 +223,7 @@ General signs of disturbance or predator presence are recorded through form
 Turtle nests with recorded disturbance or predation. All beaches.
 
 ```{r dist_nests}
-disturbed_nests_wp <- tracks_wp %>% 
-  filter_2017() %>% 
-  dplyr::filter(disturbance == "present")
+disturbed_nests_wp <- tracks_wp %>% filter_2017() %>% dplyr::filter(disturbance == "present")
 disturbed_nests_wp %>% map_tracks()
 ```
 
@@ -312,7 +241,20 @@ dist_wp %>% filter_2017() %>% map_dist()
 ```
 
 
-## Survey effort
+## Surveys
+Curators are to QA 
+[all West Pilbara surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=25,26,27,46,47) 
+following the 
+[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
+
+Split up per site:
+
+* [Cooling Water Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=26)
+* [Bells Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=25)
+* [Yacht Club Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=27)
+* [Boat Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=46)
+* [Cleaverville Beach 1](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=47)
+
 ### Caveat 
 * Survey data includes training surveys. (Not production, but also effort)
 * Surveys with missing end points are auto-closed after 5 hours (over-estimation of effort).
@@ -323,7 +265,7 @@ Highest level of aggregation: entire season.
 
 * Excluding training, there were **`r nrow(surveys_wp_prod)` surveys** to all beaches
   of the WPTP (Bells, Yacht Club, coming 2018: Cleaverville, not included: cooling water)
-  for a total duration of **`r sum(surveys_wp_prod$duration_hours)` hours**.
+  for a total duration of **`r sum(surveys_wp_prod$duration_hours)` hours**  over a period of **XXX days**.
 * Caveat: all training surveys must be marked as "not production" manually in WAStD.
   Above data currently may include training effort.
 

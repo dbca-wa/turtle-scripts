@@ -24,14 +24,13 @@ Until this warning disappears, this dataset may contain duplicates from training
 # Data
 Eighy Mile Beach is surveyed at sites Anna Plains and Caravan Park.
 ```{r load_data}
-tracks_2017 <- tracks_all %>% filter_2017() %>% filter_realspecies() %>% add_nest_labels()
-tracks_emb <- tracks_2017 %>% filter_emb()
-tracks_emb_ap <- tracks_2017 %>% filter_emb_ap()
-tracks_emb_cv <- tracks_2017 %>% filter_emb_cvp()
-dist_emb <- disturbance %>% filter_2017() %>% filter_emb()
-surveys_emb <- surveys %>% filter_2017() %>% filter_emb()
+tracks_emb <- tracks_all %>% filter_emb() %>% filter_realspecies() %>% add_nest_labels()
+tracks_emb_ap <- tracks_emb %>% filter_emb_ap()
+tracks_emb_cv <- tracks_emb %>% filter_emb_cvp()
+dist_emb <- disturbance %>% filter_emb()
+surveys_emb <- surveys %>% filter_emb()
 surveys_emb_prod <- surveys_emb %>% filter_realsurveys()
-nests_emb <- nests_all %>% filter_2017() %>% filter_emb()
+nests_emb <- nests_all %>% filter_emb()
 
 prefix <- "EMB"
 placename <- "Eighty Mile Beach"
@@ -93,10 +92,7 @@ Surveys with missing end contribute to an over-estimation of survey effort.
 This task will be automated soon.
   
 ```{r surveys_missing_end}
-surveys_emb %>% 
-  dplyr::filter(is.na(end_source_id)) %>%
-  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>% 
-  dt
+surveys_emb %>% filter_surveys_missing_end %>% dt()
 ```
 
 ## Provided username mismatches WAStD users
@@ -104,7 +100,7 @@ TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data
 [WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
 
 ```{r name_mismatch}
-surveys_emb %>% filter_surveys_requiring_qa %>% dt
+surveys_emb %>% filter_surveys_requiring_qa %>% dt()
 ```
 
 # Season summary
@@ -273,9 +269,10 @@ This contributes to over-estimation of effort, but shows actual boots on the
 ground - training is also an effort!
 
 ```{r survey_count}
-place <- "Eighty Mile Beach"
-surveys_emb %>% plot_survey_count(place)
-surveys_emb %>% list_survey_count(place)
+surveys_emb %>% survey_count_heatmap(placename, prefix)
+surveys_emb %>% list_survey_count(placename)
+surveys_emb %>% survey_hours_heatmap(placename, prefix)
+surveys_emb %>% list_survey_effort(placename)
 ```
 
 ## Survey effort in hours

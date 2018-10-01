@@ -19,7 +19,7 @@ source("load_data.R")
 
 # Data
 ```{r load_data}
-tr <- tracks_all %>% filter_realspecies() %>% add_nest_labels()
+tr <- tracks_all %>% filter_exclude_training_species() %>% add_nest_labels()
 tracks_pth <- tr %>% filter_port_hedland_sites()
 tracks_pth_cem <- tr %>% filter_port_hedland_cemetery()
 tracks_pth_ppo <- tr %>% filter_port_hedland_prettypool()
@@ -33,74 +33,18 @@ placename <- "Port Hedland"
 ```
 
 # QA
-This section identifies tracks and disturbances outside known sites, missing surveys, and surveys requiring editing.
-We show data from all regions as not to miss any stray records - ignore data not relevant to this analysis.
+Most QA is done across all WA records and programs in the separate QA workbook.
 
-## Tracks outside known sites
-Review whether there are stray tracks close to this program's sites.
 
-* WAStD sites missing (new sites) or boundaries set too narrow. 
-  Extend sites, re-save stray tracks to auto-repair their site affiliation.
-* Training records close to site (but not meant to be within site).
-  Change confirmed training records outside training areas to "Hatchback turtles" 
-  and mark as "curated" to prevent from being overwritten by repeated data loading.
-* Note: re-run uncached data import after changing tracks.
+This section identifies data requiring editing.
 
-```{r tracks_missing_sites}
-tracks_all %>% 
-  filter_nosite() %>%
-  filter_realspecies() %>%
-  add_nest_labels() %>% 
-  map_tracks()
-```
-
-## Disturbance outside known sites
-Review disturbances close to this program's sites. It is safe to ignore other disturbances.
-
-Disturbances can either be legitimate, although opportunistic, records, or training
-records.
-
-* Training records: set to "Other, see comments", mention "training" in comments,
-  ideally instruct data collectors to photograph their writing board with "training"
-  written on it to make absolutely clear that this record is a training record.
-
-```{r dist_missing_sites}
-disturbance %>% filter_nosite() %>% wastdr::map_dist()
-```
-
-## Surveys in WAStD
-Curators are to QA 
-[all `r placename` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=35,45) following the 
-[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
-
-Split up per site:
-
-* [Cemetary Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=35)
-* [Pretty Pool Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=45)
-
-## Surveys missing end
-Where a "Site Visit End" form was forgotten, `end_source_id` is empty, and the duration is set to 6h. 
-These surveys should be closed a few minutes after the last recorded track or disturbance.
-
-Surveys with missing end contribute to an over-estimation of survey effort.
-
-This task will be automated soon.
-  
-```{r surveys_missing_end}
-surveys_pth %>% 
-  dplyr::filter(is.na(end_source_id)) %>%
-  dplyr::select(-site_type, -site_id, -reporter_username, -reporter_id, -id, -absolute_admin_url) %>% 
-  dt
-```
-
-## Provided username mismatches WAStD users
+## Username mismatches
 TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data collectors vs 
 [WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
 
 ```{r name_mismatch}
-surveys_pth %>% filter_surveys_requiring_qa %>% dt
+surveys_pth %>% filter_surveys_requiring_qa() %>% dt()
 ```
-
 
 # Season summary
 
@@ -135,32 +79,9 @@ tracks_pth_ppo %>% filter_2017() %>% map_tracks()
 A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
 be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
-```{r map_animated}
-ggmap::register_google(key = Sys.getenv("GOOGLE_MAPS_APIKEY"))
-
-# basemap
-bbx <- ggmap::make_bbox(longitude, latitude, tracks_pth, f = 0.05)
-ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
-# basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
-basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>%
-  ggmap::ggmap()
-
-# tracks
-tracks_map <- suppressWarnings(
-  basemap +
-    geom_point(aes(longitude, latitude, colour = nest_type),
-      data = tracks_pth, alpha = 0.8
-    )
-) +
-  ggplot2::ggtitle("Turtle Nesting", subtitle = "Turtle date: {frame_time}") +
-  gganimate::transition_time(turtle_date) +
-  gganimate::ease_aes("linear")
-
-# render and save
-gganimate::animate(tracks_map, fps = 2) %T>%
-  gganimate::anim_save(glue::glue("{prefix}_nesting.gif"), .)
+```{r map_animated, warning=FALSE}
+gganimate_tracks(tracks_pth, placename, prefix)
 ```
-
 
 ### Tagged nests
 2017-18: no tagged nests.
@@ -168,27 +89,50 @@ gganimate::animate(tracks_map, fps = 2) %T>%
 The map (once enabled) is saved as a PNG file `r glue::glue(prefix, "_tagged_nests.png")`.
 
 ```{r nests_all, eval=F}
-nests_pth %>% map_nests() %>% mapview::mapshot(file=glue::glue("{prefix}_tagged_nests.png"))
+nests_pth %>% 
+  filter_2018() %>%
+  map_nests() %>%
+  mapview::mapshot(file = glue::glue("{prefix}_tagged_nests.png"))
 ```
 
 ## Nesting abundance
 
 ### All beaches
 ```{r tracks_all_sectors}
-tracks_pth %>% species_by_type() %>% kable()
+tracks_pth %>% nesting_type_by_season_species() %>% kable()
 ```
 
 ### Cemetery Beach
 ```{r tracks_cem}
-tracks_pth_cem %>% species_by_type() %>% kable()
+tracks_pth_cem %>% nesting_type_by_season_species() %>% kable()
 ```
 
 ### Pretty Pool Beach
 ```{r tracks_ppo}
-tracks_pth_ppo %>% species_by_type() %>% kable()
+tracks_pth_ppo %>% nesting_type_by_season_species() %>% kable()
 ```
 
-## Nesting success 
+## Nesting by week
+### All beaches
+The next table includes all tracks from all sites combined.
+
+```{r tracks_all_beaches_by_week}
+tracks_pth %>% nesting_type_by_season_week_species() %>% kable()
+```
+
+### Cemetery Beach
+```{r tracks_cem}
+tracks_pth_cem %>% nesting_type_by_season_week_species() %>% kable()
+```
+
+### Pretty Pool Beach
+```{r tracks_ppo}
+tracks_pth_ppo %>% nesting_type_by_season_week_species() %>% kable()
+```
+
+## Nesting by day
+This section shows data from all sites.
+
 ```{r nesting_success, warning = F}
 tracks_pth %>% tracks_ts(placename, prefix)
 tracks_pth_cem %>% tracks_ts("Cemetery Beach", prefix)
@@ -207,7 +151,7 @@ nests %>% track_success_by_species() %>% DT::datatable(.,
 ```{r hatching_emergence_success}
 tracks_pth %>%
   hatching_emergence_success() %>%
-  kable
+  DT::datatable(., caption = "Hatching and emergence success summary", options = list(paging = F))
 ```
 
 ## Disturbance and predation
@@ -238,7 +182,18 @@ dist_pth %>% filter_2017 %>% group_by(disturbance_cause) %>% tally %>% arrange(-
 dist_pth %>% map_dist
 ```
 
-## Survey effort
+
+## Surveys
+Curators are to QA 
+[all local surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=35,45) 
+following the 
+[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
+
+Split up per site:
+
+* [Cemetery Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=35)
+* [Pretty Pool Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=45)
+
 ### Caveat 
 * Survey data includes training surveys. (Not production, but also effort)
 * Surveys with missing end points are auto-closed after 5 hours (over-estimation of effort).
@@ -269,9 +224,9 @@ No aggregation: individual surveys.
 Note, a direct link to update each survey in WAStD is at the end of the table.
 
 ```{r survey_list}
-surveys_pth %>% 
-  dplyr::select(-site_type, -site_id, -reporter_username, -id, -absolute_admin_url) %>% 
-  dt
+surveys_pth %>%
+  dplyr::select(-id, -site_type, -site_id, -reporter_username, -absolute_admin_url) %>%
+  dt()
 ```
 
 

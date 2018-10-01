@@ -20,17 +20,35 @@ source("load_data.R")
 * Note: re-run uncached data import after changing tracks.
 
 ## Tracks outside known sites
+Review whether there are stray tracks close to known sites.
+
+* WAStD sites missing (new sites) or boundaries set too narrow. 
+  Extend sites, re-save stray tracks to auto-repair their site affiliation.
+* Training records close to site (but not meant to be within site).
+  Change confirmed training records outside training areas to "Hatchback turtles" 
+  and mark as "curated" to prevent from being overwritten by repeated data loading.
+* Note: re-run uncached data import after changing tracks.
+
 ```{r tracks_missing_sites}
 tracks_all %>% 
-  filter_realspecies() %>%
-  filter_nosite() %>%
+  filter_exclude_training_species() %>%
+  filter_missing_site() %>%
   add_nest_labels() %>% 
   map_tracks()
 ```
 
 ## Disturbance outside known sites
+Review disturbances close to known sites.
+
+Disturbances can either be legitimate, although opportunistic, records, or training
+records.
+
+* Training records: set to "Other, see comments", mention "training" in comments,
+  ideally instruct data collectors to photograph their writing board with "training"
+  written on it to make absolutely clear that this record is a training record.
+
 ```{r dist_missing_sites}
-disturbance %>% filter_nosite() %>% map_dist()
+disturbance %>% filter_missing_site() %>% map_dist()
 ```
 
 
@@ -40,8 +58,8 @@ disturbance %>% filter_nosite() %>% map_dist()
 ### Tracks with missing surveys
 ```{r missing_surveys}
 missing_surveys <- tracks_all %>%
-  filter_nosurvey() %>%
-  dplyr::group_by(site_id, site_name, date) %>%
+  filter_missing_survey() %>%
+  dplyr::group_by(site_id, site_name, turtle_date) %>%
   dplyr::summarise(earliest_record = min(datetime), 
                    latest_record = max(datetime), 
                    survey_start_time = min(datetime) - lubridate::minutes(30),
@@ -49,6 +67,19 @@ missing_surveys <- tracks_all %>%
                    reporter = first(reporter),
                    no_tracks = n()) 
 missing_surveys %>% dt
+```
+
+
+## Surveys missing Site Visit End
+Where a "Site Visit End" form was forgotten, `end_source_id` is empty, and the duration is set to 6h. 
+These surveys should be closed a few minutes after the last recorded track or disturbance.
+
+Surveys with missing end contribute to an over-estimation of survey effort.
+
+This task will be automated soon.
+  
+```{r surveys_missing_end}
+surveys %>% filter_surveys_missing_end() %>% dt()
 ```
 
 
@@ -60,4 +91,26 @@ Nest tags are often malformed. Use the "Update in WAStD" button and extract "tag
 
 ```{r nests_all}
 nests_all %>% map_nests()
+```
+
+
+## Username mismatches
+TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data collectors vs 
+[WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
+
+```{r name_mismatch}
+surveys %>% filter_surveys_requiring_qa() %>% dt()
+```
+
+## Data catalogue
+Data are uploaded to the [turtle nest census dataset](https://data.dpaw.wa.gov.au/dataset/turtle-tracks) 
+on the departmental data catalogue, accessible from the DBCA intranet only.
+
+```{r data_upload_ckan}
+# Create a resource for the QA workbook
+# d <- ckanr::package_show("turtle-tracks")
+# r <- resource_create(package_id=d$id, name="Turtle Nesting Census Quality Control", upload="QA.html")
+
+# Update resources on data catalogue
+ckanr::resource_update("be63cdd8-4aba-4329-b333-8090b076c792", "QA.html")
 ```

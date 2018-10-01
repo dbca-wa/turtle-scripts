@@ -20,8 +20,8 @@ if (file.exists(here::here("data", "tracks.Rda"))) {
   save(
     animal_records,
     animals,
-    tracks_all,
     track_records,
+    tracks_all,
     disturbance_records,
     disturbance,
     survey_records,

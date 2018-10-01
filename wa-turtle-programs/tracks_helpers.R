@@ -1,17 +1,16 @@
-# Deprecated
+# Deprecated --------------------------------------------------------------------------------------#
 daily_species_by_type <- . %>%
   filter(nest_age == "fresh") %>%
   group_by(season, turtle_date, species, nest_type) %>%
   tally() %>%
   ungroup()
 
-# Deprecated
 daily_summary <- . %>%
   daily_species_by_type() %>%
   tidyr::spread(nest_type, n, fill = 0) %>%
   DT::datatable(.)
 
-# Deprecated, use nesting_type_by_season_species
+# use nesting_type_by_season_species
 species_by_type <- . %>%
   filter(nest_age == "fresh") %>%
   group_by(season, species, nest_type) %>%
@@ -19,6 +18,7 @@ species_by_type <- . %>%
   ungroup() %>%
   tidyr::spread(nest_type, n, fill = 0)
 
+# wastdr staging ----------------------------------------------------------------------------------#
 # Pivot table of nesting type by season and species
 nesting_type_by_season_species <- . %>%
   filter(nest_age == "fresh") %>%
@@ -42,6 +42,7 @@ nesting_type_by_season_day_species <- . %>%
   tally() %>%
   ungroup()
 
+# Plot of nesting_type_by_season_day_species over time
 tracks_ts <- function(data, placename="", prefix="") {
   data %>%
     nesting_type_by_season_day_species() %>%
@@ -60,7 +61,8 @@ tracks_ts <- function(data, placename="", prefix="") {
       ggplot2::scale_y_continuous(limits = c(0, NA)) +
       ggplot2::xlab("Turtle date") +
       ggplot2::theme_classic() +
-      ggsave(glue::glue("{prefix}_track_abundance_{wastdr::urlize(placename)}.png"), width = 10, height = 6) +
+      ggsave(glue::glue("{prefix}_track_abundance_{wastdr::urlize(placename)}.png"),
+             width = 10, height = 6) +
       NULL
   }
 }
@@ -68,11 +70,12 @@ tracks_ts <- function(data, placename="", prefix="") {
 
 
 hatching_emergence_success <- . %>%
-  filter(nest_type=="hatched-nest") %>%
+  dplyr::filter(nest_type=="hatched-nest") %>%
   dplyr::filter(hatching_success >= 0) %>%
-  group_by(season, species) %>%
+  dplyr::group_by(season, species) %>%
   dplyr::summarize(
     "count" = n(),
+    "clutch_size_fresh" = mean(clutch_size_fresh) %>% round(digits = 2),
     "clutch_size_mean" = mean(clutch_size) %>% round(digits = 2),
     "clutch_size_sd" = sd(clutch_size) %>% round(digits = 2),
     "clutch_size_min" = min(clutch_size),
@@ -160,6 +163,35 @@ track_success_by_species <- function(track_success) {
   )
 }
 
+gganimate_tracks <- function(data, placename=NULL, prefix=NULL, gm_apikey=NULL) {
+  require(purrr)
+
+  pl <- placename %||% "Western Australia"
+  pf <- prefix %||% "WA"
+
+  # Basemap: Google Maps
+  apikey = gm_apikey %||%
+    Sys.getenv("GOOGLE_MAPS_APIKEY") %||%
+    stop("Need a Google Maps API key as system variable GOOGLE_MAPS_APIKEY")
+  ggmap::register_google(key = apikey)
+  bbx <- ggmap::make_bbox(longitude, latitude, data, f = 0.05)
+  ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
+  # basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
+  basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>%
+    ggmap::ggmap()
+
+  # Add turtle tracks to basemap, discard warnings
+  tracks_map <- suppressWarnings(
+    basemap + ggplot2::geom_point(aes(longitude, latitude, colour = nest_type), data = data)
+  ) +
+    ggplot2::ggtitle(glue::glue("Turtle Nesting at {pl}"), subtitle = "Turtle date: {frame_time}") +
+    gganimate::transition_time(turtle_date) +
+    gganimate::ease_aes("elastic-in") +
+    gganimate::exit_fade()
+  gganimate::animate(tracks_map, fps = 2) %T>%
+    gganimate::anim_save(glue::glue("{pf}_nesting.gif"), .)
+}
+
 survey_count <- function(surveys, sid, season=2017){
   nrow(filter(surveys, site_id==sid, season==season))
 }
@@ -222,9 +254,9 @@ filter_2018 <- . %>% dplyr::filter(season==2018)
 # Sites
 filter_broome <- . %>% dplyr::filter(area_name=="Cable Beach Broome")
 filter_broome_sites <- . %>% dplyr::filter(site_id %in% c(22, 23, 24))
-filter_cbb1 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 1")
-filter_cbb2 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 2")
-filter_cbb3 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 3")
+filter_bme_cbb1 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 1")
+filter_bme_cbb2 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 2")
+filter_bme_cbb3 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 3")
 
 filter_emb <- . %>% dplyr::filter(site_id %in% c(36,37))
 filter_emb_ap <- . %>% dplyr::filter(site_id==37) # anna plains
@@ -234,13 +266,15 @@ filter_port_hedland_sites <- . %>% dplyr::filter(site_id %in% c(35, 45))
 filter_port_hedland_cemetery <- . %>% dplyr::filter(site_id==35)
 filter_port_hedland_prettypool <- . %>% dplyr::filter(site_id==45)
 
-filter_wp <- . %>% dplyr::filter(site_id %in% c(25, 26, 27))
-filter_cw <- . %>% dplyr::filter(site_id == 26) # id 26
-filter_bb <- . %>% dplyr::filter(site_id == 25) # id 25
-filter_yc <- . %>% dplyr::filter(site_id == 27) # id 27
+filter_wp <- . %>% dplyr::filter(site_id %in% c(25, 26, 27, 46, 47))
+filter_wp_coolingwater <- . %>% dplyr::filter(site_id == 26)
+filter_wp_bells <- . %>% dplyr::filter(site_id == 25)
+filter_wp_yachtblub <- . %>% dplyr::filter(site_id == 27)
+filter_wp_boat <- . %>% dplyr::filter(site_id == 46)
+filter_wp_cleaverville <- . %>% dplyr::filter(site_id == 47)
 
-filter_di <- . %>% dplyr::filter(site_id == 39)
-filter_ri <- . %>% dplyr::filter(site_id == 40)
+filter_del <- . %>% dplyr::filter(site_id == 39)
+filter_ros <- . %>% dplyr::filter(site_id == 40)
 filter_thv <- . %>% dplyr::filter(site_id %in% c(20, 28, 29))
 filter_thvn <- . %>% dplyr::filter(site_id == 28)
 filter_thvs <- . %>% dplyr::filter(site_id == 29)
@@ -250,3 +284,12 @@ filter_nosite <- . %>% dplyr::filter(is.na(site_id))
 filter_nosurvey <- . %>% dplyr::filter(is.na(survey_id))
 filter_realspecies <- . %>% dplyr::filter(species != 'corolla-corolla')
 filter_realsurveys <- . %>% dplyr::filter(is_production == TRUE)
+
+# filters for wastdr ------------------------------------------------------------------------------#
+filter_exclude_training_species <- . %>% dplyr::filter(species != 'corolla-corolla')
+filter_missing_survey <- . %>% dplyr::filter(is.na(survey_id))
+filter_missing_site <- . %>% dplyr::filter(is.na(site_id))
+filter_surveys_missing_end <- . %>% dplyr::filter(is.na(end_source_id))
+filter_surveys_exclude_training <- . %>% dplyr::filter(is_production == TRUE)
+filter_surveys_requiring_qa <- . %>% dplyr::filter(grepl("QA", start_comments) | grepl("QA", end_comments))
+filter_surveys_missing_end <- . %>% dplyr::filter(is.na(end_source_id))

@@ -6,6 +6,7 @@ knitr::opts_chunk$set(
 library(here)
 library(wastdr)
 library(dplyr)
+library(purrr)
 library(tidyr)
 library(magrittr)
 library(skimr)
