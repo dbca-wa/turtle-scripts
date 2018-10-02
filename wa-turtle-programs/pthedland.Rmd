@@ -54,11 +54,12 @@ This led to under-reporting of hatched nests this season.
 ## Going digital
 Entering and proofreading a record takes about 2 minutes with full concentration.
 By going digital, data entry and proofreading are fully automated.
-This season, the Care for Hedland Volunteers have saved Jo and the Kellies 
-`r (nrow(tracks_pth) + nrow(surveys_pth)*2) * 2 / 60` hours of mind-numbing data entry
-and proofreading work for `r nrow(tracks_pth)` Track or Treats and 
+Overall, the Volunteers have saved 
+`r round((nrow(tracks_pth) + nrow(surveys_pth)*2 + nrow(dist_pth)) * 2 / 60)` 
+hours of mind-numbing data entry and proofreading work for 
+`r nrow(tracks_pth)` Tracks, 
+`r nrow(dist_pth)` Disturbances, and 
 `r nrow(surveys_pth)*2` Site Visit Starts/Ends. 
-This estimate excludes Fox Sakes and Marine Wildlife Incidents, about 2-3h extra!
 
 ## Maps
 ### Nesting at Cemetery Beach
@@ -72,7 +73,6 @@ tracks_pth_cem %>% filter_2017() %>% map_tracks()
 ```{r map_ppo}
 tracks_pth_ppo %>% filter_2017() %>% map_tracks()
 ```
-
 
 ### Animated map
 A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
@@ -120,12 +120,12 @@ tracks_pth %>% nesting_type_by_season_week_species() %>% kable()
 ```
 
 ### Cemetery Beach
-```{r tracks_cem}
+```{r nesting_cem}
 tracks_pth_cem %>% nesting_type_by_season_week_species() %>% kable()
 ```
 
 ### Pretty Pool Beach
-```{r tracks_ppo}
+```{r nesting_ppo}
 tracks_pth_ppo %>% nesting_type_by_season_week_species() %>% kable()
 ```
 
@@ -180,7 +180,6 @@ There were **`r count(dist_pth)` reports** of general disturbance or predator pr
 dist_pth %>% filter_2017 %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
 dist_pth %>% map_dist
 ```
-
 
 ## Surveys
 Curators are to QA 
@@ -301,7 +300,7 @@ zip(zipfile = products_fn, files = products)
 # r <- resource_create(package_id=d$id, name="Care for Hedland figures", upload=products_fn)
 
 # Update resources on data catalogue 
-ckanr::resource_update("b35fb19e-e72d-420c-b875-12b4db4afe8c", "pthedland_2017-18.html")
+ckanr::resource_update("b35fb19e-e72d-420c-b875-12b4db4afe8c", "pthedland.html")
 ckanr::resource_update("d8c309c4-66c2-449f-bdb3-5f41d3f15315", products_fn)
 ```
 
