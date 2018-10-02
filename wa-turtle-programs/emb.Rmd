@@ -17,219 +17,152 @@ source("tracks_helpers.R")
 source("load_data.R")
 ```
 
-# Caveat
-The data shown are pending QA and reconciliation with paper-based records. 
-Until this warning disappears, this dataset may contain duplicates from training runs, effort attributed to the wrong operators, and possibly other issues and biases.
 
 # Data
 Eighy Mile Beach is surveyed at sites Anna Plains and Caravan Park.
 ```{r load_data}
-tracks_emb <- tracks_all %>% filter_emb() %>% filter_realspecies() %>% add_nest_labels()
-tracks_emb_ap <- tracks_emb %>% filter_emb_ap()
-tracks_emb_cv <- tracks_emb %>% filter_emb_cvp()
+tracks_emb <- tracks_all %>% filter_emb() %>% exclude_training_species() %>% add_nest_labels()
+tracks_emb_ap <- tracks_emb %>% filter_emb_annaplains()
+tracks_emb_cv <- tracks_emb %>% filter_emb_caravanpark()
 dist_emb <- disturbance %>% filter_emb()
 surveys_emb <- surveys %>% filter_emb()
-surveys_emb_prod <- surveys_emb %>% filter_realsurveys()
+surveys_emb_prod <- surveys_emb %>% exclude_training_surveys()
 nests_emb <- nests_all %>% filter_emb()
 
-prefix <- "EMB"
-placename <- "Eighty Mile Beach"
+prefix_emb <- "EMB"
+placename_emb <- "Eighty Mile Beach"
+placename_emb_ap <- "Anna Plains" 
+placename_emb_cv <- "Caravan Park"
 ```
-
 
 # QA
-This section identifies tracks and disturbances outside known sites, missing surveys, and surveys requiring editing.
-We show data from all regions as not to miss any stray records - ignore data not relevant to this analysis.
+Most QA is done across all WA records and programs in the separate QA workbook.
 
-## Tracks outside known sites
-Review whether there are stray tracks close to this program's sites.
-
-* WAStD sites missing (new sites) or boundaries set too narrow. 
-  Extend sites, re-save stray tracks to auto-repair their site affiliation.
-* Training records close to site (but not meant to be within site).
-  Change confirmed training records outside training areas to "Hatchback turtles" 
-  and mark as "curated" to prevent from being overwritten by repeated data loading.
-* Note: re-run uncached data import after changing tracks.
-
-```{r tracks_missing_sites}
-tracks_all %>% 
-  filter_nosite() %>%
-  filter_realspecies() %>%
-  add_nest_labels() %>% 
-  map_tracks()
-```
-
-## Disturbance outside known sites
-Review disturbances close to this program's sites. It is safe to ignore other disturbances.
-
-Disturbances can either be legitimate, although opportunistic, records, or training
-records.
-
-* Training records: set to "Other, see comments", mention "training" in comments,
-  ideally instruct data collectors to photograph their writing board with "training"
-  written on it to make absolutely clear that this record is a training record.
-
-```{r dist_missing_sites}
-disturbance %>% filter_nosite() %>% map_dist()
-```
-
-## Surveys in WAStD
-Curators are to QA 
-[all `r placename` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=36,37) following the 
-[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
-
-Split up per site:
-
-* [Caravan Park](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=36)
-* [Anna Plains](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=37)
-
-## Surveys missing end
-Where a "Site Visit End" form was forgotten, `end_source_id` is empty, and the duration is set to 6h. 
-These surveys should be closed a few minutes after the last recorded track or disturbance.
-
-Surveys with missing end contribute to an over-estimation of survey effort.
-
-This task will be automated soon.
-  
-```{r surveys_missing_end}
-surveys_emb %>% filter_surveys_missing_end %>% dt()
-```
+This section identifies data requiring editing.
 
 ## Provided username mismatches WAStD users
-TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data collectors vs 
-[WAStD users](https://tsc.dbca.wa.gov.au/admin/users/user/).
-
-```{r name_mismatch}
-surveys_emb %>% filter_surveys_requiring_qa %>% dt()
+```{r name_mismatch_emb}
+surveys_emb %>% filter_surveys_requiring_qa() %>% dt()
 ```
 
 # Season summary
 
-## General notes
-Nests without a clearly visible emergence point were not recorded.
-This led to under-reporting of hatched nests this season.
-
 ## Going digital
 Entering and proofreading a record takes about 2 minutes with full concentration.
 By going digital, data entry and proofreading are fully automated.
-This season, the Volunteers have saved 
-`r (nrow(tracks_emb) + nrow(surveys_emb)*2 + nrow(dist_emb)) * 2 /60` hours of 
-mind-numbing data entry and proofreading work for `r nrow(tracks_emb)` Track or Treats and 
-`r nrow(surveys_emb)*2` Site Visit Starts/Ends.
+Overall, the Volunteers have saved 
+`r round((nrow(tracks_emb) + nrow(surveys_emb)*2 + nrow(dist_emb)) * 2 / 60)` 
+hours of mind-numbing data entry and proofreading work for 
+`r nrow(tracks_emb)` Tracks, 
+`r nrow(dist_emb)` Disturbances, and 
+`r nrow(surveys_emb)*2` Site Visit Starts/Ends. 
 
 ## Maps
-```{r map_overall}
-tracks_emb %>% map_tracks()
-# tracks_ap %>% map_tracks()
-# tracks_cv %>% map_tracks()
+```{r map_emb}
+tracks_emb_ap %>% filter_2017() %>% map_tracks()
+tracks_emb_cv %>% filter_2017() %>% map_tracks()
 ```
-
 
 ### Animated map
 A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
 be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
-```{r map_animated}
-ggmap::register_google(key = Sys.getenv("GOOGLE_MAPS_APIKEY"))
-
-# basemap
-bbx <- ggmap::make_bbox(longitude, latitude, tracks_emb, f = 0.05)
-ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
-# basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
-basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>%
-  ggmap::ggmap()
-
-# tracks
-tracks_map <- suppressWarnings(
-  basemap +
-    geom_point(aes(longitude, latitude, colour = nest_type),
-      data = tracks_pth, alpha = 0.8
-    )
-) +
-  ggplot2::ggtitle("Turtle Nesting", subtitle = "Turtle date: {frame_time}") +
-  gganimate::transition_time(date) +
-  gganimate::ease_aes("linear")
-
-# render and save
-gganimate::animate(tracks_map, fps = 2) %T>%
-  gganimate::anim_save(glue::glue("{prefix}_nesting.gif"), .)
+```{r map_emb_animated, warning=FALSE}
+tracks_emb_2017 <- tracks_emb %>% filter_2017()
+gganimate_tracks(tracks_emb_2017, placename_emb, prefix_emb)
 ```
-
 
 ### Tagged nests
-2017-18: no tagged nests.
+The map is saved as a PNG file `r glue::glue(prefix_emb, "_tagged_nests.png")`.
 
-The map (once enabled) is saved as a PNG file `r glue::glue(prefix, "_tagged_nests.png")`.
+Coming 2018.
 
-```{r nests_all, eval=F}
-nests_emb %>% map_nests() %>% mapview::mapshot(file=glue::glue("{prefix}_tagged_nests.png"))
+```{r nests_emb, eval=F}
+nests_emb %>%
+  filter_2017() %>%
+  map_nests() %>%
+  mapview::mapshot(file = glue::glue("{prefix_emb}_tagged_nests_2017.png"))
 ```
-
 
 ## Nesting abundance
-```{r tracks_all_sectors}
-tracks_emb %>% species_by_type() %>% kable(.)
+### All beaches
+```{r tracks_all_sectors_emb}
+tracks_emb %>% nesting_type_by_season_species() %>% kable()
 ```
 
-```{r tracks_ap}
-tracks_emb_ap %>% species_by_type() %>% kable()
+## Nesting by week
+### All beaches
+The next table show data from all sites.
+
+```{r tracks_all_beaches_by_week_emb}
+tracks_emb %>% nesting_type_by_season_week_species() %>% kable()
 ```
 
-```{r tracks_cv}
-tracks_emb_cv %>% species_by_type() %>% kable()
+### Anna Plains
+```{r tracks_all_beaches_by_week_emb_ap}
+tracks_emb_ap %>% nesting_type_by_season_week_species() %>% kable()
 ```
 
-## Nesting success 
-Split into CVP and APL?
+### Caravan Park
+```{r tracks_all_beaches_by_week_emb_cv}
+tracks_emb_cv %>% nesting_type_by_season_week_species() %>% kable()
+```
 
-```{r nesting_success, warning = F}
-tracks_emb %>% tracks_ts()
+## Nesting by day
 
-tracks_emb %>% tracks_ts(placename, prefix)
-tracks_emb_ap %>% tracks_ts("Cemetery Beach", prefix)
-tracks_emb_cp %>% tracks_ts("Pretty Pool Beach", prefix)
+### All sites
+This section shows data from all sites.
 
+```{r nesting_success_emb, warning = F}
+tracks_emb %>% tracks_ts(placename_emb, prefix_emb)
 nests <- tracks_emb %>% track_success()
-
-nests %>% ggplot_track_success_by_date("natator-depressus", placename, prefix)
-nests %>% ggplot_track_successrate_by_date("natator-depressus", placename, prefix)
+nests %>% ggplot_track_success_by_date("natator-depressus", placename_emb, prefix_emb)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_emb, prefix_emb)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", placename_emb, prefix_emb)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename_emb, prefix_emb)
 nests %>% track_success_by_species() %>% DT::datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
 ```
 
+### Anna Plains
+This section shows data from Anna Plains.
 
-```{r}
-nests <- tracks_cv %>% track_success()
-label <- "Caravan Park"
+```{r nesting_success_emb_ap, warning = F}
+tracks_emb_ap %>% tracks_ts(placename_emb_ap, prefix_emb)
+nests <- tracks_emb_ap %>% track_success()
+nests %>% ggplot_track_success_by_date("natator-depressus", placename_emb_ap, prefix_emb)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_emb_ap, prefix_emb)
+# nests %>% ggplot_track_success_by_date("chelonia-mydas", placename_emb_ap, prefix_emb)
+# nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename_emb_ap, prefix_emb)
+nests %>% track_success_by_species() %>% DT::datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
+```
 
-nests %>% ggplot_track_success_by_date("natator-depressus", label)
-# nests %>% ggplot_track_success_by_date("chelonia-mydas", label)
-nests %>% ggplot_track_successrate_by_date("natator-depressus", label)
-# nests %>% ggplot_track_successrate_by_date("chelonia-mydas", label)
-nests %>% track_success_by_species() %>% datatable(.,
+### Caravan Park
+This section shows data from Caravan Park.
+
+```{r nesting_success_emb_cv, warning = F}
+tracks_emb_cv %>% tracks_ts(placename_emb_cv, prefix_emb)
+nests <- tracks_emb_cv %>% track_success()
+nests %>% ggplot_track_success_by_date("natator-depressus", placename_emb_cv, prefix_emb)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_emb_cv, prefix_emb)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", placename_emb_cv, prefix_emb)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename_emb_cv, prefix_emb)
+nests %>% track_success_by_species() %>% DT::datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
 ```
 
 ## Hatching and emergence success
-```{r hatching_emergence_success}
-tracks_ap %>%
-  hatching_emergence_success() %>%
-  DT::datatable(.,
-    caption = "Hatching and emergence success summary Anna Plains",
-    options = list(paging = F)
-  )
+All sites.
 
-tracks_cv %>%
+```{r hatching_emergence_success_emb}
+tracks_emb %>%
   hatching_emergence_success() %>%
-  DT::datatable(.,
-    caption = "Hatching and emergence success summary Caravan Park",
-    options = list(paging = F)
-  )
-
+  DT::datatable(., caption = "Hatching and emergence success summary", options = list(paging = F))
 ```
-
 
 ## Disturbance and predation
 Disturbed nests are captured through form "Track or Treat" and appear here
@@ -241,56 +174,46 @@ General signs of disturbance or predator presence are recorded through form
 ### Disturbance and predation of nests
 Turtle nests with recorded disturbance or predation.
 
-```{r}
-disturbed_nests_emb <- tracks_emb %>% filter(disturbance == "present")
-disturbed_nests_emb %>% add_nest_labels() %>% map_tracks()
+```{r dist_nests_emb}
+disturbed_nests_emb <- tracks_emb %>% filter_2017() %>% filter(disturbance == "present")
+disturbed_nests_emb %>% map_tracks()
 ```
 
-There were **`r count(disturbed_nests_emb)` reports** of disturbed nests. Caveat: QA to exclude possible training records.
+There were **`r count(disturbed_nests_emb)` reports** of disturbed nests. 
+Caveat: QA to exclude possible training records.
 
 Coming soon: details of disturbance to nests.
 
 ### General disturbance
+There were **`r count(dist_emb)` reports** of general disturbance or predator presence.
 
-There were **`r count(dist_emb)` reports** of general disturbance or predator presence:
-
-```{r}
-dist_emb %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
-dist_emb %>% map_dist
+```{r map_dist_emb}
+dist_emb %>% filter_2017() %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
+dist_emb %>% map_dist()
 ```
 
+# Surveys
+Curators are to QA 
+[all `r placename_emb` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=22,23,24)
+following the 
+[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
 
 ## Survey count
 
 ### Caveat
-* Data includes training surveys.
-
-This contributes to over-estimation of effort, but shows actual boots on the 
-ground - training is also an effort!
-
-```{r survey_count}
-surveys_emb %>% survey_count_heatmap(placename, prefix)
-surveys_emb %>% list_survey_count(placename)
-surveys_emb %>% survey_hours_heatmap(placename, prefix)
-surveys_emb %>% list_survey_effort(placename)
-```
-
-## Survey effort in hours
-Q How many hours did volunteers survey, how many kilometers were walked?
-
-### Caveat
-* Surveys with missing end points are auto-closed after 5 hours. 
+* Surveys with missing end points are auto-closed after 6 hours. 
 * Data includes training surveys.
 
 Both factors contribute to over-estimation of effort.
 
-```{r survey_effort}
-surveys_emb %>% plot_survey_effort("Eighty Mile Beach")
-surveys_emb %>% list_survey_effort("Eighty Mile Beach")
+```{r survey_count}
+surveys_emb %>% survey_count_heatmap(placename_emb, prefix_emb)
+surveys_emb %>% list_survey_count(placename_emb)
+surveys_emb %>% survey_hours_heatmap(placename_emb, prefix_emb)
+surveys_emb %>% list_survey_effort(placename_emb)
 ```
 
 ## Survey effort per primary reporter
-Q Which volunteer did the most hours overall on survey?
 
 ### Caveat
 This list only includes the primary reporter. 
@@ -307,43 +230,49 @@ their survey effort on that day is incorrectly attributed to the previous report
 The only way to reconcile attribution is to manually compare survey usernames with
 team rosters.
 
-
-Note: Florian Mayer was logged into the device during training, 
-so hours logged against Florian should correctly be attributed to the actual
-data collectors.
-
 ```{r survey_effort_by_person}
-personal_effort <- surveys_emb %>% survey_hours_per_person()
-personal_effort %>% kable()
+personal_effort_emb <- surveys_emb %>% survey_hours_per_person()
+personal_effort_emb %>% kable()
 ```
 
 ## Survey effort in kilometers walked
 Number of surveys per sector times length of site.
 
-**Note** adjust length estimates.
+At Anna Plains, `r survey_ground_covered(surveys, 37, 6)` km were covered
+in `r survey_count(surveys, 22)` surveys.
 
-At Anna Plains, assuming the round trip was 6 km,
-`r survey_ground_covered(surveys, 37, 6)` km were covered 
-in `r survey_count(surveys, 37)` surveys.
+In sector 2, `r survey_ground_covered(surveys, 36, 6)` km were covered
+in `r survey_count(surveys, 23)` surveys.
 
-At Caravan Park Beach, assuming the round trip was 6 km,
-`r survey_ground_covered(surveys, 36, 6)` km were covered 
-in `r survey_count(surveys, 36)` surveys.
 
-# Data upload
+## Raw data
+* Raw data are exported into CSV spreadsheets.
+* Key figures are exported into .png raster files.
+* This report is rendered into a single HTML page.
 
-```{r data_upload}
+```{r data_export_csv}
+tracks_emb %>% dplyr::select(-obs, -photos) %>% 
+  readr::write_csv(glue::glue("{prefix_emb}_tracks.csv"))
+surveys_emb %>% readr::write_csv(glue::glue("{prefix_emb}_surveys.csv"))
+dist_emb %>% dplyr::select(-photos) %>% 
+  readr::write_csv(glue::glue("{prefix_emb}_disturbance.csv"))
+```
+
+## Data catalogue
+Data are uploaded to the [turtle nest census dataset](https://data.dpaw.wa.gov.au/dataset/turtle-tracks) 
+on the departmental data catalogue, accessible from the DBCA intranet only.
+
+```{r data_upload_ckan}
+# Package all output files into one ZIP archive
+products_fn_emb <- glue::glue("{prefix_emb}_products.zip")
+if (file.exists(products_fn_emb)) file.remove(products_fn_emb)
+zip(zipfile = products_fn_emb, files = list.files(pattern = prefix_emb))
+
+# Create a resource for the ZIP archives
 # d <- ckanr::package_show("turtle-tracks")
-ckanr::resource_update("56f1071d-b8ed-4ac7-bb37-a5151978a9f1", "emb_2017-18.html")
-```
+# r <- resource_create(package_id=d$id, name="Eighty Mile Beach Turtle Nesting Census", upload="emb.html")
+# r <- resource_create(package_id=d$id, name="Eighty Mile Beach outputs", upload=products_fn_emb)
 
-```{r data_export}
-tracks_emb %>% 
-  select(-obs, -photos) %>% 
-  readr::write_csv(here::here("data", "tracks_emb.csv"))
-surveys_emb %>% 
-  readr::write_csv(here::here("data", "surveys_emb.csv"))
-dist_emb %>% select(-photos) %>% 
-  readr::write_csv(here::here("data", "dist_emb.csv"))
+ckanr::resource_update("56f1071d-b8ed-4ac7-bb37-a5151978a9f1", "emb.html")
+ckanr::resource_update("36ed9a40-8b98-411f-beed-e8d0e83d964b", products_fn_emb)
 ```
-
