@@ -1,0 +1,215 @@
+---
+title: "Broome Season Review 2017-18"
+author: "Marine Turtles WA, Sarah Mullineux, Florian Mayer"
+date: "`r Sys.time()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fig_width: 10
+    fig_height: 6
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+source("tracks_setup.R")
+source("tracks_helpers.R")
+source("load_data.R")
+```
+
+# Data
+
+```{r filter_data}
+tracks_bme <- tracks_all %>% filter_bme() %>% exclude_training_species() %>% add_nest_labels()
+surveys_bme <- surveys %>% filter_bme()
+surveys_bme_prod <- surveys_bme %>% exclude_training_surveys()
+dist_bme <- disturbance %>% filter_bme()
+nests_bme <- nests_all %>% filter_bme()
+prefix_bme <- "BME"
+placename_bme <- "Cable Beach Broome"
+```
+
+# QA
+Most QA is done across all WA records and programs in the separate QA workbook.
+
+This section identifies data requiring editing.
+
+## Provided username mismatches WAStD users
+```{r name_mismatch_bme}
+surveys_bme %>% filter_surveys_requiring_qa() %>% dt()
+```
+# Season summary
+
+## Going digital
+Entering and proofreading a record takes about 2 minutes with full concentration.
+By going digital, data entry and proofreading are fully automated.
+Overall, the Volunteers have saved 
+`r round((nrow(tracks_bme) + nrow(surveys_bme)*2 + nrow(dist_bme)) * 2 / 60)` 
+hours of mind-numbing data entry and proofreading work for 
+`r nrow(tracks_bme)` Tracks, 
+`r nrow(dist_bme)` Disturbances, and 
+`r nrow(surveys_bme)*2` Site Visit Starts/Ends. 
+
+## Maps
+```{r map_bme}
+tracks_bme %>% filter_2017() %>% map_tracks()
+```
+
+### Animated map
+A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
+be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
+
+```{r map_bme_animated, warning=FALSE}
+tracks_bme_2017 <- tracks_bme %>% filter_2017()
+gganimate_tracks(tracks_bme_2017, placename_bme, prefix_bme)
+```
+
+### Tagged nests
+The map is saved as a PNG file `r glue::glue(prefix_bme, "_tagged_nests.png")`.
+
+Coming 2018.
+
+```{r nests_bme, eval=F}
+nests_bme %>%
+  filter_2017() %>%
+  map_nests() %>%
+  mapview::mapshot(file = glue::glue("{prefix_bme}_tagged_nests_2017.png"))
+```
+
+## Nesting abundance
+### All beaches
+```{r tracks_all_sectors_bme}
+tracks_bme %>% nesting_type_by_season_species() %>% kable()
+```
+
+## Nesting by week
+### All beaches
+The next table show data from all sites.
+
+```{r tracks_all_beaches_by_week_bme}
+tracks_bme %>% nesting_type_by_season_week_species() %>% kable()
+```
+
+## Nesting by day
+This section shows data from all sites.
+
+```{r nesting_success_bme, warning = F}
+tracks_bme %>% tracks_ts(placename_bme, prefix_bme)
+nests <- tracks_bme %>% track_success()
+nests %>% ggplot_track_success_by_date("natator-depressus", placename_bme, prefix_bme)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_bme, prefix_bme)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", placename_bme, prefix_bme)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename_bme, prefix_bme)
+nests %>% track_success_by_species() %>% DT::datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
+```
+
+## Hatching and emergence success
+```{r hatching_emergence_success_bme}
+tracks_bme %>%
+  hatching_emergence_success() %>%
+  DT::datatable(., caption = "Hatching and emergence success summary", options = list(paging = F))
+```
+
+## Disturbance and predation
+Disturbed nests are captured through form "Track or Treat" and appear here
+as "tracks" with "disturbance" recorded as "present".
+
+General signs of disturbance or predator presence are recorded through form 
+"Fox Sake" and appear here as "dist_(place)".
+
+### Disturbance and predation of nests
+Turtle nests with recorded disturbance or predation.
+
+```{r dist_nests_bme}
+disturbed_nests_bme <- tracks_bme %>% filter_2017() %>% filter(disturbance == "present")
+disturbed_nests_bme %>% map_tracks()
+```
+
+There were **`r count(disturbed_nests_bme)` reports** of disturbed nests. 
+Caveat: QA to exclude possible training records.
+
+Coming soon: details of disturbance to nests.
+
+### General disturbance
+There were **`r count(dist_bme)` reports** of general disturbance or predator presence.
+
+```{r map_dist_bme}
+dist_bme %>% filter_2017() %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
+dist_bme %>% map_dist()
+```
+
+# Surveys
+Curators are to QA 
+[all `r placename_bme` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=22,23,24)
+following the 
+[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
+
+## Survey count
+
+### Caveat
+* Surveys with missing end points are auto-closed after 6 hours. 
+* Data includes training surveys.
+
+Both factors contribute to over-estimation of effort.
+
+```{r survey_count}
+surveys_bme %>% survey_count_heatmap(placename_bme, prefix_bme)
+surveys_bme %>% list_survey_count(placename_bme)
+surveys_bme %>% survey_hours_heatmap(placename_bme, prefix_bme)
+surveys_bme %>% list_survey_effort(placename_bme)
+```
+
+## Survey effort per primary reporter
+
+### Caveat
+This list only includes the primary reporter. 
+This leads to under-reporting of time spent by other volunteers attending the survey.
+Their names are listed in the Site Visit Start form field "comments" as free text.
+To correctly report on team member effort, curators have to read the list of 
+team members in the Site Visit "comments" field and attach the correct users 
+to the Survey team list.
+Once the surveys are comprehensively attributed to all volunteers present, this
+workbook has to be updated to include the Survey team's effort.
+
+If the primary reporter forgot to update the username in the tablet,
+their survey effort on that day is incorrectly attributed to the previous reporter.
+The only way to reconcile attribution is to manually compare survey usernames with
+team rosters.
+
+```{r survey_effort_by_person}
+personal_effort_bme <- surveys_bme %>% survey_hours_per_person()
+personal_effort_bme %>% kable()
+```
+
+## Survey effort in kilometers walked
+Number of surveys per sector times length of site.
+
+In sector 1, `r survey_ground_covered(surveys_bme, 22, 4)` km were walked 
+in `r survey_count(surveys_bme, 22)` surveys.
+
+In sector 2, `r survey_ground_covered(surveys_bme, 23, 4)` km were walked 
+in `r survey_count(surveys_bme, 23)` surveys.
+
+In sector 3, `r survey_ground_covered(surveys_bme, 24, 7)` km were walked 
+in `r survey_count(surveys_bme, 24)` surveys.
+
+
+# Data upload
+
+```{r data_upload}
+# Package all output files into one ZIP archive
+products_fn_bme <- glue::glue("{prefix_bme}_products.zip")
+if (file.exists(products_fn_bme)) file.remove(products_fn_bme)
+zip(zipfile = products_fn_bme, files = list.files(pattern = prefix_bme))
+
+# Create a resource for the ZIP archives
+d <- ckanr::package_show("turtle-tracks")
+# r <- resource_create(package_id=d$id, name="Cable Beach Broome Turtle Nesting Census", upload="broome.html")
+# r <- resource_create(package_id=d$id, name="Cable Beach Broome outputs", upload=products_fn_bme)
+
+ckanr::resource_update("9572e76b-55e9-4afb-b224-7cce7beb4959", "broome.html")
+ckanr::resource_update("fa5d9fff-90d4-4ac2-a578-18cc2964f6f6", products_fn_bme)
+```
+

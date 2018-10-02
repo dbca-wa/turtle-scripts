@@ -27,10 +27,10 @@ nesting_type_by_season_species <- . %>%
   dplyr::ungroup() %>%
   tidyr::spread(nest_type, n, fill = 0)
 
-# Pivot table of nesting type by season, week and species
+# Pivot table of nesting type by season, season_week, iso_week, and species
 nesting_type_by_season_week_species <- . %>%
   dplyr::filter(nest_age == "fresh") %>%
-  dplyr::group_by(season, week, species, nest_type) %>%
+  dplyr::group_by(season, season_week, iso_week, species, nest_type) %>%
   dplyr::tally() %>%
   dplyr::ungroup() %>%
   tidyr::spread(nest_type, n, fill = 0)
@@ -254,9 +254,9 @@ filter_2018 <- . %>% dplyr::filter(season==2018)
 
 # Sites
 filter_bme <- . %>% dplyr::filter(site_id %in% c(22, 23, 24))
-filter_bme_cbb1 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 1")
-filter_bme_cbb2 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 2")
-filter_bme_cbb3 <- . %>% dplyr::filter(site_name=="Cable Beach Broome Sector 3")
+filter_bme_cbb1 <- . %>% dplyr::filter(site_id==22)
+filter_bme_cbb2 <- . %>% dplyr::filter(site_id==23)
+filter_bme_cbb3 <- . %>% dplyr::filter(site_id==24)
 
 filter_emb <- . %>% dplyr::filter(site_id %in% c(36,37))
 filter_emb_annaplains <- . %>% dplyr::filter(site_id==37)

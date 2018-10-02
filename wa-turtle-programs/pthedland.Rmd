@@ -321,6 +321,6 @@ googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
 
 ```{r google_drive_upload}
 googledrive::drive_ls(prefix) %>% googledrive::drive_rm(.)
-googledrive::drive_upload("pthedland_2017-18.html", path=glue::glue("{prefix}/pthedland_2017-18.html"))
+googledrive::drive_upload("pthedland.html", path=glue::glue("{prefix}/pthedland.html"))
 products %>% purrr::map(googledrive::drive_upload, path=as_dribble(prefix))
 ```

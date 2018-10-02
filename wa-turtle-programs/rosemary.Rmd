@@ -49,8 +49,6 @@ By going digital, data entry and proofreading are fully automated.
 Time savings Rosemary: `r (nrow(tracks_ros) + nrow(surveys_ros)*2 + nrow(dist_ros)) * 2 / 60` 
 hours for `r nrow(tracks_ros)` Track or Treats and  `r nrow(surveys_ros)*2` Site Visit Starts/Ends. 
 
-# Rosemary Nesting
-
 ## Maps
 ```{r map_ros}
 tracks_ros %>% filter_2017() %>% map_tracks()

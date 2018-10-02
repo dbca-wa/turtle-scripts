@@ -361,7 +361,7 @@ zip(zipfile = products_fn, files = products)
 # r <- resource_create(package_id=d$id, name="West Pilbara Turtle Program outputs", upload=products_fn)
 
 # Update resources on data catalogue
-ckanr::resource_update("1c57e04a-c29c-464c-b82d-a69e4ee0b199", "westpilbara_2017-18.html")
+ckanr::resource_update("1c57e04a-c29c-464c-b82d-a69e4ee0b199", "westpilbara.html")
 ckanr::resource_update("53fcc7fc-a974-4f26-a4d7-2d39c9111211", products_fn)
 ```
 
@@ -382,7 +382,7 @@ googledrive::drive_auth(reset = TRUE, use_oob = TRUE)
 
 ```{r data_upload_google}
 googledrive::drive_ls("WPTP") %>% googledrive::drive_rm(.)
-googledrive::drive_upload("westpilbara_2017-18.html", path = "WPTP/westpilbara_2017-18.html")
+googledrive::drive_upload("westpilbara_2017-18.html", path = "WPTP/westpilbara.html")
 products %>% purrr::map(googledrive::drive_upload, path = as_dribble("WPTP"))
 ```
 
