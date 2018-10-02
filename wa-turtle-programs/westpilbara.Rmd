@@ -382,7 +382,7 @@ googledrive::drive_auth(reset = TRUE, use_oob = TRUE)
 
 ```{r data_upload_google}
 googledrive::drive_ls("WPTP") %>% googledrive::drive_rm(.)
-googledrive::drive_upload("westpilbara_2017-18.html", path = "WPTP/westpilbara.html")
+googledrive::drive_upload("westpilbara.html", path = "WPTP/westpilbara.html")
 products %>% purrr::map(googledrive::drive_upload, path = as_dribble("WPTP"))
 ```
 
