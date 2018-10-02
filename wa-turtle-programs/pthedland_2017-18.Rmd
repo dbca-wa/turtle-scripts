@@ -1,5 +1,5 @@
 ---
-title: "Care for Hedland Season Review 2017-2018"
+title: "Care for Hedland Turtle Nesting Census"
 author: "Care for Hedland with Marine Turtles WA"
 date: "`r Sys.time()`"
 output:
@@ -19,14 +19,13 @@ source("load_data.R")
 
 # Data
 ```{r load_data}
-tr <- tracks_all %>% filter_exclude_training_species() %>% add_nest_labels()
-tracks_pth <- tr %>% filter_port_hedland_sites()
-tracks_pth_cem <- tr %>% filter_port_hedland_cemetery()
-tracks_pth_ppo <- tr %>% filter_port_hedland_prettypool()
-surveys_pth <- surveys %>% filter_port_hedland_sites()
-surveys_pth_prod <- surveys_pth %>% filter_realsurveys()
-dist_pth <- disturbance %>% filter_port_hedland_sites()
-nests_pth <- nests_all %>% filter_port_hedland_sites()
+tracks_pth <- tracks_all %>% filter_pth() %>% exclude_training_species()%>% add_nest_labels()
+tracks_pth_cem <- tracks_pth %>% filter_pth_cemetery()
+tracks_pth_ppo <- tracks_pth %>% filter_pth_prettypool()
+surveys_pth <- surveys %>% filter_pth()
+surveys_pth_prod <- surveys_pth %>% exclude_training_surveys()
+dist_pth <- disturbance %>% filter_pth()
+nests_pth <- nests_all %>% filter_pth()
 
 prefix <- "CFH"
 placename <- "Port Hedland"
@@ -202,6 +201,9 @@ Split up per site:
 ### Per season effort
 Highest level of aggregation: entire season.
 
+* Season 2018-19: From 30/10/2018 to 28/02/2019, CEM is surveyed daily, PPO Mon/Wed/Fri.
+  Some real surveys prior to 30/10/2018.
+* First nesting was observed on 25/09/2018.
 * Excluding training, there were **`r nrow(surveys_pth_prod)` surveys** to all beaches
   of the CfH program (Cemetery Beach and Pretty Pool Beach) over a period of **XXX days**.
   for a total duration of **`r sum(surveys_pth_prod$duration_hours)` hours**.

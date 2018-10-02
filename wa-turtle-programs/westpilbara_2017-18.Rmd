@@ -43,7 +43,7 @@ Remaining QA tasks:
 
 # Data
 ```{r load_data, eval=T}
-tracks_wp <- tracks_all %>% filter_wp() %>% filter_exclude_training_species() %>% add_nest_labels()
+tracks_wp <- tracks_all %>% filter_wp() %>% exclude_training_species() %>% add_nest_labels()
 # tracks_cw <- tracks_wp %>% filter_wp_coolingwater() # none yet
 tracks_bb <- tracks_wp %>% filter_wp_bells()
 tracks_yc <- tracks_wp %>% filter_wp_yachtblub()
@@ -51,7 +51,7 @@ tracks_yc <- tracks_wp %>% filter_wp_yachtblub()
 # tracks_cl <- tracks_wp %>% filter_wp_cleaverville() # none yet
 
 surveys_wp <- surveys %>% filter_wp()
-surveys_wp_prod <- surveys_wp %>% filter_surveys_exclude_training()
+surveys_wp_prod <- surveys_wp %>% exclude_training_surveys()
 
 dist_wp <- disturbance %>% filter_wp()
 

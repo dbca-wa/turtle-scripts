@@ -1,0 +1,245 @@
+---
+title: "Delambre Island Turtle Nesting Census"
+author: "Marine Turtles WA"
+date: "`r Sys.time()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fig_width: 10
+    fig_height: 6
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+source("tracks_setup.R")
+source("tracks_helpers.R")
+source("load_data.R")
+```
+
+# Caveat
+Training and test data from Delambre Island are not yet separated out.
+Data from Rosemary Islands was recovered from unfinalised forms on devices.
+
+# Data
+```{r load_data}
+tracks_del <- tracks_all %>% filter_del() %>% exclude_training_species() %>% add_nest_labels()
+surveys_del <- surveys %>% filter_del()
+dist_del <- disturbance %>% filter_del()
+nests_del <- nests_all %>% filter_del()
+prefix_del <- "DEL"
+placename_del <- "Delambre Is"
+```
+
+
+# QA
+Most QA is done across all WA records and programs in the separate QA workbook.
+
+This section identifies data requiring editing.
+
+## Provided username mismatches WAStD users
+```{r name_mismatch_del}
+surveys_del %>% filter_surveys_requiring_qa() %>% dt()
+```
+
+# Background
+Source: Milani Chaloupka, presentation to DBCA / NWS committee 8/5/2018.
+
+Demographic focus is essential for diagnosing population status and trend.
+Survival rates, conditional breeding rates, hatchling production rates, recruitment rates and population abundance.
+
+Three major flatback pops in Pilbara: Delambre 3.5k nesting/y, 
+Mundabullangana 2.5k nesting/y, Barrow Is 2k/y.
+Biggest pop in GBR is 700 nests/y.
+
+Milani presented: 
+
+* Bayesian gompertz state-space model trend
+* Random effects forest plot with rookery specific posterior distribution
+
+# Season summary
+
+## Going digital
+Entering and proofreading a record takes about 2 minutes with full concentration.
+By going digital, data entry and proofreading are fully automated.
+
+Time savings Delambre: `r (nrow(tracks_del) + nrow(surveys_del)*2 + nrow(dist_del)) * 2 / 60` 
+hours for `r nrow(tracks_del)` Track or Treats and  `r nrow(surveys_del)*2` Site Visit Starts/Ends. 
+
+# Delambre Nesting
+## Maps
+```{r map_del}
+tracks_del %>% filter_2017() %>% map_tracks()
+```
+
+### Animated map
+A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
+be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
+
+```{r map_del_animated, warning=FALSE, message=FALSE}
+tracks_del %>% filter_2017() %>% gganimate_tracks(placename_del, prefix_del)
+```
+
+### Tagged nests
+The map is saved as a PNG file `r glue::glue(prefix_del, "_tagged_nests.png")`.
+
+```{r nests_del}
+nests_del %>%
+  filter_2017() %>%
+  map_nests() %T>%
+  mapview::mapshot(file = glue::glue("{prefix_del}_tagged_nests_2017.png"))
+```
+
+## Nesting abundance
+### All beaches
+```{r tracks_all_sectors_del}
+tracks_del %>% nesting_type_by_season_species() %>% kable()
+```
+
+## Nesting by week
+### All beaches
+The next table show data from all sites.
+
+```{r tracks_all_beaches_by_week_del}
+tracks_del %>% nesting_type_by_season_week_species() %>% kable()
+```
+
+## Nesting by day
+This section shows data from all sites.
+
+```{r nesting_success_del, warning = F}
+tracks_del %>% tracks_ts(placename_del, prefix_del)
+nests <- tracks_del %>% track_success()
+nests %>% ggplot_track_success_by_date("natator-depressus", placename_del, prefix_del)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_del, prefix_del)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", placename_del, prefix_del)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename_del, prefix_del)
+nests %>% track_success_by_species() %>% DT::datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
+```
+
+## Hatching and emergence success
+```{r hatching_emergence_success_del}
+tracks_del %>%
+  hatching_emergence_success() %>%
+  DT::datatable(., caption = "Hatching and emergence success summary", options = list(paging = F))
+```
+
+## Disturbance and predation
+Disturbed nests are captured through form "Track or Treat" and appear here
+as "tracks" with "disturbance" recorded as "present".
+
+General signs of disturbance or predator presence are recorded through form 
+"Fox Sake" and appear here as "dist_(place)".
+
+### Disturbance and predation of nests
+Turtle nests with recorded disturbance or predation.
+
+```{r dist_nests_del}
+disturbed_nests_del <- tracks_del %>% filter_2017() %>% filter(disturbance == "present")
+disturbed_nests_del %>% map_tracks()
+```
+
+There were **`r count(disturbed_nests_del)` reports** of disturbed nests. 
+Caveat: QA to exclude possible training records.
+
+Coming soon: details of disturbance to nests.
+
+### General disturbance
+There were **`r count(dist_del)` reports** of general disturbance or predator presence.
+
+```{r map_dist_del}
+dist_del %>% filter_2017() %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
+dist_del %>% map_dist()
+```
+
+
+
+
+# Surveys
+Curators are to QA 
+[all `r placename_del` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=39)
+following the 
+[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
+
+## Survey count
+
+### Caveat
+* Surveys with missing end points are auto-closed after 6 hours. 
+* Data includes training surveys.
+
+Both factors contribute to over-estimation of effort.
+
+```{r survey_count}
+surveys_del %>% survey_count_heatmap(placename_del, prefix_del)
+surveys_del %>% list_survey_count(placename_del)
+surveys_del %>% survey_hours_heatmap(placename_del, prefix_del)
+surveys_del %>% list_survey_effort(placename_del)
+```
+
+## Survey effort per primary reporter
+Q Which volunteer did the most hours overall on survey?
+
+### Caveat
+This list only includes the primary reporter. 
+This leads to under-reporting of time spent by other volunteers attending the survey.
+Their names are listed in the Site Visit Start form field "comments" as free text.
+To correctly report on team member effort, curators have to read the list of 
+team members in the Site Visit "comments" field and attach the correct users 
+to the Survey team list.
+Once the surveys are comprehensively attributed to all volunteers present, this
+workbook has to be updated to include the Survey team's effort.
+
+If the primary reporter forgot to update the username in the tablet,
+their survey effort on that day is incorrectly attributed to the previous reporter.
+The only way to reconcile attribution is to manually compare survey usernames with
+team rosters.
+
+```{r survey_effort_by_person}
+personal_effort_del <- surveys_del %>% survey_hours_per_person()
+personal_effort_del %>% kable()
+```
+
+## Survey effort in kilometers walked
+Number of surveys per sector times length of site.
+
+At Delambre, assuming the trip was 4 km,
+`r survey_ground_covered(surveys, 39, 4, season=2017)` km were walked 
+in `r survey_count(surveys, 39, season=2017)` surveys.
+
+# Data upload
+## Raw data
+* Raw data are exported into CSV spreadsheets.
+* Key figures are exported into .png raster files.
+* This report is rendered into a single HTML page.
+
+```{r data_export_csv}
+tracks_del %>%
+  select(-obs, -photos) %>%
+  readr::write_csv(glue::glue("{prefix_del}_tracks.csv"))
+surveys_del %>% readr::write_csv(glue::glue("{prefix_del}_surveys.csv"))
+dist_del %>%
+  select(-photos) %>%
+  readr::write_csv(glue::glue("{prefix_del}_disturbance.csv"))
+```
+
+## Data catalogue
+Data are uploaded to the [turtle nest census dataset](https://data.dpaw.wa.gov.au/dataset/turtle-tracks) 
+on the departmental data catalogue, accessible from the DBCA intranet only.
+
+```{r data_upload}
+# Package all output files into one ZIP archive
+products_fn_del <- glue::glue("{prefix_del}_products.zip")
+if (file.exists(products_fn_del)) file.remove(products_fn_del)
+zip(zipfile = products_fn_del, files = list.files(pattern = prefix_del))
+
+# Create a resource for the ZIP archives
+# d <- ckanr::package_show("turtle-tracks")
+# r <- resource_create(package_id=d$id, name="Delambre Island Turtle Nesting Census", upload="delambre.html")
+# r <- resource_create(package_id=d$id, name="Delambre outputs", upload=products_fn_del)
+
+# Update resources on data catalogue
+ckanr::resource_update("69d5585a-3307-41ee-980e-f829f7eef004", "delambre.html")
+ckanr::resource_update("fd1c15a4-4766-4039-b3a7-5a3dd7b403a2", products_fn_del)
+```
