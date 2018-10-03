@@ -1,0 +1,234 @@
+---
+title: "Lalang-garram / Camden Sound Turtle Nesting Census"
+author: "Marine Turtles WA"
+date: "`r Sys.time()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fig_width: 10
+    fig_height: 6
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+source("tracks_setup.R")
+source("tracks_helpers.R")
+source("load_data.R")
+```
+
+
+# Data
+Eighy Mile Beach is surveyed at sites Anna Plains and Caravan Park.
+```{r load_data}
+tracks_lgcs <- tracks_all %>% filter_lgcs() %>% exclude_training_species() %>% add_nest_labels()
+dist_lgcs <- disturbance %>% filter_lgcs()
+surveys_lgcs <- surveys %>% filter_lgcs()
+surveys_lgcs_prod <- surveys_lgcs %>% exclude_training_surveys()
+nests_lgcs <- nests_all %>% filter_lgcs()
+
+prefix_lgcs <- "LGCS"
+placename_lgcs <- "Lalang-garram"
+```
+
+# QA
+Most QA is done across all WA records and programs in the separate QA workbook.
+
+This section identifies data requiring editing.
+
+## Provided username mismatches WAStD users
+```{r name_mismatch_lgcs}
+surveys_lgcs %>% filter_surveys_requiring_qa() %>% dt()
+```
+
+# Season summary
+
+## Going digital
+Entering and proofreading a record takes about 2 minutes with full concentration.
+By going digital, data entry and proofreading are fully automated.
+Overall, the Volunteers have saved 
+`r round((nrow(tracks_lgcs) + nrow(surveys_lgcs)*2 + nrow(dist_lgcs)) * 2 / 60)` 
+hours of mind-numbing data entry and proofreading work for 
+`r nrow(tracks_lgcs)` Tracks, 
+`r nrow(dist_lgcs)` Disturbances, and 
+`r nrow(surveys_lgcs)*2` Site Visit Starts/Ends. 
+
+## Maps
+```{r map_lgcs}
+tracks_lgcs %>% filter_2017() %>% map_tracks()
+```
+
+### Animated map
+A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
+be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
+
+```{r map_lgcs_animated, warning=FALSE}
+tracks_lgcs_2017 <- tracks_lgcs %>% filter_2017()
+gganimate_tracks(tracks_lgcs_2017, placename_lgcs, prefix_lgcs)
+```
+
+### Tagged nests
+The map is saved as a PNG file `r glue::glue(prefix_lgcs, "_tagged_nests.png")`.
+
+Coming 2018.
+
+```{r nests_lgcs, eval=F}
+nests_lgcs %>%
+  filter_2017() %>%
+  map_nests() %>%
+  mapview::mapshot(file = glue::glue("{prefix_lgcs}_tagged_nests_2017.png"))
+```
+
+## Nesting abundance
+### All beaches
+```{r tracks_all_sectors_lgcs}
+tracks_lgcs %>% nesting_type_by_season_species() %>% kable()
+```
+
+## Nesting by week
+### All beaches
+The next table show data from all sites.
+
+```{r tracks_all_beaches_by_week_lgcs}
+tracks_lgcs %>% nesting_type_by_season_week_species() %>% kable()
+```
+
+## Nesting by day
+
+### All sites
+This section shows data from all sites.
+
+```{r nesting_success_lgcs, warning = F}
+tracks_lgcs %>% tracks_ts(placename_lgcs, prefix_lgcs)
+nests <- tracks_lgcs %>% track_success()
+nests %>% ggplot_track_success_by_date("natator-depressus", placename_lgcs, prefix_lgcs)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_lgcs, prefix_lgcs)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", placename_lgcs, prefix_lgcs)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename_lgcs, prefix_lgcs)
+nests %>% track_success_by_species() %>% DT::datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
+```
+
+
+## Hatching and emergence success
+All sites.
+
+```{r hatching_emergence_success_lgcs}
+tracks_lgcs %>%
+  hatching_emergence_success() %>%
+  DT::datatable(., caption = "Hatching and emergence success summary", options = list(paging = F))
+```
+
+## Disturbance and predation
+Disturbed nests are captured through form "Track or Treat" and appear here
+as "tracks" with "disturbance" recorded as "present".
+
+General signs of disturbance or predator presence are recorded through form 
+"Fox Sake" and appear here as "dist_(place)".
+
+### Disturbance and predation of nests
+Turtle nests with recorded disturbance or predation.
+
+```{r dist_nests_lgcs}
+disturbed_nests_lgcs <- tracks_lgcs %>% filter_2017() %>% filter(disturbance == "present")
+disturbed_nests_lgcs %>% map_tracks()
+```
+
+There were **`r count(disturbed_nests_lgcs)` reports** of disturbed nests. 
+Caveat: QA to exclude possible training records.
+
+Coming soon: details of disturbance to nests.
+
+### General disturbance
+There were **`r count(dist_lgcs)` reports** of general disturbance or predator presence.
+
+```{r map_dist_lgcs}
+dist_lgcs %>% filter_2017() %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
+dist_lgcs %>% map_dist()
+```
+
+# Surveys
+Curators are to QA 
+[all `r placename_lgcs` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=22,23,24)
+following the 
+[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
+
+## Survey count
+
+### Caveat
+* Surveys with missing end points are auto-closed after 6 hours. 
+* Data includes training surveys.
+
+Both factors contribute to over-estimation of effort.
+
+```{r survey_count}
+surveys_lgcs %>% survey_count_heatmap(placename_lgcs, prefix_lgcs)
+surveys_lgcs %>% list_survey_count(placename_lgcs)
+surveys_lgcs %>% survey_hours_heatmap(placename_lgcs, prefix_lgcs)
+surveys_lgcs %>% list_survey_effort(placename_lgcs)
+```
+
+## Survey effort per primary reporter
+
+### Caveat
+This list only includes the primary reporter. 
+This leads to under-reporting of time spent by other volunteers attending the survey.
+Their names are listed in the Site Visit Start form field "comments" as free text.
+To correctly report on team member effort, curators have to read the list of 
+team members in the Site Visit "comments" field and attach the correct users 
+to the Survey team list.
+Once the surveys are comprehensively attributed to all volunteers present, this
+workbook has to be updated to include the Survey team's effort.
+
+If the primary reporter forgot to update the username in the tablet,
+their survey effort on that day is incorrectly attributed to the previous reporter.
+The only way to reconcile attribution is to manually compare survey usernames with
+team rosters.
+
+```{r survey_effort_by_person}
+personal_effort_lgcs <- surveys_lgcs %>% survey_hours_per_person()
+personal_effort_lgcs %>% kable()
+```
+
+## Survey effort in kilometers walked
+Number of surveys per sector times length of site.
+
+At Smokey Bay, `r survey_ground_covered(surveys, 51, 1)` km were covered
+in `r survey_count(surveys, 51)` surveys of 1 km each.
+
+At Langgi, `r survey_ground_covered(surveys, 52, 1)` km were covered
+in `r survey_count(surveys, 52)` surveys of 1 km each.
+
+
+## Raw data
+* Raw data are exported into CSV spreadsheets.
+* Key figures are exported into .png raster files.
+* This report is rendered into a single HTML page.
+
+```{r data_export_csv}
+tracks_lgcs %>% dplyr::select(-obs, -photos) %>% 
+  readr::write_csv(glue::glue("{prefix_lgcs}_tracks.csv"))
+surveys_lgcs %>% readr::write_csv(glue::glue("{prefix_lgcs}_surveys.csv"))
+dist_lgcs %>% dplyr::select(-photos) %>% 
+  readr::write_csv(glue::glue("{prefix_lgcs}_disturbance.csv"))
+```
+
+## Data catalogue
+Data are uploaded to the [turtle nest census dataset](https://data.dpaw.wa.gov.au/dataset/turtle-tracks) 
+on the departmental data catalogue, accessible from the DBCA intranet only.
+
+```{r data_upload_ckan}
+# Package all output files into one ZIP archive
+products_fn_lgcs <- glue::glue("{prefix_lgcs}_products.zip")
+if (file.exists(products_fn_lgcs)) file.remove(products_fn_lgcs)
+zip(zipfile = products_fn_lgcs, files = list.files(pattern = prefix_lgcs))
+
+# Create a resource for the ZIP archives
+# d <- ckanr::package_show("turtle-tracks")
+# r <- resource_create(package_id=d$id, name="Lalang-garram Turtle Nesting Census", upload="lgcs.html")
+# r <- resource_create(package_id=d$id, name="Lalang-garram outputs", upload=products_fn_lgcs)
+
+ckanr::resource_update("49b31e39-7b40-45cb-aa6f-dabb4c692b69", "lgcs.html")
+ckanr::resource_update("6f4c6b4d-afed-46e6-8aba-9c94a364f403", products_fn_lgcs)
+```

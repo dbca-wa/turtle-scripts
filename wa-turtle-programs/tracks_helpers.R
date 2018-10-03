@@ -280,6 +280,8 @@ filter_thv_north <- . %>% dplyr::filter(site_id == 28)
 filter_thv_south <- . %>% dplyr::filter(site_id == 29)
 filter_thv_tagging <- . %>% dplyr::filter(site_id == 20)
 
+filter_lgcs <- . %>% dplyr::filter(site_id %in% c(51,52))
+
 filter_nosite <- . %>% dplyr::filter(is.na(site_id))
 filter_nosurvey <- . %>% dplyr::filter(is.na(survey_id))
 filter_realspecies <- . %>% dplyr::filter(species != 'corolla-corolla')
