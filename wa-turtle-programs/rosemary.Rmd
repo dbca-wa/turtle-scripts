@@ -144,20 +144,31 @@ Curators are to QA
 [all `r placename_ros` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=40)
 following the 
 [QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
+### Per season effort
+Highest level of aggregation: entire season.
+Assumption: all training surveys have been marked as such in WAStD.
 
-## Survey count
+#### Excluding training
 
-### Caveat
-* Surveys with missing end points are auto-closed after 6 hours. 
-* Data includes training surveys.
+```{r survey_season_stats_all}
+surveys_ros %>% survey_season_stats %>% dt
+```
 
-Both factors contribute to over-estimation of effort.
+### Per day effort
+Lowest level of aggregation: daily.
 
 ```{r survey_count}
 surveys_ros %>% survey_count_heatmap(placename_ros, prefix_ros)
 surveys_ros %>% list_survey_count(placename_ros)
 surveys_ros %>% survey_hours_heatmap(placename_ros, prefix_ros)
 surveys_ros %>% list_survey_effort(placename_ros)
+```
+
+### Individual surveys
+No aggregation: individual surveys.
+
+```{r surveys_list}
+surveys_ros %>% survey_show_detail %>% dt()
 ```
 
 ## Survey effort per primary reporter

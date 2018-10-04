@@ -31,7 +31,7 @@ Review whether there are stray tracks close to known sites.
 
 ```{r tracks_missing_sites}
 tracks_all %>% 
-  filter_exclude_training_species() %>%
+  exclude_training_species() %>%
   filter_missing_site() %>%
   add_nest_labels() %>% 
   map_tracks()

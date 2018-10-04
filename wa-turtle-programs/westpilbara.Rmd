@@ -170,15 +170,17 @@ Only Yacht Club Beach tracks.
 tracks_yc %>% nesting_type_by_season_species() %>% kable()
 ```
 
-## Boat Beach
+### Boat Beach
 Coming 2018.
 
-## Cleaverville Beach 1
+### Cleaverville Beach 1
 Coming 2018.
 
 ## Nesting by week
-### All beaches
-The next table includes all tracks from Bells and Yacht Club beach combined.
+* Data from all sites combined.
+* season_week: complete weeks elapsed since start of fiscal year (July 1). This number grows monotonously over the Austral summer.
+* iso_week: complete weeks elapsed since start of calendar year (Jan 1).
+
 
 ```{r tracks_all_beaches_by_week}
 tracks_wp %>% nesting_type_by_season_week_species() %>% kable()
@@ -186,7 +188,7 @@ tracks_wp %>% nesting_type_by_season_week_species() %>% kable()
 
 
 ## Nesting by day
-This section shows data from all sites.
+Data from all sites.
 
 ```{r nesting_success_all_beaches, warning = F}
 tracks_wp %>% tracks_ts(placename = placename, prefix = prefix)
@@ -255,6 +257,24 @@ Split up per site:
 * [Boat Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=46)
 * [Cleaverville Beach 1](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=47)
 
+### Survey dates
+The following dates will produce surveys which need to be set to "not production" in WAStD.
+
+Refresher training for returning volunteers:
+
+* Wed 31/10/2018 DBCA Karratha, 17:00
+* Wed 07/11/2018 DBCA Karratha, 17:00
+* Fri 09/11/2018 DBCA Karratha, 17:00
+* Sun 04/11/2018 Bells Beach, 08:00
+
+Full training for new volunteers:
+
+* Sat 03/11/2018 Port Walcott, 07:30
+* Mon 05/11/2018 Port Walcott, 07:30
+* Fri 09/11/2018 Port Walcott, 07:30
+* Sat 10/11/2018 Port Walcott, 07:30
+* Sun 11/11/2018 Port Walcott, 07:30
+
 ### Caveat 
 * Survey data includes training surveys. (Not production, but also effort)
 * Surveys with missing end points are auto-closed after 5 hours (over-estimation of effort).
@@ -262,12 +282,19 @@ Split up per site:
 
 ### Per season effort
 Highest level of aggregation: entire season.
+Assumption: all training surveys have been marked as such in WAStD.
 
-* Excluding training, there were **`r nrow(surveys_wp_prod)` surveys** to all beaches
-  of the WPTP (Bells, Yacht Club, coming 2018: Cleaverville, not included: cooling water)
-  for a total duration of **`r sum(surveys_wp_prod$duration_hours)` hours**  over a period of **XXX days**.
-* Caveat: all training surveys must be marked as "not production" manually in WAStD.
-  Above data currently may include training effort.
+#### Including training
+
+```{r survey_season_stats_all}
+surveys_wp %>% survey_season_stats %>% dt
+```
+
+#### Excluding training
+
+```{r survey_season_stats_prod}
+surveys_wp_prod %>% survey_season_stats %>% dt
+```
 
 ### Per day effort
 Lowest level of aggregation: daily.
@@ -282,18 +309,12 @@ surveys_wp %>% list_survey_effort(placename)
 ### Individual surveys
 No aggregation: individual surveys.
 
-Note, a direct link to update each survey in WAStD is at the end of the table.
-
 ```{r surveys_list}
-surveys_wp %>%
-  dplyr::select(
-    -id, -site_type, -site_id, -reporter_username, -absolute_admin_url
-  ) %>%
-  dt()
+surveys_wp %>% survey_show_detail %>% dt()
 ```
 
-
 ## Volunteer effort
+* Data shown for all sites, nesting season 2017-18.
 * Surveys including training runs represent volunteer effort.
 * There were **`r surveys_wp %>% filter_2017() %>% nrow` surveys** 
   including training for a total duration
@@ -301,7 +322,6 @@ surveys_wp %>%
 * At Bells Beach, assuming the round trip was 2 km,
   **`r survey_ground_covered(surveys, 25, 2, season=2017)` km** were walked 
   in **`r survey_count(surveys, 25, season=2017)` surveys** including training.
-
 * At Yacht Club Beach, assuming the round trip was 1 km,
   **`r survey_ground_covered(surveys, 27, 1, season=2017)` km** were walked 
   in **`r survey_count(surveys_wp, 27, season=2017)` surveys ** including training.

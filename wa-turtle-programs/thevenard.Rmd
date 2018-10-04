@@ -176,19 +176,31 @@ Split up per site:
 * [Thevenard Island South Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=29)
 * [Thevenard Island Tagging Area](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=20)
 
-## Survey count
+### Per season effort
+Highest level of aggregation: entire season.
+Assumption: all training surveys have been marked as such in WAStD.
 
-### Caveat
-* Surveys with missing end points are auto-closed after 6 hours. 
-* Data includes training surveys.
+#### Excluding training
 
-Both factors contribute to over-estimation of effort.
+```{r survey_season_stats_all}
+surveys_thv %>% survey_season_stats %>% dt
+```
+
+### Per day effort
+Lowest level of aggregation: daily.
 
 ```{r survey_count}
 surveys_thv %>% survey_count_heatmap(placename_thv, prefix_thv)
 surveys_thv %>% list_survey_count(placename_thv)
 surveys_thv %>% survey_hours_heatmap(placename_thv, prefix_thv)
 surveys_thv %>% list_survey_effort(placename_thv)
+```
+
+### Individual surveys
+No aggregation: individual surveys.
+
+```{r surveys_list}
+surveys_thv %>% survey_show_detail %>% dt()
 ```
 
 ## Survey effort per primary reporter
