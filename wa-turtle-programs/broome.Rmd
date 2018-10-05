@@ -95,7 +95,7 @@ tracks_bme %>% nesting_type_by_season_week_species() %>% kable()
 This section shows data from all sites.
 
 ```{r nesting_success_bme, warning = F}
-tracks_bme %>% tracks_ts(placename_bme, prefix_bme)
+tracks_ts(tracks_bme, surveys_bme_prod, placename_bme, prefix_bme)
 nests <- tracks_bme %>% track_success()
 nests %>% ggplot_track_success_by_date("natator-depressus", placename_bme, prefix_bme)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_bme, prefix_bme)

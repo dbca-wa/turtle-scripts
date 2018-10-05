@@ -63,8 +63,8 @@ dist_wp <- disturbance %>% filter_wp()
 # nests_bt <- nests_all %>% filter_wp_boat()
 # nests_cl <- nests_all %>% filter_wp_cleaverville()
 
-prefix <- "WPTP"
-placename <- "Cape Lambert"
+prefix_wp <- "WPTP"
+placename_wp <- "Cape Lambert"
 ```
 
 Note: Jason reported the following counts for manual entry (not done yet, so not showing up in this report):
@@ -130,22 +130,22 @@ A [Google API key](https://developers.google.com/maps/documentation/geocoding/st
 be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
 ```{r map_animated, warning=FALSE}
-gganimate_tracks(tracks_wp, placename, prefix)
-# gganimate_tracks(tracks_cl, placename, prefix)
+gganimate_tracks(tracks_wp, placename_wp, prefix_wp)
+# gganimate_tracks(tracks_cl, placename_wp, prefix_wp)
 ```
 
 
 ### Tagged nests
 2017-18: no tagged nests.
 
-The map (once enabled) is saved as a PNG file `r glue::glue(prefix, "_tagged_nests.png")`.\
+The map (once enabled) is saved as a PNG file `r glue::glue(prefix_wp, "_tagged_nests.png")`.\
 This map can be printed and used to navigate back to the nests.
 
 ```{r nests_all, eval=F}
 nests_wp %>%
   filter_2018() %>%
   map_nests() %>%
-  mapview::mapshot(file = glue::glue("{prefix}_tagged_nests.png"))
+  mapview::mapshot(file = glue::glue("{prefix_wp}_tagged_nests.png"))
 ```
 
 ## Nesting by season
@@ -191,12 +191,12 @@ tracks_wp %>% nesting_type_by_season_week_species() %>% kable()
 Data from all sites.
 
 ```{r nesting_success_all_beaches, warning = F}
-tracks_wp %>% tracks_ts(placename = placename, prefix = prefix)
+tracks_ts(tracks_wp, surveys_wp_prod, placename_wp, prefix_wp)
 nests <- tracks_wp %>% track_success()
-nests %>% ggplot_track_success_by_date("natator-depressus", placename, prefix)
-# nests %>% ggplot_track_success_by_date("chelonia-mydas", placename)
-nests %>% ggplot_track_successrate_by_date("natator-depressus", placename, prefix)
-# nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename)
+nests %>% ggplot_track_success_by_date("natator-depressus", placename_wp, prefix_wp)
+# nests %>% ggplot_track_success_by_date("chelonia-mydas", placename_wp)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_wp, prefix_wp)
+# nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename_wp)
 nests %>% track_success_by_species() %>% datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
@@ -300,10 +300,10 @@ surveys_wp_prod %>% survey_season_stats %>% dt
 Lowest level of aggregation: daily.
 
 ```{r survey_count}
-surveys_wp %>% survey_count_heatmap(placename, prefix)
-surveys_wp %>% list_survey_count(placename)
-surveys_wp %>% survey_hours_heatmap(placename, prefix)
-surveys_wp %>% list_survey_effort(placename)
+surveys_wp %>% survey_count_heatmap(placename_wp, prefix_wp)
+surveys_wp %>% list_survey_count(placename_wp)
+surveys_wp %>% survey_hours_heatmap(placename_wp, prefix_wp)
+surveys_wp %>% list_survey_effort(placename_wp)
 ```
 
 ### Individual surveys
@@ -358,11 +358,11 @@ personal_effort %>% kable()
 ```{r data_export_csv}
 tracks_wp %>%
   dplyr::select(-obs, -photos) %>%
-  readr::write_csv(glue::glue("{prefix}_tracks.csv"))
-surveys_wp %>% readr::write_csv(glue::glue("{prefix}_surveys.csv"))
+  readr::write_csv(glue::glue("{prefix_wp}_tracks.csv"))
+surveys_wp %>% readr::write_csv(glue::glue("{prefix_wp}_surveys.csv"))
 dist_wp %>%
   dplyr::select(-photos) %>%
-  readr::write_csv(glue::glue("{prefix}_disturbance.csv"))
+  readr::write_csv(glue::glue("{prefix_wp}_disturbance.csv"))
 ```
 
 ## Data catalogue
@@ -371,9 +371,9 @@ on the departmental data catalogue, accessible from the DBCA intranet only.
 
 ```{r data_upload_ckan}
 # Package all output files into one ZIP archive.
-products_fn <- glue::glue("{prefix}_products.zip")
+products_fn <- glue::glue("{prefix_wp}_products.zip")
 if (file.exists(products_fn)) file.remove(products_fn)
-products <- list.files(pattern = prefix)
+products <- list.files(pattern = prefix_wp)
 zip(zipfile = products_fn, files = products)
 
 # Create a resource for the ZIP archive

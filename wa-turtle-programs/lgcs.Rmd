@@ -99,7 +99,7 @@ tracks_lgcs %>% nesting_type_by_season_week_species() %>% kable()
 This section shows data from all sites.
 
 ```{r nesting_success_lgcs, warning = F}
-tracks_lgcs %>% tracks_ts(placename_lgcs, prefix_lgcs)
+tracks_ts(tracks_lgcs, surveys_lgcs, placename_lgcs, prefix_lgcs)
 nests <- tracks_lgcs %>% track_success()
 nests %>% ggplot_track_success_by_date("natator-depressus", placename_lgcs, prefix_lgcs)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_lgcs, prefix_lgcs)

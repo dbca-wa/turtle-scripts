@@ -27,6 +27,8 @@ tracks_emb_cv <- tracks_emb %>% filter_emb_caravanpark()
 dist_emb <- disturbance %>% filter_emb()
 surveys_emb <- surveys %>% filter_emb()
 surveys_emb_prod <- surveys_emb %>% exclude_training_surveys()
+surveys_emb_ap <- surveys_emb_prod %>% filter_emb_annaplains()
+surveys_emb_cv <- surveys_emb_prod %>% filter_emb_caravanpark()
 nests_emb <- nests_all %>% filter_emb()
 
 prefix_emb <- "EMB"
@@ -114,7 +116,7 @@ tracks_emb_cv %>% nesting_type_by_season_week_species() %>% kable()
 This section shows data from all sites.
 
 ```{r nesting_success_emb, warning = F}
-tracks_emb %>% tracks_ts(placename_emb, prefix_emb)
+tracks_ts(tracks_emb, surveys_emb_prod, placename_emb, prefix_emb)
 nests <- tracks_emb %>% track_success()
 nests %>% ggplot_track_success_by_date("natator-depressus", placename_emb, prefix_emb)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_emb, prefix_emb)
@@ -129,7 +131,7 @@ nests %>% track_success_by_species() %>% DT::datatable(.,
 This section shows data from Anna Plains.
 
 ```{r nesting_success_emb_ap, warning = F}
-tracks_emb_ap %>% tracks_ts(placename_emb_ap, prefix_emb)
+tracks_ts(tracks_emb_ap, surveys_emb_ap, placename_emb_ap, prefix_emb)
 nests <- tracks_emb_ap %>% track_success()
 nests %>% ggplot_track_success_by_date("natator-depressus", placename_emb_ap, prefix_emb)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_emb_ap, prefix_emb)
@@ -144,7 +146,7 @@ nests %>% track_success_by_species() %>% DT::datatable(.,
 This section shows data from Caravan Park.
 
 ```{r nesting_success_emb_cv, warning = F}
-tracks_emb_cv %>% tracks_ts(placename_emb_cv, prefix_emb)
+tracks_ts(tracks_emb_cv, surveys_emb_cv, placename_emb_cv, prefix_emb)
 nests <- tracks_emb_cv %>% track_success()
 nests %>% ggplot_track_success_by_date("natator-depressus", placename_emb_cv, prefix_emb)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_emb_cv, prefix_emb)

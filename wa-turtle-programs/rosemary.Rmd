@@ -24,6 +24,7 @@ Data from 2017/18 at Rosemary Islands was recovered from unfinalised forms on de
 ```{r load_data}
 tracks_ros <- tracks_all %>% filter_ros() %>% exclude_training_species() %>% add_nest_labels()
 surveys_ros <- surveys %>% filter_ros()
+surveys_ros_prod <- surveys_ros %>% exclude_training_surveys()
 dist_ros <- disturbance %>% filter_ros()
 nests_ros <- nests_all %>% filter_ros()
 prefix_ros <- "ROS"
@@ -93,7 +94,7 @@ tracks_ros %>% nesting_type_by_season_week_species() %>% kable()
 This section shows data from all sites.
 
 ```{r nesting_success_ros, warning = F}
-tracks_ros %>% tracks_ts(placename_ros, prefix_ros)
+tracks_ts(tracks_ros, surveys_ros_prod, placename_ros, prefix_ros)
 nests <- tracks_ros %>% track_success()
 nests %>% ggplot_track_success_by_date("natator-depressus", placename_ros, prefix_ros)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_ros, prefix_ros)

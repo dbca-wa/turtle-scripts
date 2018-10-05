@@ -114,7 +114,7 @@ tracks_thv %>% nesting_type_by_season_week_species() %>% kable()
 This section shows data from all sites.
 
 ```{r nesting_success_thv, message=FALSE, fig.width=10, fig.height=6}
-tracks_thv %>% tracks_ts(placename_thv, prefix_thv)
+tracks_ts(tracks_thv, surveys_thv, placename_thv, prefix_thv)
 nests <- tracks_thv %>% track_success()
 nests %>% ggplot_track_success_by_date("natator-depressus", placename_thv, prefix_thv)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_thv, prefix_thv)

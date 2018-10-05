@@ -21,7 +21,7 @@ library(ckanr)
 library(googledrive)
 library(ggmap)
 library(gganimate)
-
+library(ggalt)
 # Configure ckanr to data.dpaw.wa.gov.au
 if (file.exists("~/.Rprofile")) source("~/.Rprofile")
 ckanr::ckanr_setup(url = Sys.getenv("CKAN_URL"), key = Sys.getenv("CKAN_API_KEY"))

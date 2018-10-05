@@ -25,6 +25,7 @@ Data from Rosemary Islands was recovered from unfinalised forms on devices.
 ```{r load_data}
 tracks_del <- tracks_all %>% filter_del() %>% exclude_training_species() %>% add_nest_labels()
 surveys_del <- surveys %>% filter_del()
+surveys_del_prod <- surveys_del %>% exclude_training_surveys()
 dist_del <- disturbance %>% filter_del()
 nests_del <- nests_all %>% filter_del()
 prefix_del <- "DEL"
@@ -108,7 +109,7 @@ tracks_del %>% nesting_type_by_season_week_species() %>% kable()
 This section shows data from all sites.
 
 ```{r nesting_success_del, warning = F}
-tracks_del %>% tracks_ts(placename_del, prefix_del)
+tracks_ts(tracks_del, surveys_del_prod, placename_del, prefix_del)
 nests <- tracks_del %>% track_success()
 nests %>% ggplot_track_success_by_date("natator-depressus", placename_del, prefix_del)
 nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_del, prefix_del)

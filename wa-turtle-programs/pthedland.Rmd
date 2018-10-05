@@ -24,11 +24,13 @@ tracks_pth_cem <- tracks_pth %>% filter_pth_cemetery()
 tracks_pth_ppo <- tracks_pth %>% filter_pth_prettypool()
 surveys_pth <- surveys %>% filter_pth()
 surveys_pth_prod <- surveys_pth %>% exclude_training_surveys()
+surveys_pth_cem <- surveys_pth_prod %>% filter_pth_cemetery()
+surveys_pth_ppo <- surveys_pth_prod %>% filter_pth_prettypool()
 dist_pth <- disturbance %>% filter_pth()
 nests_pth <- nests_all %>% filter_pth()
 
-prefix <- "CFH"
-placename <- "Port Hedland"
+prefix_pth <- "CFH"
+placename_pth <- "Port Hedland"
 ```
 
 # QA
@@ -79,19 +81,19 @@ A [Google API key](https://developers.google.com/maps/documentation/geocoding/st
 be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
 ```{r map_animated, warning=FALSE}
-gganimate_tracks(tracks_pth, placename, prefix)
+gganimate_tracks(tracks_pth, placename_pth, prefix_pth)
 ```
 
 ### Tagged nests
 2017-18: no tagged nests.
 
-The map (once enabled) is saved as a PNG file `r glue::glue(prefix, "_tagged_nests.png")`.
+The map (once enabled) is saved as a PNG file `r glue::glue(prefix_pth, "_tagged_nests.png")`.
 
 ```{r nests_all, eval=F}
 nests_pth %>% 
   filter_2018() %>%
   map_nests() %>%
-  mapview::mapshot(file = glue::glue("{prefix}_tagged_nests.png"))
+  mapview::mapshot(file = glue::glue("{prefix_pth}_tagged_nests.png"))
 ```
 
 ## Nesting abundance
@@ -133,14 +135,14 @@ tracks_pth_ppo %>% nesting_type_by_season_week_species() %>% kable()
 This section shows data from all sites.
 
 ```{r nesting_success, warning = F}
-tracks_pth %>% tracks_ts(placename, prefix)
-tracks_pth_cem %>% tracks_ts("Cemetery Beach", prefix)
-tracks_pth_ppo %>% tracks_ts("Pretty Pool Beach", prefix)
+tracks_ts(tracks_pth, surveys_pth_prod, placename_pth, prefix_pth)
+tracks_ts(tracks_pth_cem, surveys_pth_cem, "Cemetery Beach", prefix_pth)
+tracks_ts(tracks_pth_cem, surveys_pth_ppo, "Pretty Pool Beach", prefix_pth)
 
 nests <- tracks_pth %>% track_success()
 
-nests %>% ggplot_track_success_by_date("natator-depressus", placename, prefix)
-nests %>% ggplot_track_successrate_by_date("natator-depressus", placename, prefix)
+nests %>% ggplot_track_success_by_date("natator-depressus", placename_pth, prefix_pth)
+nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_pth, prefix_pth)
 nests %>% track_success_by_species() %>% DT::datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
@@ -222,10 +224,10 @@ surveys_pth_prod %>% survey_season_stats %>% dt
 Lowest level of aggregation: daily.
 
 ```{r survey_count}
-surveys_pth %>% survey_count_heatmap(placename, prefix)
-surveys_pth %>% list_survey_count(placename)
-surveys_pth %>% survey_hours_heatmap(placename, prefix)
-surveys_pth %>% list_survey_effort(placename)
+surveys_pth %>% survey_count_heatmap(placename_pth, prefix_pth)
+surveys_pth %>% list_survey_count(placename_pth)
+surveys_pth %>% survey_hours_heatmap(placename_pth, prefix_pth)
+surveys_pth %>% list_survey_effort(placename_pth)
 ```
 
 ### Individual surveys
@@ -278,10 +280,10 @@ personal_effort %>% kable()
 
 ```{r data_export_csv}
 tracks_pth %>% dplyr::select(-obs, -photos) %>% 
-  readr::write_csv(glue::glue("{prefix}_tracks.csv"))
-surveys_pth %>% readr::write_csv(glue::glue("{prefix}_surveys.csv"))
+  readr::write_csv(glue::glue("{prefix_pth}_tracks.csv"))
+surveys_pth %>% readr::write_csv(glue::glue("{prefix_pth}_surveys.csv"))
 dist_pth %>% dplyr::select(-photos) %>% 
-  readr::write_csv(glue::glue("{prefix}_disturbance.csv"))
+  readr::write_csv(glue::glue("{prefix_pth}_disturbance.csv"))
 ```
 
 ## Data catalogue
@@ -290,14 +292,14 @@ on the departmental data catalogue, accessible from the DBCA intranet only.
 
 ```{r data_upload_ckan}
 tracks_pth %>% dplyr::select(-obs, -photos) %>% 
-  readr::write_csv(glue::glue("{prefix}_tracks.csv"))
-surveys_pth %>% readr::write_csv(glue::glue("{prefix}_surveys.csv"))
+  readr::write_csv(glue::glue("{prefix_pth}_tracks.csv"))
+surveys_pth %>% readr::write_csv(glue::glue("{prefix_pth}_surveys.csv"))
 dist_pth %>% dplyr::select(-photos) %>% 
-  readr::write_csv(glue::glue("{prefix}_disturbance.csv"))
+  readr::write_csv(glue::glue("{prefix_pth}_disturbance.csv"))
 
 # Package all output files into one ZIP archive
-products <- list.files(pattern=prefix)
-products_fn <- glue::glue("{prefix}_products.zip")
+products <- list.files(pattern=prefix_pth)
+products_fn <- glue::glue("{prefix_pth}_products.zip")
 zip(zipfile = products_fn, files = products)
 
 # Create a resource for the ZIP archive
@@ -325,7 +327,7 @@ googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
 ```
 
 ```{r google_drive_upload}
-googledrive::drive_ls(prefix) %>% googledrive::drive_rm(.)
-googledrive::drive_upload("pthedland.html", path=glue::glue("{prefix}/pthedland.html"))
-products %>% purrr::map(googledrive::drive_upload, path=as_dribble(prefix))
+googledrive::drive_ls(prefix_pth) %>% googledrive::drive_rm(.)
+googledrive::drive_upload("pthedland.html", path=glue::glue("{prefix_pth}/pthedland.html"))
+products %>% purrr::map(googledrive::drive_upload, path=as_dribble(prefix_pth))
 ```
