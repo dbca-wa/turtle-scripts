@@ -68,27 +68,35 @@ hours of mind-numbing data entry and proofreading work for
 
 ```{r map_cem}
 tracks_pth_cem %>% filter_2017() %>% map_tracks()
+tracks_pth_cem %>% filter_2018() %>% map_tracks()
 ```
 
 ### Nesting at Pretty Pool Beach
 
-```{r map_ppo}
+#### 2017-18
+```{r map_ppo_2017}
 tracks_pth_ppo %>% filter_2017() %>% map_tracks()
+```
+
+#### 2018-19
+```{r map_ppo_2018}
+tracks_pth_ppo %>% filter_2018() %>% map_tracks()
 ```
 
 ### Animated map
 A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
 be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
-```{r map_animated, warning=FALSE}
+```{r map_animated, warning=FALSE, eval=FALSE}
 gganimate_tracks(tracks_pth, placename_pth, prefix_pth)
 ```
 
 ### Tagged nests
-2017-18: no tagged nests.
+#### 2018-18
+No tagged nests.
 
+#### 2018-19
 The map (once enabled) is saved as a PNG file `r glue::glue(prefix_pth, "_tagged_nests.png")`.
-
 ```{r nests_all, eval=F}
 nests_pth %>% 
   filter_2018() %>%
@@ -99,18 +107,38 @@ nests_pth %>%
 ## Nesting abundance
 
 ### All beaches
-```{r tracks_all_sectors}
-tracks_pth %>% nesting_type_by_season_species() %>% kable()
+#### 2017-18
+```{r tracks_all_sectors_2017}
+tracks_pth %>% filter_2017() %>% nesting_type_by_season_species() %>% kable()
 ```
 
+#### 2018-19
+```{r tracks_all_sectors_2018}
+tracks_pth %>% filter_2018() %>% nesting_type_by_season_species() %>% kable()
+```
+
+
 ### Cemetery Beach
-```{r tracks_cem}
-tracks_pth_cem %>% nesting_type_by_season_species() %>% kable()
+#### 2017-18
+```{r tracks_cem_2017}
+tracks_pth_cem %>% filter_2017() %>% nesting_type_by_season_species() %>% kable()
+```
+
+#### 2018-19
+```{r tracks_cem_2018}
+tracks_pth_cem %>% filter_2018() %>% nesting_type_by_season_species() %>% kable()
 ```
 
 ### Pretty Pool Beach
-```{r tracks_ppo}
-tracks_pth_ppo %>% nesting_type_by_season_species() %>% kable()
+#### 2017-18
+```{r tracks_ppo_2017}
+tracks_pth_ppo %>% filter_2017() %>% nesting_type_by_season_species() %>% kable()
+```
+
+#### 2018-19
+None yet.
+```{r tracks_ppo_2018, eval=FALSE}
+tracks_pth_ppo %>% filter_2018() %>% nesting_type_by_season_species() %>% kable()
 ```
 
 ## Nesting by week
@@ -165,23 +193,43 @@ General signs of disturbance or predator presence are recorded through form
 ### Disturbance and predation of nests
 Turtle nests with recorded disturbance or predation.
 
-```{r dist_nests}
-disturbed_nests_pth <- tracks_pth %>% filter_2017() %>% filter(disturbance == "present")
-disturbed_nests_pth %>% map_tracks()
+#### 2017-18
+```{r dist_nests_2017}
+disturbed_nests_pth_2017 <- tracks_pth %>% filter_2017() %>% filter(disturbance == "present")
+disturbed_nests_pth_2017 %>% map_tracks()
 ```
 
-There were **`r count(disturbed_nests_pth)` reports** of disturbed nests. 
+#### 2018-19
+```{r dist_nests_2018}
+disturbed_nests_pth_2018 <- tracks_pth %>% filter_2018() %>% filter(disturbance == "present")
+disturbed_nests_pth_2018 %>% map_tracks()
+```
+
+There were **`r count(disturbed_nests_pth_2017)` reports** of disturbed nests in 2017-18
+and **`r count(disturbed_nests_pth_2018)` reports** in 2018-19. 
 Caveat: QA to exclude possible training records.
 
 Coming soon: details of disturbance to nests.
 
 ### General disturbance
-There were **`r count(dist_pth)` reports** of general disturbance or predator presence.
 
-```{r map_dist}
-dist_pth %>% filter_2017 %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
-dist_pth %>% map_dist
+#### 2017
+```{r map_dist_2017}
+dist_pth_2017 <- dist_pth %>% filter_2017() 
+dist_pth_2017 %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable()
+dist_pth_2017 %>% map_dist()
 ```
+
+#### 2018
+None yet.
+```{r map_dist_2018}
+dist_pth_2018 <- dist_pth %>% filter_2018 
+dist_pth_2018 %>% group_by(disturbance_cause) %>% tally %>% arrange(-n) %>% kable
+dist_pth_2018 %>% map_dist
+```
+
+There were **`r count(dist_pth_2017)` reports** of general disturbance or predator presence in 2017-18
+and **`r count(dist_pth_2018)` reports** in 2018-19.
 
 ## Surveys
 Curators are to QA 
@@ -240,6 +288,8 @@ surveys_pth %>% survey_show_detail %>% dt()
 
 ## Volunteer effort
 * Surveys including training runs represent volunteer effort.
+
+#### 2017-19
 * There were **`r surveys_pth %>% filter_2017() %>% nrow` surveys** 
   including training for a total duration of 
   **`r sum(filter_2017(surveys_pth_prod)$duration_hours)` hours**.
@@ -247,6 +297,15 @@ surveys_pth %>% survey_show_detail %>% dt()
   in **`r survey_count(surveys_pth, 35, season=2017)`** surveys.
 * At Pretty Pool Beach, **`r survey_ground_covered(surveys, 45, 1.8, season=2017)` km** were walked 
   in **`r survey_count(surveys_pth, 45, season=2017)`** surveys.
+
+#### 2018-19
+* There were **`r surveys_pth %>% filter_2018() %>% nrow` surveys** 
+  including training for a total duration of 
+  **`r sum(filter_2018(surveys_pth_prod)$duration_hours)` hours**.
+* At Cemetery Beach, **`r survey_ground_covered(surveys, 35, 1.6, season=2018)` km** were walked 
+  in **`r survey_count(surveys_pth, 35, season=2018)`** surveys.
+* At Pretty Pool Beach, **`r survey_ground_covered(surveys, 45, 1.8, season=2018)` km** were walked 
+  in **`r survey_count(surveys_pth, 45, season=2018)`** surveys.
 
 ### Per person
 The following list only includes the primary reporter. 
@@ -265,11 +324,15 @@ If the primary reporter forgot to update the username in the tablet,
 their survey effort on that day is incorrectly attributed to the previous reporter.
 The only way to reconcile attribution is to manually compare survey usernames with team rosters.
 
-```{r survey_effort_by_person}
-personal_effort <- surveys_pth %>% filter_2017 %>% survey_hours_per_person()
-personal_effort %>% kable()
+#### 2017-18
+```{r survey_effort_by_person_2017}
+surveys_pth %>% filter_2017() %>% survey_hours_per_person() %>% kable()
 ```
 
+#### 2018-19
+```{r survey_effort_by_person_2018}
+surveys_pth %>% filter_2018() %>% survey_hours_per_person() %>% kable()
+```
 
 # Data upload
 
