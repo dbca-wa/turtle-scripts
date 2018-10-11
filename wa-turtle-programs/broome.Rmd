@@ -213,6 +213,12 @@ in `r survey_count(surveys_bme, 24)` surveys.
 # Data upload
 
 ```{r data_upload}
+tracks_bme %>% dplyr::select(-obs, -photos) %>% 
+  readr::write_csv(glue::glue("{prefix_bme}_tracks.csv"))
+surveys_bme %>% readr::write_csv(glue::glue("{prefix_bme}_surveys.csv"))
+dist_bme %>% dplyr::select(-photos) %>% 
+  readr::write_csv(glue::glue("{prefix_bme}_disturbance.csv"))
+
 # Package all output files into one ZIP archive
 products_fn_bme <- glue::glue("{prefix_bme}_products.zip")
 if (file.exists(products_fn_bme)) file.remove(products_fn_bme)

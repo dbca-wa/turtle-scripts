@@ -6,7 +6,6 @@ output: html_document
 ---
 ```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-setwd("~/projects/turtle-scripts/wamtram")
 
 library(ckanr)
 
@@ -40,7 +39,8 @@ require(leaflet.extras)
 library(RColorBrewer)
 
 library(RODBC)
-if (file.exists("../config/setup.R")) source("../config/setup.R")
+if (file.exists("~/.Rprofile")) source("~/.Rprofile")
+if (file.exists(here::here("config", "setup.R"))) source(here::here("config", "setup.R"))
 ```
 
 This document describes and executes the Extraction, Transformation and (up)Loading
@@ -308,8 +308,8 @@ Ancillary lookup tables are sanitised and joined to the observations.
 ```{r}
 # Sensitive information!
 persons <- sqlQuery(con, "select * from dbo.TRT_PERSONS;")
-save(persons, file = "data/persons.Rda")
-load("data/persons.Rda")
+# save(persons, file = "data/persons.Rda")
+# load("data/persons.Rda")
 person_names <- persons %>%
     transmute(
         PERSON_ID=PERSON_ID,
@@ -321,7 +321,6 @@ person_details <- persons %>%
         name=paste(FIRST_NAME, SURNAME) %>% 
           str_replace_all("[<>()*=?]", "") %>% str_trim(),
         email=EMAIL %>% str_replace("NA", "") %>% str_trim())
-write.csv(person_details, file="data/wamtram_users.csv", row.names=F)
 
 activities <- sqlQuery(
     con, "select * from dbo.TRT_ACTIVITIES;") %>%
@@ -368,7 +367,7 @@ id_types <- sqlQuery(
     id_type_code=IDENTIFICATION_TYPE,
     id_type_label=DESCRIPTION)
 
-# 200k records
+# 220k+ records
 recorded_tags <- sqlQuery(
     con, "select * from dbo.TRT_RECORDED_TAGS;") %>%
   transmute(
@@ -381,11 +380,11 @@ recorded_tags <- sqlQuery(
     tag_position=TAG_POSITION,
     comments=COMMENTS
   )
-save(recorded_tags, file="data/tag_observations.Rda")
-load("data/tag_observations.Rda")
-write.csv(recorded_tags, file="data/wamtram_tagobservations.csv", row.names=F)
+# save(recorded_tags, file="data/tag_observations.Rda")
+# load("data/tag_observations.Rda")
 
-# 51k inferred turtle identities
+
+# 55k+ inferred turtle identities
 turtles <- sqlQuery(con, "select * from dbo.TRT_TURTLES;")
 summary(turtles)
 
@@ -424,7 +423,7 @@ damage_codes <- sqlQuery(con, "select * from dbo.TRT_DAMAGE_CODES;")
 damage_causes <- sqlQuery(con, "select * from dbo.TRT_DAMAGE_CAUSE_CODES;")
 damages <- sqlQuery(con, "select * from dbo.TRT_DAMAGE;")
 
-# 128k
+# 147k+
 obs <- sqlQuery(con, "select * from dbo.TRT_OBSERVATIONS;")
 
 # save all objects
@@ -460,24 +459,29 @@ o <- obs %>%
     # left_join(person_names, by=c("REPORTER_PERSON_ID" = "PERSON_ID")) %>%
     # rename(reported_by=name) %>%
     left_join(sites, by=c("PLACE_CODE" = "name")) %>%
-    left_join(turtles, by="TURTLE_ID") 
+    left_join(turtles, by="TURTLE_ID") %>%
+    mutate(
+      LATITUDE = ifelse(is.na(LATITUDE), site_latitude, LATITUDE),
+      LONGITUDE = ifelse(is.na(LONGITUDE), site_longitude, LONGITUDE)
+      )
 
-save(o, file="data/encounters.Rda")
-load("data/encounters.Rda")
+# save(o, file="data/encounters.Rda")
+# load("data/encounters.Rda")
 
 # TODO reconstruct empty DD from DMS or UTM or site coords
-enc <- o %>%
-    filter(!is.na(LONGITUDE) & !is.na(observation_datetime_utc)) %>%
-    filter(PLACE_CODE == "THEE" | PLACE_CODE == "THNB")
-enc2 <- o %>%
-    filter(is.na(LONGITUDE) | is.na(observation_datetime_utc)) %>%
-    filter(PLACE_CODE == "THEE" | PLACE_CODE == "THNB")
 
-# write.csv(o, file="data/wamtram_encounters.csv", row.names=F)
-write.csv(enc, file="data/wamtram_encounters.csv", row.names=F)
-write.csv(enc2, file="data/wamtram_encounters_missing.csv", row.names=F)
+encounters <- o %>% 
+  filter(!is.na(LONGITUDE)) %>% 
+  filter(!is.na(LATITUDE)) %>% 
+  filter(!is.na(observation_datetime_utc)) %>%
+  arrange(desc(observation_datetime_utc))
 
-# ckanr::resource_update(Sys.getenv("W2_ENC_CSV_RID"), "data/wamtram_encounters.csv")
+encounters_missing <- o %>% 
+  filter(is.na(LONGITUDE) | is.na(LATITUDE) | is.na(observation_datetime_utc)) %>%
+  arrange(desc(observation_datetime_utc))
+
+encounters_missing %>% skimr::skim()
+
 ```
 
 
@@ -488,6 +492,33 @@ write.csv(enc2, file="data/wamtram_encounters_missing.csv", row.names=F)
 DT::datatable(sites)
 ```
 
+
+# Upload data
+
+```{r upload_data}
+d <- package_show("wa-marine-turtle-tagging-database-wamtram-2")
+# write.csv(enc2, file = here::here("wamtram", "data", "wamtram_encounters_incomplete.csv"), row.names = F)
+# write.csv(o, file = here::here("wamtram", "data", "wamtram_encounters.csv"), row.names = F)
+# ckanr::resource_update(Sys.getenv("W2_ENC_CSV_RID"), here::here("wamtram", "data", "wamtram_encounters.csv"))
+
+# Users
+users_fn <- here::here("wamtram", "data", "wamtram_users.csv")
+readr::write_csv(person_details, users_fn)
+# r <- resource_create(package_id=d$id, name="WAMTRAM Users", upload=users_fn)
+ckanr::resource_update("ca523326-623f-460e-a617-77d403918b81", users_fn)
+
+# Encounters
+enc_fn <- here::here("wamtram", "data", "wamtram_encounters.csv")
+readr::write_csv(encounters, enc_fn)
+# r <- resource_create(package_id=d$id, name="WAMTRAM Encounters", upload=enc_fn)
+ckanr::resource_update("f7e30448-de1c-4061-8a85-887632934961", enc_fn)
+
+# Tags
+tag_fn <- here::here("wamtram", "data", "wamtram_tagobservations.csv")
+readr::write_csv(recorded_tags, tag_fn)
+# r <- resource_create(package_id=d$id, name="WAMTRAM Tags", upload=tag_fn)
+ckanr::resource_update("6d2e2c24-7d10-4a73-8711-12bc03120fa1", tag_fn)
+```
 
 # Products
 This section outlines the desired products to be created from the tagging data.
@@ -510,8 +541,3 @@ For the Gorgon reports, the following products are generated:
 ## Tag history
 For tags (tag IDs = rows), one column per year, value 0 (not encountered) or 1 (encountered),
 plus columns for location and species.
-
-
-```{r}
-setwd("~/projects/turtle-scripts")
-```
