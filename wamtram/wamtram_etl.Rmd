@@ -302,6 +302,14 @@ The site polygons shall be delineated by:
 * The polygons shall be simplified to consist of exactly one polygon ring and 
   not overlap with each other.
 
+## Tag status mapping
+TODO: Review and update WAMTRAM to WAStD stag status mapping.
+
+```{r}
+ts <- sqlQuery(con, "select * from dbo.TRT_TAG_STATES;")
+ts %>% DT::datatable()
+```
+
 ## Observations
 Ancillary lookup tables are sanitised and joined to the observations.
 
