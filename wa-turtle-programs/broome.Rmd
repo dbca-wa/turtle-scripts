@@ -34,6 +34,10 @@ Most QA is done across all WA records and programs in the separate QA workbook.
 
 This section identifies data requiring editing.
 
+Training dates:
+
+* turtle date 2017-11-13, 2017-10-28, 2017-10-17
+
 ## Provided username mismatches WAStD users
 ```{r name_mismatch_bme}
 surveys_bme %>% filter_surveys_requiring_qa() %>% dt()
@@ -60,7 +64,7 @@ tracks_bme %>% filter_2017() %>% map_tracks()
 A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
 be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
-```{r map_bme_animated, warning=FALSE, message=FALSE}
+```{r map_bme_animated, eval=F, warning=FALSE, message=FALSE}
 tracks_bme_2017 <- tracks_bme %>% filter_2017()
 gganimate_tracks(tracks_bme_2017, placename_bme, prefix_bme)
 ```
