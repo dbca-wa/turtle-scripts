@@ -24,6 +24,8 @@ Data from Rosemary Islands was recovered from unfinalised forms on devices.
 # Data
 ```{r load_data}
 tracks_del <- tracks_all %>% filter_del() %>% exclude_training_species() %>% add_nest_labels()
+tags_del <- animals %>% filter_del() %>% exclude_training_species()
+tags_del_2017 <- tags_del %>% filter_2017()
 surveys_del <- surveys %>% filter_del()
 surveys_del_prod <- surveys_del %>% exclude_training_surveys()
 dist_del <- disturbance %>% filter_del()
@@ -68,6 +70,87 @@ Time savings Delambre: `r (nrow(tracks_del) + nrow(surveys_del)*2 + nrow(dist_de
 hours for `r nrow(tracks_del)` Track or Treats and  `r nrow(surveys_del)*2` Site Visit Starts/Ends. 
 
 # Delambre Nesting
+## Tagged animals
+```{r}
+tags_by_date <- tags_del %>% filter_2017 %>% group_by(turtle_date) %>% tally() %>% ungroup()
+animals_by_date <- tags_del %>% filter_2017 %>% group_by(turtle_date, name) %>% tally() %>% ungroup()
+```
+
+A total of `r tags_del %>% filter_2017 %>% nrow()` turtles were processed (captured new or resighted)
+during the `r length(unique(tags_by_date$turtle_date))` days of field work on which tagging took place.
+
+This number excludes records in WAMTRAM with missing coordinates or time stamps. 
+Re-sightings of the same turtle are counted as separate handling events.
+
+On average, `r mean(tags_by_date$n) %>% round(digits = 2)` 
+(SD `r sd(tags_by_date$n) %>% round(digits = 2)`, 
+range `r min(tags_by_date$n)` to `r max(tags_by_date$n)`) turtles were processed 
+per surveyed day.
+
+`r length(unique(animals_by_date$name))` distinct tags were applied.
+This number relates to new animals, but contains the tag "NA" and resightings.
+This number also omits the invalid records from WAMTRAM with missing coordinates 
+or dates.
+
+**TODO**
+
+* For each tag with nesting `present`, count number of of sightings before.
+* For each tag without nesting `present`, count number of sightings within 7 days 
+  from each other.
+* Mean number of nests per night, sd, range
+* Equivalent to ~ 600 nests over 1 km of beach in 4 months
+* Nesting density as number of nests per km coastline
+* Per species: CCL and CCW, mean, sd, min, max
+
+### Animals processed per day
+
+```{r}
+datatable(tags_by_date,
+  caption = "Number of turtles processed per day"
+)
+```
+
+### Tags processed per day
+
+```{r}
+datatable(animals_by_date,
+  caption = "Number of individual tags processed per day"
+)
+```
+
+```{r fig_turtles_processed_per_day}
+ggplot2::ggplot(tags_by_date, ggplot2::aes(x = turtle_date, y = n)) +
+  ggplot2::geom_bar(stat = "identity") +
+  ggplot2::scale_x_date(
+    breaks = scales::pretty_breaks(),
+    labels = scales::date_format("%d %b %Y")
+  ) +
+  ggplot2::labs(x = "Turtle date", y = "Number of turtles processed") +
+  ggplot2::ggtitle("Turtles processed per day (new and recaptured)") +
+  ggplot2::theme_classic() +
+  # ggplot2::ggsave(ggplot2::ggsave(glue::glue("{prefix_del}_turtles_processed_per_day.png"), 
+  # device = png(), width = 10, height = 15)) + 
+  NULL
+```
+
+# Nesting intervals
+
+```{r, fig.width=7, fig.height=60}
+ggplot(tags_del_2017, aes(x = turtle_date, y = name, color = nesting_event)) +
+  geom_point() +
+  geom_line(aes(turtle_date, name)) +
+  scale_x_date(
+    breaks = scales::pretty_breaks(),
+    labels = scales::date_format("%d %b %Y")
+  ) +
+  ggtitle("Nesting history of tagged turtles") +
+  theme_classic() + 
+  ggsave(glue::glue("{prefix_del}_nesting_intervals.png"), 
+         width = 10, height = 60, limitsize = FALSE)
+```
+
+**TODO** How many days elapse to first resighting? 
+This section depends on new functionality of WAStD (identifying recaptures).
 ## Maps
 ```{r map_del}
 tracks_del %>% filter_2017() %>% map_tracks()
@@ -78,7 +161,7 @@ A [Google API key](https://developers.google.com/maps/documentation/geocoding/st
 be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
 ```{r map_del_animated, warning=FALSE, message=FALSE}
-tracks_del %>% filter_2017() %>% gganimate_tracks(placename_del, prefix_del)
+# tracks_del %>% filter_2017() %>% gganimate_tracks(placename_del, prefix_del)
 ```
 
 ### Tagged nests

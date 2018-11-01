@@ -83,7 +83,7 @@ be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
 ```{r map_thv_animated, warning=FALSE}
 tracks_thv_2017 <- tracks_thv %>% filter_2017()
-gganimate_tracks(tracks_thv_2017, placename_thv, prefix_thv)
+# gganimate_tracks(tracks_thv_2017, placename_thv, prefix_thv)
 ```
 
 ### Tagged nests

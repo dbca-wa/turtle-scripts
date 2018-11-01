@@ -58,6 +58,7 @@ hours of mind-numbing data entry and proofreading work for
 ## Maps
 ```{r map_bme}
 tracks_bme %>% filter_2017() %>% map_tracks()
+tracks_bme %>% filter_2018() %>% map_tracks()
 ```
 
 ### Animated map
@@ -66,7 +67,7 @@ be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
 ```{r map_bme_animated, eval=F, warning=FALSE, message=FALSE}
 tracks_bme_2017 <- tracks_bme %>% filter_2017()
-gganimate_tracks(tracks_bme_2017, placename_bme, prefix_bme)
+# gganimate_tracks(tracks_bme_2017, placename_bme, prefix_bme)
 ```
 
 ### Tagged nests
@@ -74,9 +75,9 @@ The map is saved as a PNG file `r glue::glue(prefix_bme, "_tagged_nests.png")`.
 
 Coming 2018.
 
-```{r nests_bme, eval=F}
+```{r nests_bme}
 nests_bme %>%
-  filter_2017() %>%
+  filter_2018() %>%
   map_nests() %>%
   mapview::mapshot(file = glue::glue("{prefix_bme}_tagged_nests_2017.png"))
 ```
@@ -128,11 +129,15 @@ General signs of disturbance or predator presence are recorded through form
 Turtle nests with recorded disturbance or predation.
 
 ```{r dist_nests_bme}
-disturbed_nests_bme <- tracks_bme %>% filter_2017() %>% filter(disturbance == "present")
-disturbed_nests_bme %>% map_tracks()
+disturbed_nests_bme_2017 <- tracks_bme %>% filter_2017() %>% filter(disturbance == "present")
+disturbed_nests_bme_2017 %>% map_tracks()
+
+disturbed_nests_bme_2018 <- tracks_bme %>% filter_2018() %>% filter(disturbance == "present")
+disturbed_nests_bme_2018 %>% map_tracks()
 ```
 
-There were **`r count(disturbed_nests_bme)` reports** of disturbed nests. 
+There were **`r count(disturbed_nests_bme_2017)` reports** of disturbed nests in 2017 and 
+**`r count(disturbed_nests_bme_2018)` reports** in 2018. 
 Caveat: QA to exclude possible training records.
 
 Coming soon: details of disturbance to nests.
@@ -141,8 +146,11 @@ Coming soon: details of disturbance to nests.
 There were **`r count(dist_bme)` reports** of general disturbance or predator presence.
 
 ```{r map_dist_bme}
-dist_bme %>% filter_2017() %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
-dist_bme %>% map_dist()
+dist_bme %>% filter_2017() %>% group_by(season, disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
+dist_bme %>% filter_2017() %>% map_dist()
+
+dist_bme %>% filter_2018() %>% group_by(season, disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
+dist_bme %>% filter_2018() %>% map_dist()
 ```
 
 # Surveys
