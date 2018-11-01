@@ -133,7 +133,7 @@ ggplot2::ggplot(tags_by_date, ggplot2::aes(x = turtle_date, y = n)) +
   NULL
 ```
 
-# Nesting intervals
+## Nesting intervals
 
 ```{r, fig.width=7, fig.height=60}
 ggplot(tags_del_2017, aes(x = turtle_date, y = name, color = nesting_event)) +
@@ -148,6 +148,20 @@ ggplot(tags_del_2017, aes(x = turtle_date, y = name, color = nesting_event)) +
   ggsave(glue::glue("{prefix_del}_nesting_intervals.png"), 
          width = 10, height = 60, limitsize = FALSE)
 ```
+
+
+The chart shows encounters with the given tags over the season. Every dot is a tag (tag ID is y-axis) being applied or re-sighted at a given turtle date (x-axis).
+
+Re-sighted tags are connected with a line.
+
+The categories "nesting event" or not indicate whether the turtle was confirmed nesting or maybe just identified while false crawling (and tag still recorded).
+
+There is a heap of single encounters which I didn't want to filter out as not to imply that all tags were re-sighted.
+
+The natural progression of new tag IDs versus date reflects the tagging teams going through their sorted tag batches over the season.
+
+The chart is immensely tall (60 inches printed) for this huge number of tags. Looking for clever ways to shrink the chart height.
+
 
 **TODO** How many days elapse to first resighting? 
 This section depends on new functionality of WAStD (identifying recaptures).
