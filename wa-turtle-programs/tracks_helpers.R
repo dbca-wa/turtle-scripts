@@ -211,12 +211,12 @@ gganimate_tracks <- function(data, placename=NULL, prefix=NULL, gm_apikey=NULL) 
     gganimate::anim_save(glue::glue("{pf}_nesting.gif"), .)
 }
 
-survey_count <- function(surveys, sid, season=2017) {
-  nrow(filter(surveys, site_id == sid, season == season))
+survey_count <- function(surveys, sid, ssn) {
+  surveys %>% filter(site_id == sid, season == ssn) %>% nrow()
 }
 
-survey_ground_covered <- function(surveys, site_id, km_per_survey, season=2017) {
-  survey_count(surveys, site_id, season) * km_per_survey
+survey_ground_covered <- function(surveys, site_id, km_per_survey, ssn) {
+  survey_count(surveys, site_id, ssn) * km_per_survey
 }
 
 survey_count_heatmap <- function(surveys, placename, prefix) {

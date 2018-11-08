@@ -122,14 +122,14 @@ hours of mind-numbing data entry and proofreading work for
 ## Maps
 ```{r map_current_season}
 tracks_wp %>% filter_2017() %>% map_tracks()
-# tracks_wp %>% filter_2018() %>% map_tracks()
+tracks_wp %>% filter_2018() %>% map_tracks()
 ```
 
 ### Animated map
 A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
 be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
-```{r map_animated, warning=FALSE}
+```{r map_animated, warning=FALSE, eval=F}
 gganimate_tracks(tracks_wp, placename_wp, prefix_wp)
 # gganimate_tracks(tracks_cl, placename_wp, prefix_wp)
 ```
@@ -225,7 +225,7 @@ General signs of disturbance or predator presence are recorded through form
 Turtle nests with recorded disturbance or predation. All beaches.
 
 ```{r dist_nests}
-disturbed_nests_wp <- tracks_wp %>% filter_2017() %>% dplyr::filter(disturbance == "present")
+disturbed_nests_wp <- tracks_wp %>% filter_2018() %>% dplyr::filter(disturbance == "present")
 disturbed_nests_wp %>% map_tracks()
 ```
 
@@ -239,7 +239,7 @@ There were **`r count(dist_wp)` reports** of general disturbance or predator pre
 
 ```{r dist_general}
 dist_wp %>% disturbance_by_season() %>% dt()
-dist_wp %>% filter_2017() %>% map_dist()
+dist_wp %>% filter_2018() %>% map_dist()
 ```
 
 
@@ -313,18 +313,32 @@ No aggregation: individual surveys.
 surveys_wp %>% survey_show_detail %>% dt()
 ```
 
-## Volunteer effort
+## Volunteer effort 
+### Season 2017-18
 * Data shown for all sites, nesting season 2017-18.
 * Surveys including training runs represent volunteer effort.
 * There were **`r surveys_wp %>% filter_2017() %>% nrow` surveys** 
   including training for a total duration
-  of **`r sum(filter_2017(surveys_wp_prod)$duration_hours)` hours**.
+  of **`r sum(filter_2017(surveys_wp_prod)$duration_hours) %>% round()` hours**.
 * At Bells Beach, assuming the round trip was 2 km,
-  **`r survey_ground_covered(surveys, 25, 2, season=2017)` km** were walked 
-  in **`r survey_count(surveys, 25, season=2017)` surveys** including training.
+  **`r survey_ground_covered(surveys, 25, 2, 2017)` km** were walked 
+  in **`r survey_count(surveys, 25, 2017)` surveys** including training.
 * At Yacht Club Beach, assuming the round trip was 1 km,
-  **`r survey_ground_covered(surveys, 27, 1, season=2017)` km** were walked 
-  in **`r survey_count(surveys_wp, 27, season=2017)` surveys ** including training.
+  **`r survey_ground_covered(surveys, 27, 1, 2017)` km** were walked 
+  in **`r survey_count(surveys_wp, 27, 2017)` surveys ** including training.
+  
+### Season 2018-19
+* Data shown for all sites, nesting season 2018-19 (ongoing).
+* Surveys including training runs represent volunteer effort.
+* There were **`r surveys_wp %>% filter_2018() %>% nrow` surveys** 
+  including training for a total duration
+  of **`r sum(filter_2018(surveys_wp_prod)$duration_hours) %>% round()` hours**.
+* At Bells Beach, assuming the round trip was 2 km,
+  **`r survey_ground_covered(surveys, 25, 2, 2018)` km** were walked 
+  in **`r survey_count(surveys, 25, 2018)` surveys** including training.
+* At Yacht Club Beach, assuming the round trip was 1 km,
+  **`r survey_ground_covered(surveys, 27, 1, 2018)` km** were walked 
+  in **`r survey_count(surveys, 27, 2018)` surveys ** including training.
 
 ### Per person
 The following list only includes the primary reporter. 
@@ -345,7 +359,7 @@ The only way to reconcile attribution is to manually compare survey usernames wi
 
 ```{r survey_effort_by_person}
 personal_effort <- surveys_wp %>% survey_hours_per_person()
-personal_effort %>% kable()
+personal_effort %>% dt
 ```
 
 # Data upload
