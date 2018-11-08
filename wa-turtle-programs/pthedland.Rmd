@@ -92,7 +92,7 @@ gganimate_tracks(tracks_pth, placename_pth, prefix_pth)
 ```
 
 ### Tagged nests
-#### 2018-18
+#### 2017-18
 No tagged nests.
 
 #### 2018-19
@@ -107,39 +107,20 @@ nests_pth %>%
 ## Nesting abundance
 
 ### All beaches
-#### 2017-18
-```{r tracks_all_sectors_2017}
-tracks_pth %>% filter_2017() %>% nesting_type_by_season_species() %>% kable()
+```{r tracks_all_sectors}
+tracks_pth %>% nesting_type_by_season_species() %>% kable()
 ```
-
-#### 2018-19
-```{r tracks_all_sectors_2018}
-tracks_pth %>% filter_2018() %>% nesting_type_by_season_species() %>% kable()
-```
-
 
 ### Cemetery Beach
-#### 2017-18
-```{r tracks_cem_2017}
-tracks_pth_cem %>% filter_2017() %>% nesting_type_by_season_species() %>% kable()
-```
-
-#### 2018-19
-```{r tracks_cem_2018}
-tracks_pth_cem %>% filter_2018() %>% nesting_type_by_season_species() %>% kable()
+```{r tracks_cem}
+tracks_pth_cem %>% nesting_type_by_season_species() %>% kable()
 ```
 
 ### Pretty Pool Beach
-#### 2017-18
-```{r tracks_ppo_2017}
-tracks_pth_ppo %>% filter_2017() %>% nesting_type_by_season_species() %>% kable()
+```{r tracks_ppo}
+tracks_pth_ppo %>% nesting_type_by_season_species() %>% kable()
 ```
 
-#### 2018-19
-None yet.
-```{r tracks_ppo_2018, eval=FALSE}
-tracks_pth_ppo %>% filter_2018() %>% nesting_type_by_season_species() %>% kable()
-```
 
 ## Nesting by week
 ### All beaches
@@ -293,19 +274,19 @@ surveys_pth %>% survey_show_detail %>% dt()
 * There were **`r surveys_pth %>% filter_2017() %>% nrow` surveys** 
   including training for a total duration of 
   **`r sum(filter_2017(surveys_pth_prod)$duration_hours)` hours**.
-* At Cemetery Beach, **`r survey_ground_covered(surveys, 35, 1.6, season=2017)` km** were walked 
-  in **`r survey_count(surveys_pth, 35, season=2017)`** surveys.
-* At Pretty Pool Beach, **`r survey_ground_covered(surveys, 45, 1.8, season=2017)` km** were walked 
-  in **`r survey_count(surveys_pth, 45, season=2017)`** surveys.
+* At Cemetery Beach, **`r survey_ground_covered(surveys, 35, 1.6, 2017)` km** were walked 
+  in **`r survey_count(surveys_pth, 35, 2017)`** surveys.
+* At Pretty Pool Beach, **`r survey_ground_covered(surveys, 45, 1.8, 2017)` km** were walked 
+  in **`r survey_count(surveys_pth, 45, 2017)`** surveys.
 
 #### 2018-19
 * There were **`r surveys_pth %>% filter_2018() %>% nrow` surveys** 
   including training for a total duration of 
-  **`r sum(filter_2018(surveys_pth_prod)$duration_hours)` hours**.
-* At Cemetery Beach, **`r survey_ground_covered(surveys, 35, 1.6, season=2018)` km** were walked 
-  in **`r survey_count(surveys_pth, 35, season=2018)`** surveys.
-* At Pretty Pool Beach, **`r survey_ground_covered(surveys, 45, 1.8, season=2018)` km** were walked 
-  in **`r survey_count(surveys_pth, 45, season=2018)`** surveys.
+  **`r sum(filter_2018(surveys_pth_prod)$duration_hours) %>% round()` hours**.
+* At Cemetery Beach, **`r survey_ground_covered(surveys, 35, 1.6, 2018)` km** were walked 
+  in **`r survey_count(surveys_pth, 35, 2018)`** surveys.
+* At Pretty Pool Beach, **`r survey_ground_covered(surveys, 45, 1.8, 2018)` km** were walked 
+  in **`r survey_count(surveys_pth, 45, 2018)`** surveys.
 
 ### Per person
 The following list only includes the primary reporter. 

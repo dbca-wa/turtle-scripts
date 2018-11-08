@@ -309,12 +309,20 @@ personal_effort_del <- surveys_del %>% survey_hours_per_person()
 personal_effort_del %>% kable()
 ```
 
-## Survey effort in kilometers walked
+## Survey effort
+### Season 2017-18
 Number of surveys per sector times length of site.
 
 At Delambre, assuming the trip was 4 km,
-`r survey_ground_covered(surveys, 39, 4, season=2017)` km were walked 
-in `r survey_count(surveys, 39, season=2017)` surveys.
+`r survey_ground_covered(surveys, 39, 4, 2017)` km were walked 
+in `r survey_count(surveys, 39, 2017)` surveys.
+
+### Season 2018-19
+Number of surveys per sector times length of site.
+
+At Delambre, assuming the trip was 4 km,
+`r survey_ground_covered(surveys, 39, 4, 2018)` km were walked 
+in `r survey_count(surveys, 39, 2018)` surveys.
 
 # Data upload
 ## Raw data

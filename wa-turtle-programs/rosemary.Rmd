@@ -59,7 +59,7 @@ tracks_ros %>% filter_2017() %>% map_tracks()
 A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
 be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
-```{r map_ros_animated, warning=FALSE}
+```{r map_ros_animated, warning=FALSE, eval=F}
 tracks_ros_2017 <- tracks_ros %>% filter_2017()
 gganimate_tracks(tracks_ros_2017, placename_ros, prefix_ros)
 ```
@@ -71,9 +71,9 @@ Coming 2018.
 
 ```{r nests_ros, eval=F}
 nests_ros %>%
-  filter_2017() %>%
+  filter_2018() %>%
   map_nests() %>%
-  mapview::mapshot(file = glue::glue("{prefix}_tagged_nests_2017.png"))
+  mapview::mapshot(file = glue::glue("{prefix}_tagged_nests_2018.png"))
 ```
 
 ## Nesting abundance
@@ -197,9 +197,15 @@ personal_effort_ros %>% kable()
 ## Survey effort in kilometers walked
 Number of surveys per sector times length of site.
 
+### Season 2017-18
 At Rosemary, assuming the trip was 4 km,
-`r survey_ground_covered(surveys, 40, 4, season=2017)` km were walked 
-in `r survey_count(surveys, 40, season=2017)` surveys.
+`r survey_ground_covered(surveys, 40, 4, 2017)` km were walked 
+in `r survey_count(surveys, 40, 2017)` surveys.
+
+### Season 2018-19
+At Rosemary, assuming the trip was 4 km,
+`r survey_ground_covered(surveys, 40, 4, 2018)` km were walked 
+in `r survey_count(surveys, 40, 2018)` surveys.
 
 # Data upload
 ## Raw data

@@ -79,7 +79,7 @@ Coming 2018.
 nests_bme %>%
   filter_2018() %>%
   map_nests() %>%
-  mapview::mapshot(file = glue::glue("{prefix_bme}_tagged_nests_2017.png"))
+  mapview::mapshot(file = glue::glue("{prefix_bme}_tagged_nests_2018.png"))
 ```
 
 ## Nesting abundance
@@ -209,17 +209,31 @@ personal_effort_bme <- surveys_bme %>% survey_hours_per_person()
 personal_effort_bme %>% kable()
 ```
 
-## Survey effort in kilometers walked
+## Volunteer effort 
+### Season 2017-18
 Number of surveys per sector times length of site.
 
-In sector 1, `r survey_ground_covered(surveys_bme, 22, 4)` km were walked 
-in `r survey_count(surveys_bme, 22)` surveys.
+In sector 1, `r survey_ground_covered(surveys, 22, 4, 2017)` km were walked 
+in `r survey_count(surveys, 22, 2017)` surveys.
 
-In sector 2, `r survey_ground_covered(surveys_bme, 23, 4)` km were walked 
-in `r survey_count(surveys_bme, 23)` surveys.
+In sector 2, `r survey_ground_covered(surveys, 23, 4, 2017)` km were walked 
+in `r survey_count(surveys, 23, 2017)` surveys.
 
-In sector 3, `r survey_ground_covered(surveys_bme, 24, 7)` km were walked 
-in `r survey_count(surveys_bme, 24)` surveys.
+In sector 3, `r survey_ground_covered(surveys, 24, 7, 2017)` km were walked 
+in `r survey_count(surveys, 24, 2017)` surveys.
+
+### Season 2018-19
+Number of surveys per sector times length of site.
+
+In sector 1, `r survey_ground_covered(surveys, 22, 4, 2018)` km were walked 
+in `r survey_count(surveys, 22, 2018)` surveys.
+
+In sector 2, `r survey_ground_covered(surveys, 23, 4, 2018)` km were walked 
+in `r survey_count(surveys, 23, 2018)` surveys.
+
+In sector 3, `r survey_ground_covered(surveys, 24, 7, 2018)` km were walked 
+in `r survey_count(surveys, 24, 2018)` surveys.
+
 
 
 # Data upload
