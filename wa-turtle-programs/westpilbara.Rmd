@@ -9,6 +9,8 @@ output:
     toc_float: true
     fig_width: 10
     fig_height: 6
+    code_folding: show
+    theme: lumen
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
@@ -200,6 +202,7 @@ nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_wp, pr
 nests %>% track_success_by_species() %>% datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
+nests %>% filter_2018 %>% dt
 ```
 
 ## Hatching and emergence success

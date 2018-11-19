@@ -9,6 +9,8 @@ output:
     toc_float: true
     fig_width: 10
     fig_height: 6
+    code_folding: show
+    theme: lumen
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
@@ -119,7 +121,7 @@ tracks_thv %>% nesting_type_by_season_week_species() %>% kable()
 ## Nesting by day
 This section shows data from all sites.
 
-```{r nesting_success_thv, message=FALSE, fig.width=10, fig.height=6}
+```{r nesting_success_thv, message=FALSE}
 tracks_ts(tracks_thv, surveys_thv, placename_thv, prefix_thv)
 nests <- tracks_thv %>% track_success()
 nests %>% ggplot_track_success_by_date("natator-depressus", placename_thv, prefix_thv)
@@ -179,12 +181,21 @@ Curators are to QA
 [all `r placename_thv` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__in=20,28,29),
 following the 
 [QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
-
 Split up per site:
 
 * [Thevenard Island North Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=28)
 * [Thevenard Island South Beach](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=29)
 * [Thevenard Island Tagging Area](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=20)
+
+Note, we might need to re-define the beaches into North and South, dissolving the tagging area.
+
+Season 2018-19:
+
+* Wed 14 Nov mornings: crossed off tracks, recorded a few for training but should be non-production run 
+* Wed 14 Nov afternoon: corrine did some training at the cabin with volunteers. 
+  Forms should have been deleted but may have been sent by mistake. Also non-production.
+* Wed 14 Nov night: shouldn't be any records for that night
+* Thu 15 Nov morning: normal morning walks with proper records
 
 ### Per season effort
 Highest level of aggregation: entire season.

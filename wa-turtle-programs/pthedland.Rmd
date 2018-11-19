@@ -9,6 +9,8 @@ output:
     toc_float: true
     fig_width: 10
     fig_height: 6
+    code_folding: show
+    theme: lumen
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}

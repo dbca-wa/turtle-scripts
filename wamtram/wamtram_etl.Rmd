@@ -2,7 +2,15 @@
 title: "Turtle Tagging ETL"
 author: "Turtle Conservation Program, Dept Parks & Wildlife WA"
 date: "`r format(Sys.time(), '%d %B, %Y %H:%M')`"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fig_width: 10
+    fig_height: 6
+    code_folding: show
+    theme: lumen
 ---
 ```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)

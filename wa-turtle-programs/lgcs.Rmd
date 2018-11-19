@@ -9,6 +9,8 @@ output:
     toc_float: true
     fig_width: 10
     fig_height: 6
+    code_folding: show
+    theme: lumen
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
@@ -62,7 +64,7 @@ tracks_lgcs %>% filter_2017() %>% map_tracks()
 A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
 be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
-```{r map_lgcs_animated, warning=FALSE, message=FALSE}
+```{r map_lgcs_animated, eval=F, warning=FALSE, message=FALSE}
 tracks_lgcs_2017 <- tracks_lgcs %>% filter_2017()
 gganimate_tracks(tracks_lgcs_2017, placename_lgcs, prefix_lgcs)
 ```
@@ -204,14 +206,27 @@ personal_effort_lgcs %>% kable()
 ```
 
 ## Survey effort in kilometers walked
+Number of surveys per sector times length of site. 51 52
+
+
+## Survey effort 
+### Season 2017-18
 Number of surveys per sector times length of site.
 
-At Smokey Bay, `r survey_ground_covered(surveys, 51, 1)` km were covered
-in `r survey_count(surveys, 51)` surveys of 1 km each.
+At Smokey Bay, `r survey_ground_covered(surveys, 51, 1, 2017)` km were walked 
+in `r survey_count(surveys, 51, 2017)` surveys.
 
-At Langgi, `r survey_ground_covered(surveys, 52, 1)` km were covered
-in `r survey_count(surveys, 52)` surveys of 1 km each.
+At Langgi, `r survey_ground_covered(surveys, 52, 1, 2017)` km were walked 
+in `r survey_count(surveys, 52, 2017)` surveys.
 
+### Season 2018-19
+Number of surveys per sector times length of site.
+
+At Smokey Bay, `r survey_ground_covered(surveys, 51, 1, 2018)` km were walked 
+in `r survey_count(surveys, 51, 2018)` surveys.
+
+At Langgi, `r survey_ground_covered(surveys, 52, 1, 2018)` km were walked 
+in `r survey_count(surveys, 52, 2018)` surveys.
 
 ## Raw data
 * Raw data are exported into CSV spreadsheets.

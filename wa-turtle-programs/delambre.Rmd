@@ -9,6 +9,8 @@ output:
     toc_float: true
     fig_width: 10
     fig_height: 6
+    code_folding: show
+    theme: lumen
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
@@ -135,10 +137,22 @@ ggplot2::ggplot(tags_by_date, ggplot2::aes(x = turtle_date, y = n)) +
 
 ## Nesting intervals
 
-```{r, fig.width=7, fig.height=60}
-ggplot(tags_del_2017, aes(x = turtle_date, y = name, color = nesting_event)) +
-  geom_point() +
-  geom_line(aes(turtle_date, name)) +
+```{r, fig.width=10, fig.height=30}
+tags_del_2017_tally <- tags_del_2017 %>% group_by(name) %>% tally() 
+
+tags_del_2017_resighted_records <- tags_del_2017 %>% 
+  filter(name %in% filter(tags_del_2017_tally, n>1)$name) %>% 
+  tidyr::replace_na(list(name = "Tag unknown"))
+
+tags_del_2017_single_records <- tags_del_2017 %>% 
+  filter(name %in% filter(tags_del_2017_tally, n==1)$name) %>% 
+  mutate(name="Seen once")
+
+ggplot(tags_del_2017_resighted_records, 
+       aes(x = turtle_date, y = name, color = nesting_event)) +
+  geom_point(data = tags_del_2017_single_records) +
+  geom_point(data = tags_del_2017_resighted_records) +
+  geom_line(data = tags_del_2017_resighted_records, aes(turtle_date, name)) +
   scale_x_date(
     breaks = scales::pretty_breaks(),
     labels = scales::date_format("%d %b %Y")
@@ -146,7 +160,7 @@ ggplot(tags_del_2017, aes(x = turtle_date, y = name, color = nesting_event)) +
   ggtitle("Nesting history of tagged turtles") +
   theme_classic() + 
   ggsave(glue::glue("{prefix_del}_nesting_intervals.png"), 
-         width = 10, height = 60, limitsize = FALSE)
+         width = 10, height = 30, limitsize = FALSE)
 ```
 
 
