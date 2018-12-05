@@ -2,7 +2,15 @@
 title: "WA Turtles Quality Control"
 author: "Florian Mayer, WA Turtles DBCA"
 date: "9/20/2018"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fig_width: 10
+    fig_height: 6
+    code_folding: hide
+    theme: lumen
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}

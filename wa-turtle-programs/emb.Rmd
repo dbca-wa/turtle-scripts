@@ -9,7 +9,7 @@ output:
     toc_float: true
     fig_width: 10
     fig_height: 6
-    code_folding: show
+    code_folding: hide
     theme: lumen
 ---
 
@@ -71,7 +71,7 @@ tracks_emb_cv %>% filter_2017() %>% map_tracks()
 A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
 be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
-```{r map_emb_animated, warning=FALSE, message=FALSE}
+```{r map_emb_animated, warning=FALSE, message=FALSE, eval=F}
 tracks_emb_2017 <- tracks_emb %>% filter_2017()
 gganimate_tracks(tracks_emb_2017, placename_emb, prefix_emb)
 ```

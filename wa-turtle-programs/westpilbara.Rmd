@@ -1,5 +1,5 @@
 ---
-title: "West Pilbara Season Review 2017-2018"
+title: "West Pilbara Turtle Nesting Census"
 author: "West Pilbara Turtle Program with Marine Turtles WA"
 date: "`r Sys.time()`"
 output:
@@ -9,7 +9,7 @@ output:
     toc_float: true
     fig_width: 10
     fig_height: 6
-    code_folding: show
+    code_folding: hide
     theme: lumen
 ---
 
@@ -49,8 +49,8 @@ tracks_wp <- tracks_all %>% filter_wp() %>% exclude_training_species() %>% add_n
 # tracks_cw <- tracks_wp %>% filter_wp_coolingwater() # none yet
 tracks_bb <- tracks_wp %>% filter_wp_bells()
 tracks_yc <- tracks_wp %>% filter_wp_yachtblub()
-# tracks_bt <- tracks_wp %>% filter_wp_boat() # none yet
-# tracks_cl <- tracks_wp %>% filter_wp_cleaverville() # none yet
+tracks_bt <- tracks_wp %>% filter_wp_boat()
+tracks_cl <- tracks_wp %>% filter_wp_cleaverville()
 
 surveys_wp <- surveys %>% filter_wp()
 surveys_wp_prod <- surveys_wp %>% exclude_training_surveys()
@@ -173,10 +173,14 @@ tracks_yc %>% nesting_type_by_season_species() %>% kable()
 ```
 
 ### Boat Beach
-Coming 2018.
+```{r tracks_bt}
+tracks_bt %>% nesting_type_by_season_species() %>% kable()
+```
 
 ### Cleaverville Beach 1
-Coming 2018.
+```{r tracks_cl}
+tracks_cl %>% nesting_type_by_season_species() %>% kable()
+```
 
 ## Nesting by week
 * Data from all sites combined.
@@ -335,6 +339,9 @@ surveys_wp %>% survey_show_detail %>% dt()
 * Surveys including training runs represent volunteer effort.
 * There were **`r surveys_wp %>% filter_2018() %>% nrow` surveys** 
   including training for a total duration
+  of **`r sum(filter_2018(surveys_wp)$duration_hours) %>% round()` hours**.
+* There were **`r surveys_wp_prod %>% filter_2018() %>% nrow` surveys** 
+  excluding training for a total duration
   of **`r sum(filter_2018(surveys_wp_prod)$duration_hours) %>% round()` hours**.
 * At Bells Beach, assuming the round trip was 2 km,
   **`r survey_ground_covered(surveys, 25, 2, 2018)` km** were walked 
@@ -342,6 +349,13 @@ surveys_wp %>% survey_show_detail %>% dt()
 * At Yacht Club Beach, assuming the round trip was 1 km,
   **`r survey_ground_covered(surveys, 27, 1, 2018)` km** were walked 
   in **`r survey_count(surveys, 27, 2018)` surveys ** including training.
+* At Boat Beach, assuming the round trip was 1 km,
+  **`r survey_ground_covered(surveys, 46, 1, 2018)` km** were walked 
+  in **`r survey_count(surveys, 46, 2018)` surveys ** including training.
+* At Cleaverville Beach, assuming the round trip was 2 km,
+  **`r survey_ground_covered(surveys, 47, 2, 2018)` km** were walked 
+  in **`r survey_count(surveys, 47, 2018)` surveys ** including training.
+
 
 ### Per person
 The following list only includes the primary reporter. 
