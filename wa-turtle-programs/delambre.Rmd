@@ -373,3 +373,25 @@ zip(zipfile = products_fn_del, files = list.files(pattern = prefix_del))
 ckanr::resource_update("69d5585a-3307-41ee-980e-f829f7eef004", "delambre.html")
 ckanr::resource_update("fd1c15a4-4766-4039-b3a7-5a3dd7b403a2", products_fn_del)
 ```
+
+## Google Drive
+A copy of this report and all generated outputs is uploaded to Google Drive
+and shared via link with DBCA external collaborators.
+
+Every machine has to be authenticated with Google Drive once.
+As this process involves browser windows and pasting of approval codes into the 
+R Console, it is not run automatically when compiling this workbook.
+
+Running the following chunk manually once per machine will cache the authentication
+token locally for future use.
+
+```{r google_drive_auth, eval=F}
+googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
+```
+
+```{r google_drive_upload}
+googledrive::drive_ls("Delambre") %>% googledrive::drive_rm(.)
+googledrive::drive_upload("delambre.html", path=glue::glue("Delambre/delambre.html"))
+products <- list.files(pattern = prefix_del)
+products %>% purrr::map(googledrive::drive_upload, path=as_dribble("Delambre"))
+```
