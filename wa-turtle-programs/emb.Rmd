@@ -253,12 +253,19 @@ personal_effort_emb %>% kable()
 ## Survey effort in kilometers walked
 Number of surveys per sector times length of site.
 
-At Anna Plains, `r survey_ground_covered(surveys, 37, 6)` km were covered
-in `r survey_count(surveys, 22)` surveys.
+### 2017
+At Anna Plains, `r survey_ground_covered(surveys, 37, 6, 2017)` km were covered
+in `r survey_count(surveys, 22, 2017)` surveys.
 
-In sector 2, `r survey_ground_covered(surveys, 36, 6)` km were covered
-in `r survey_count(surveys, 23)` surveys.
+In sector 2, `r survey_ground_covered(surveys, 36, 6, 2017)` km were covered
+in `r survey_count(surveys, 23, 2017)` surveys.
 
+### 2018
+At Anna Plains, `r survey_ground_covered(surveys, 37, 6, 2018)` km were covered
+in `r survey_count(surveys, 22, 2018)` surveys.
+
+In sector 2, `r survey_ground_covered(surveys, 36, 6, 2018)` km were covered
+in `r survey_count(surveys, 23, 2018)` surveys.
 
 ## Raw data
 * Raw data are exported into CSV spreadsheets.
