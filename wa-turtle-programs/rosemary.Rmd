@@ -53,9 +53,16 @@ Time savings Rosemary: `r (nrow(tracks_ros) + nrow(surveys_ros)*2 + nrow(dist_ro
 hours for `r nrow(tracks_ros)` Track or Treats and  `r nrow(surveys_ros)*2` Site Visit Starts/Ends. 
 
 ## Maps
-```{r map_ros}
+### 2017-18
+```{r map_ros_2017}
 tracks_ros %>% filter_2017() %>% map_tracks()
 ```
+
+### 2018-19
+```{r map_ros_2018}
+tracks_ros %>% filter_2018() %>% map_tracks()
+```
+
 
 ### Animated map
 A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
@@ -64,12 +71,15 @@ be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 ```{r map_ros_animated, warning=FALSE, eval=F}
 tracks_ros_2017 <- tracks_ros %>% filter_2017()
 gganimate_tracks(tracks_ros_2017, placename_ros, prefix_ros)
+
+tracks_ros_2018 <- tracks_ros %>% filter_2018()
+gganimate_tracks(tracks_ros_2018, placename_ros, prefix_ros)
 ```
 
 ### Tagged nests
 The map is saved as a PNG file `r glue::glue(prefix_ros, "_tagged_nests.png")`.
 
-Coming 2018.
+Coming 2019.
 
 ```{r nests_ros, eval=F}
 nests_ros %>%
@@ -121,32 +131,52 @@ as "tracks" with "disturbance" recorded as "present".
 General signs of disturbance or predator presence are recorded through form 
 "Fox Sake" and appear here as "dist_(place)".
 
-### Disturbance and predation of nests
+### Disturbance and predation of nests 2017-18
 Turtle nests with recorded disturbance or predation.
 
-```{r dist_nests_ros}
-disturbed_nests_ros <- tracks_ros %>% filter_2017() %>% filter(disturbance == "present")
-disturbed_nests_ros %>% map_tracks()
+```{r dist_nests_ros_2017}
+disturbed_nests_ros_2017 <- tracks_ros %>% filter_2017() %>% filter(disturbance == "present")
+disturbed_nests_ros_2017 %>% map_tracks()
 ```
 
-There were **`r count(disturbed_nests_ros)` reports** of disturbed nests. 
+There were **`r count(disturbed_nests_ros_2017)` reports** of disturbed nests. 
+Caveat: QA to exclude possible training records.
+
+### Disturbance and predation of nests 2018-19
+Turtle nests with recorded disturbance or predation.
+
+```{r dist_nests_ros_2018}
+disturbed_nests_ros_2018 <- tracks_ros %>% filter_2018() %>% filter(disturbance == "present")
+disturbed_nests_ros_2018 %>% map_tracks()
+```
+
+There were **`r count(disturbed_nests_ros_2018)` reports** of disturbed nests. 
 Caveat: QA to exclude possible training records.
 
 Coming soon: details of disturbance to nests.
 
-### General disturbance
-There were **`r count(dist_ros)` reports** of general disturbance or predator presence.
-
-```{r map_dist_ros}
-dist_ros %>% filter_2017() %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
-dist_ros %>% map_dist()
+### General disturbance 2017-18
+```{r map_dist_ros_2018}
+dist_ros_2017 <- dist_ros %>% filter_2017() 
+dist_ros_2017 %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
+dist_ros %>% filter_2017() %>% map_dist()
 ```
+There were **`r count(dist_ros_2017)` reports** of general disturbance or predator presence.
+
+### General disturbance 2018-19
+```{r map_dist_ros_2017}
+dist_ros_2018 <- dist_ros %>% filter_2018() 
+dist_ros_2018 %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
+dist_ros %>% filter_2018() %>% map_dist()
+```
+There were **`r count(dist_ros_2018)` reports** of general disturbance or predator presence.
 
 # Surveys
 Curators are to QA 
 [all `r placename_ros` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=40)
 following the 
 [QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
+
 ### Per season effort
 Highest level of aggregation: entire season.
 Assumption: all training surveys have been marked as such in WAStD.
@@ -205,6 +235,11 @@ At Rosemary, assuming the trip was 4 km,
 in `r survey_count(surveys, 40, 2017)` surveys.
 
 ### Season 2018-19
+<div>
+<img src="pics/ROS_vollies_2018wk1.jpg" style="width:50%;"></img>
+<img src="pics/ROS_vollies_2018wk2.jpg" style="width:50%;"></img>
+</div>
+
 At Rosemary, assuming the trip was 4 km,
 `r survey_ground_covered(surveys, 40, 4, 2018)` km were walked 
 in `r survey_count(surveys, 40, 2018)` surveys.
