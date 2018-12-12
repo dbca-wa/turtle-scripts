@@ -12,7 +12,9 @@ output:
     code_folding: hide
     theme: lumen
 ---
-
+<a href="https://imgur.com/pBaIuV2">
+<img src="https://i.imgur.com/pBaIuV2.jpg" style="width:100%" title="Photo: Florian Mayer, DBCA" />
+</a>
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 source("tracks_setup.R")
 source("tracks_helpers.R")
