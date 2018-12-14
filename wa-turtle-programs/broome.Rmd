@@ -250,7 +250,8 @@ dist_bme %>% dplyr::select(-photos) %>%
 # Package all output files into one ZIP archive
 products_fn_bme <- glue::glue("{prefix_bme}_products.zip")
 if (file.exists(products_fn_bme)) file.remove(products_fn_bme)
-zip(zipfile = products_fn_bme, files = list.files(pattern = prefix_bme))
+products <- list.files(pattern=prefix_bme)
+zip(zipfile = products_fn_bme, files = products)
 
 # Create a resource for the ZIP archives
 d <- ckanr::package_show("turtle-tracks")
@@ -259,5 +260,28 @@ d <- ckanr::package_show("turtle-tracks")
 
 ckanr::resource_update("9572e76b-55e9-4afb-b224-7cce7beb4959", "broome.html")
 ckanr::resource_update("fa5d9fff-90d4-4ac2-a578-18cc2964f6f6", products_fn_bme)
+```
+## Google Drive
+A copy of this report and all generated outputs is uploaded to Google Drive
+and shared via link with DBCA external collaborators.
+
+Every machine has to be authenticated with Google Drive once.
+As this process involves browser windows and pasting of approval codes into the 
+R Console, it is not run automatically when compiling this workbook.
+
+Running the following chunk manually once per machine will cache the authentication
+token locally for future use.
+
+```{r google_drive_auth, eval=F}
+googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
+```
+
+The following code refreshes the [shared folder on Google Drive](https://drive.google.com/drive/folders/1QnxDp9YKLllcwHHhHDkE1MHuF_HAFb6Z?usp=sharing) 
+with this report and a zip archive of all products.
+
+```{r google_drive_upload}
+googledrive::drive_ls(prefix_bme) %>% googledrive::drive_rm(.)
+googledrive::drive_upload("broome.html", path=glue::glue("{prefix_bme}/broome.html"))
+products %>% purrr::map(googledrive::drive_upload, path = googledrive::as_dribble(prefix_bme))
 ```
 
