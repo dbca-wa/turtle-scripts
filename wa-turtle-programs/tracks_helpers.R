@@ -292,6 +292,8 @@ filter_thv_tagging <- . %>% dplyr::filter(site_id == 20)
 
 filter_lgcs <- . %>% dplyr::filter(site_id %in% c(51, 52))
 
+filter_nin <- . %>% dplyr::filter(site_id > 59, site_id < 113)
+
 filter_nosite <- . %>% dplyr::filter(is.na(site_id))
 filter_nosurvey <- . %>% dplyr::filter(is.na(survey_id))
 filter_realspecies <- . %>% dplyr::filter(species != "corolla-corolla")

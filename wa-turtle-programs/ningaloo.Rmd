@@ -1,0 +1,273 @@
+---
+title: "Ningaloo Turtle Nesting Census"
+author: "Ningaloo Turtle Program, Marine Turtles WA, Florian Mayer"
+date: "`r Sys.time()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fig_width: 10
+    fig_height: 6
+    code_folding: hide
+    theme: lumen
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+source("tracks_setup.R")
+source("tracks_helpers.R")
+source("load_data.R")
+```
+
+# Data
+
+```{r filter_data}
+tracks_nin <- tracks_all %>% filter_nin() %>% exclude_training_species() %>% add_nest_labels()
+surveys_nin <- surveys %>% filter_nin()
+surveys_nin_prod <- surveys_nin %>% exclude_training_surveys()
+dist_nin <- disturbance %>% filter_nin()
+nests_nin <- nests_all %>% filter_nin()
+prefix_nin <- "NIN"
+placename_nin <- "Ningaloo"
+```
+
+# QA
+Most QA is done across all WA records and programs in the separate QA workbook.
+
+This section identifies data requiring editing.
+
+Training dates:
+
+* TODO insert
+
+## Provided username mismatches WAStD users
+```{r name_mismatch_nin}
+surveys_nin %>% filter_surveys_requiring_qa() %>% dt()
+```
+
+# Season summary
+
+## Going digital
+Entering and proofreading a record takes about 2 minutes with full concentration.
+By going digital, data entry and proofreading are fully automated.
+Overall, the Volunteers have saved 
+`r round((nrow(tracks_nin) + nrow(surveys_nin)*2 + nrow(dist_nin)) * 2 / 60)` 
+hours of mind-numbing data entry and proofreading work for 
+`r nrow(tracks_nin)` Tracks, 
+`r nrow(dist_nin)` Disturbances, and 
+`r nrow(surveys_nin)*2` Site Visit Starts/Ends. 
+
+## Maps
+### 2018-19
+All  turtle tracks or nests recorded in season 2018-19. 
+Click markers to view popup with details
+and link to original record on WAStD.
+Toggle visibility of individual species in the legend.
+
+```{r map_nin_2018}
+tracks_nin %>% filter_2018() %>% map_tracks()
+```
+
+### Animated map
+A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
+be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
+
+```{r map_nin_animated, eval=F, warning=FALSE, message=FALSE}
+tracks_nin_2018 <- tracks_nin %>% filter_2018()
+# gganimate_tracks(tracks_nin_2018, placename_nin, prefix_nin)
+```
+
+### Tagged nests
+The map is saved as a PNG file `r glue::glue(prefix_nin, "_tagged_nests.png")`.
+
+Currently unused.
+
+```{r nests_nin, eval=F}
+nests_nin %>%
+  filter_2018() %>%
+  map_nests() %>%
+  mapview::mapshot(file = glue::glue("{prefix_nin}_tagged_nests_2018.png"))
+```
+
+## Nesting abundance
+### All beaches
+```{r tracks_all_sectors_nin}
+tracks_nin %>% nesting_type_by_season_species() %>% kable()
+```
+
+## Nesting by week
+### All beaches
+The next table show data from all sites.
+
+```{r tracks_all_beaches_by_week_nin}
+tracks_nin %>% nesting_type_by_season_week_species() %>% kable()
+```
+
+## Nesting by day
+This section shows data from all sites.
+
+```{r nesting_success_nin, warning = F}
+tracks_ts(tracks_nin, surveys_nin_prod, placename_nin, prefix_nin)
+nests <- tracks_nin %>% track_success()
+nests %>% ggplot_track_success_by_date("caretta-caretta", placename_nin, prefix_nin)
+nests %>% ggplot_track_successrate_by_date("caretta-caretta", placename_nin, prefix_nin)
+nests %>% ggplot_track_success_by_date("chelonia-mydas", placename_nin, prefix_nin)
+nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename_nin, prefix_nin)
+nests %>% track_success_by_species() %>% DT::datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
+```
+
+## Hatching and emergence success
+Not measured in 2018.
+
+```{r hatching_emergence_success_nin}
+tracks_nin %>%
+  hatching_emergence_success() %>%
+  DT::datatable(., caption = "Hatching and emergence success summary", options = list(paging = F))
+```
+
+## Disturbance and predation
+Disturbed nests are captured through form "Track or Treat" and appear here
+as "tracks" with "disturbance" recorded as "present".
+
+General signs of disturbance or predator presence are recorded through form 
+"Disturbance or Predation" and appear here as "dist_(place)".
+
+### Disturbance and predation of nests
+Turtle nests with recorded disturbance or predation.
+
+```{r dist_nests_nin}
+disturbed_nests_nin_2018 <- tracks_nin %>% filter_2018() %>% filter(disturbance == "present")
+disturbed_nests_nin_2018 %>% map_tracks()
+```
+
+There were **`r count(disturbed_nests_nin_2018)` reports** in 2018. 
+Caveat: QA to exclude possible training records.
+
+Coming soon: details of disturbance to nests.
+
+### General disturbance
+There were **`r count(dist_nin)` reports** of general disturbance or predator presence.
+
+```{r map_dist_nin}
+dist_nin %>% filter_2018() %>% group_by(season, disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
+dist_nin %>% filter_2018() %>% map_dist()
+```
+
+# Surveys
+Curators are to QA 
+[all `r placename_nin` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/)
+following the 
+[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
+
+### Per season effort
+Highest level of aggregation: entire season.
+Assumption: all training surveys have been marked as such in WAStD.
+
+#### Excluding training
+
+```{r survey_season_stats_all}
+surveys_nin %>% survey_season_stats %>% dt
+```
+
+### Per day effort
+Lowest level of aggregation: daily.
+
+```{r survey_count}
+surveys_nin %>% survey_count_heatmap(placename_nin, prefix_nin)
+surveys_nin %>% list_survey_count(placename_nin)
+surveys_nin %>% survey_hours_heatmap(placename_nin, prefix_nin)
+surveys_nin %>% list_survey_effort(placename_nin)
+```
+
+### Individual surveys
+No aggregation: individual surveys.
+
+```{r surveys_list}
+surveys_nin %>% survey_show_detail %>% dt()
+```
+
+
+## Survey effort per primary reporter
+
+### Caveat
+This list only includes the primary reporter. 
+This leads to under-reporting of time spent by other volunteers attending the survey.
+Their names are listed in the Site Visit Start form field "comments" as free text.
+To correctly report on team member effort, curators have to read the list of 
+team members in the Site Visit "comments" field and attach the correct users 
+to the Survey team list.
+Once the surveys are comprehensively attributed to all volunteers present, this
+workbook has to be updated to include the Survey team's effort.
+
+If the primary reporter forgot to update the username in the tablet,
+their survey effort on that day is incorrectly attributed to the previous reporter.
+The only way to reconcile attribution is to manually compare survey usernames with
+team rosters.
+
+```{r survey_effort_by_person}
+personal_effort_nin <- surveys_nin %>% survey_hours_per_person()
+personal_effort_nin %>% kable()
+```
+
+## Volunteer effort 
+
+### Season 2018-19
+Number of surveys per sector times length of site.
+
+In subsection "North West Cape - Bundegi - South to North", 
+`r survey_ground_covered(surveys, 60, 2, 2018)` km were walked 
+in `r survey_count(surveys, 60, 2018)` surveys.
+
+TODO: table of survey volunteer effort at all subsections (sites).
+
+# Data upload
+
+```{r data_upload}
+tracks_nin %>% dplyr::select(-obs, -photos) %>% 
+  readr::write_csv(glue::glue("{prefix_nin}_tracks.csv"))
+surveys_nin %>% readr::write_csv(glue::glue("{prefix_nin}_surveys.csv"))
+dist_nin %>% dplyr::select(-photos) %>% 
+  readr::write_csv(glue::glue("{prefix_nin}_disturbance.csv"))
+
+# Package all output files into one ZIP archive
+products_fn_nin <- glue::glue("{prefix_nin}_products.zip")
+if (file.exists(products_fn_nin)) file.remove(products_fn_nin)
+products <- list.files(pattern=prefix_nin)
+zip(zipfile = products_fn_nin, files = products)
+
+# Create a resource for the ZIP archives
+d <- ckanr::package_show("turtle-tracks")
+# r <- resource_create(package_id=d$id, name="Ningaloo Turtle Nesting Census", upload="ningaloo.html")
+# r <- resource_create(package_id=d$id, name="Ningaloo outputs", upload=products_fn_nin)
+
+ckanr::resource_update("0c35791e-c478-451e-94c6-9c82d03c721d", "ningaloo.html")
+ckanr::resource_update("7c141bdb-f3b0-4a89-8465-b6aff1d43679", products_fn_nin)
+```
+## Google Drive
+A copy of this report and all generated outputs is uploaded to 
+Google Drive and shared via 
+[this link](https://drive.google.com/drive/folders/1ovTwAfUXm8hCK7ct_neemwHCQ3TAHbfF?usp=sharing) 
+with DBCA external collaborators.
+
+Every machine has to be authenticated with Google Drive once.
+As this process involves browser windows and pasting of approval codes into the 
+R Console, it is not run automatically when compiling this workbook.
+
+Running the following chunk manually once per machine will cache the authentication
+token locally for future use.
+
+```{r google_drive_auth, eval=F}
+googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
+```
+
+The following code refreshes the [shared folder on Google Drive](https://drive.google.com/drive/folders/1ovTwAfUXm8hCK7ct_neemwHCQ3TAHbfF?usp=sharing) 
+with this report and a zip archive of all products.
+
+```{r google_drive_upload}
+googledrive::drive_ls(prefix_nin) %>% googledrive::drive_rm(.)
+googledrive::drive_upload("ningaloo.html", path=glue::glue("{prefix_nin}/ningaloo.html"))
+products %>% purrr::map(googledrive::drive_upload, path = googledrive::as_dribble(prefix_nin))
+```
+

@@ -62,4 +62,5 @@ rmarkdown::render(here::here("wa-turtle-programs", "delambre.Rmd"))
 rmarkdown::render(here::here("wa-turtle-programs", "thevenard.Rmd"))
 rmarkdown::render(here::here("wa-turtle-programs", "thevenard.Rmd"))
 
-# rmarkdown::render(here::here("wa-turtle-programs", "ningaloo.Rmd"))
+rmarkdown::render(here::here("wa-turtle-programs", "ningaloo.Rmd"))
+rmarkdown::render(here::here("wa-turtle-programs", "ningaloo.Rmd"))
