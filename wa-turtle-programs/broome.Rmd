@@ -40,6 +40,15 @@ Training dates:
 
 * turtle date 2017-11-13, 2017-10-28, 2017-10-17
 
+End of season is 28 Feb 2019.
+
+## Species unsure
+[Broome tracks](https://tsc.dbca.wa.gov.au/admin/observations/turtlenestencounter/?area__id__exact=19&species__exact=cheloniidae-fam)
+where species unsure: review photos, adjust species, set QA level to "curated".
+
+Where training happened on the beach, make sure it's Hatchback turtles (Corolla corolla), 
+set QA level to "curated".
+
 ## Provided username mismatches WAStD users
 ```{r name_mismatch_bme}
 surveys_bme %>% filter_surveys_requiring_qa() %>% dt()
@@ -50,7 +59,7 @@ surveys_bme %>% filter_surveys_requiring_qa() %>% dt()
 ## Going digital
 Entering and proofreading a record takes about 2 minutes with full concentration.
 By going digital, data entry and proofreading are fully automated.
-Overall, the Volunteers have saved 
+Over all seasons, the Volunteers have saved 
 `r round((nrow(tracks_bme) + nrow(surveys_bme)*2 + nrow(dist_bme)) * 2 / 60)` 
 hours of mind-numbing data entry and proofreading work for 
 `r nrow(tracks_bme)` Tracks, 
@@ -58,10 +67,16 @@ hours of mind-numbing data entry and proofreading work for
 `r nrow(surveys_bme)*2` Site Visit Starts/Ends. 
 
 ## Maps
-```{r map_bme}
+### 2017-18
+```{r map_bme_2017}
 tracks_bme %>% filter_2017() %>% map_tracks()
+```
+
+### 2018-19
+```{r map_bme_2018}
 tracks_bme %>% filter_2018() %>% map_tracks()
 ```
+
 
 ### Animated map
 A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
@@ -75,12 +90,10 @@ tracks_bme_2017 <- tracks_bme %>% filter_2017()
 ### Tagged nests
 The map is saved as a PNG file `r glue::glue(prefix_bme, "_tagged_nests.png")`.
 
-Coming 2018.
-
 ```{r nests_bme}
 nests_bme %>%
   filter_2018() %>%
-  map_nests() %>%
+  map_nests() %T>%
   mapview::mapshot(file = glue::glue("{prefix_bme}_tagged_nests_2018.png"))
 ```
 
@@ -172,7 +185,7 @@ surveys_bme %>% survey_season_stats %>% dt
 ```
 
 ### Per day effort
-Lowest level of aggregation: daily.
+Lowest level of aggregation: daily. Includes training surveys.
 
 ```{r survey_count}
 surveys_bme %>% survey_count_heatmap(placename_bme, prefix_bme)
