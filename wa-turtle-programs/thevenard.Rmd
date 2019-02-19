@@ -1,6 +1,6 @@
 ---
 title: "Thevenard Island Turtle Nesting Census"
-author: "Marine Turtles WA"
+author: "North West Shelf Flatbacks WA"
 date: "`r Sys.time()`"
 output:
   html_document:
@@ -75,8 +75,15 @@ and proofreading work for `r nrow(tracks_thv)` Track or Treats and
 
 # Thevenard Nesting
 ## Maps
-```{r map_thv}
+### 2018-18
+```{r map_thv_2017}
+tracks_thv %>% filter_2017() %>% map_tracks(cluster=T)
 tracks_thv %>% filter_2017() %>% map_tracks()
+```
+
+### 2018-19
+```{r map_thv_2018}
+tracks_thv %>% filter_2018() %>% map_tracks(cluster=T)
 tracks_thv %>% filter_2018() %>% map_tracks()
 ```
 
@@ -92,16 +99,20 @@ tracks_thv_2017 <- tracks_thv %>% filter_2017()
 ### Tagged nests
 The map is saved as a PNG file `r glue::glue(prefix_thv, "_tagged_nests.png")`.
 
-```{r nests_thv}
+### 2017-18
+```{r nests_thv_2017}
 nests_thv %>%
   filter_2017() %>%
   map_nests() %T>%
   mapview::mapshot(file = glue::glue("{prefix_thv}_tagged_nests_2017.png"))
+```
 
-# nests_thv %>%
-#   filter_2018() %>%
-#   map_nests() %T>%
-#   mapview::mapshot(file = glue::glue("{prefix_thv}_tagged_nests_2018.png"))
+### 2018-19
+```{r nests_thv_2018}
+nests_thv %>%
+  filter_2018() %>%
+  map_nests() %T>%
+  mapview::mapshot(file = glue::glue("{prefix_thv}_tagged_nests_2018.png"))
 ```
 
 ## Nesting abundance
@@ -129,7 +140,8 @@ nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_thv, p
 # nests %>% ggplot_track_success_by_date("chelonia-mydas", placename_thv, prefix_thv)
 # nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename_thv, prefix_thv)
 nests %>% track_success_by_species() %>% DT::datatable(.,
-  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)", 
+  options = list(paging = F)
 )
 ```
 
@@ -154,12 +166,20 @@ General signs of disturbance or predator presence are recorded through form
 ### Disturbance and predation of nests
 Turtle nests with recorded disturbance or predation.
 
-```{r dist_nests_thv}
-disturbed_nests_thv <- tracks_thv %>% filter_2018() %>% filter(disturbance == "present")
-disturbed_nests_thv %>% map_tracks()
+### 2017-18
+```{r dist_nests_thv_2017}
+disturbed_nests_thv_2017 <- tracks_thv %>% filter_2017() %>% filter(disturbance == "present")
+disturbed_nests_thv_2017 %>% map_tracks()
 ```
 
-There were **`r count(disturbed_nests_thv)` reports** of disturbed nests. 
+### 2018-19
+```{r dist_nests_thv_2018}
+disturbed_nests_thv_2018 <- tracks_thv %>% filter_2018() %>% filter(disturbance == "present")
+disturbed_nests_thv_2018 %>% map_tracks()
+```
+
+There were **`r count(disturbed_nests_thv_2017)` reports** of disturbed nests in 2017-18
+and **`r count(disturbed_nests_thv_2018)`** in 2018-19. 
 Caveat: QA to exclude possible training records.
 
 Coming soon: details of disturbance to nests.
@@ -168,10 +188,14 @@ Coming soon: details of disturbance to nests.
 There were **`r count(dist_thv %>% filter_2017())` reports** of general disturbance or predator presence in 2017-18.
 There were **`r count(dist_thv %>% filter_2018())` reports** of general disturbance or predator presence in 2018-19.
 
-```{r map_dist_thv}
+### 2017-18
+```{r map_dist_thv_2017}
 dist_thv %>% filter_2017() %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
 dist_thv %>% map_dist()
+```
 
+### 2018-19
+```{r map_dist_thv_2018}
 dist_thv %>% filter_2018() %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
 dist_thv %>% map_dist()
 ```
@@ -191,7 +215,7 @@ Note, we might need to re-define the beaches into North and South, dissolving th
 
 Season 2018-19:
 
-* Wed 14 Nov mornings: crossed off tracks, recorded a few for training but should be non-production run 
+* Wed 14 Nov mornings: crossed off tracks, recorded a few for training but should be non-production run
 * Wed 14 Nov afternoon: corrine did some training at the cabin with volunteers. 
   Forms should have been deleted but may have been sent by mistake. Also non-production.
 * Wed 14 Nov night: shouldn't be any records for that night

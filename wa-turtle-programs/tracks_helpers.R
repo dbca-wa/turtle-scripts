@@ -38,9 +38,9 @@ nesting_type_by_season_week_species <- . %>%
 
 #' True date as days since fiscal year start
 tdate_as_fdate <- . %>%
-  {
-    lubridate::as.duration(as_date(glue::glue("{wastdr::datetime_as_season(.)}-07-01")) %--% .)
-  } %>%
+{
+  lubridate::as.duration(as_date(glue::glue("{wastdr::datetime_as_season(.)}-07-01")) %--% .)
+} %>%
   as.numeric("days")
 
 #' Days since fiscal year start as true date
@@ -119,7 +119,7 @@ ggplot_track_success_by_date <- function(data, speciesname, placename="", prefix
     ggplot2::geom_bar(aes(y = all), stat = "identity", color = "black", fill = "grey") +
     ggplot2::geom_bar(aes(y = successful), stat = "identity", color = "black", fill = "green") +
     ggplot2::ggtitle(paste("Nesting effort of", speciesname %>% humanize()),
-      subtitle = "Number of all (grey) and successful (green) tracks"
+                     subtitle = "Number of all (grey) and successful (green) tracks"
     ) +
     labs(x = "Date", y = "Number of all and successful tracks") +
     ggplot2::scale_x_continuous(labels = function(x) fdate_as_tdate(x)) +
@@ -135,7 +135,7 @@ ggplot_track_successrate_by_date <- function(data, speciesname, placename="", pr
     ggplot2::facet_grid(rows = vars(season), scales = "free_x") +
     ggplot2::geom_bar(aes(y = track_success), stat = "identity", color = "black", fill = "grey") +
     ggplot2::ggtitle(paste("Nesting success of", speciesname %>% humanize()),
-      subtitle = "Fraction of successful over total nesting crawls"
+                     subtitle = "Fraction of successful over total nesting crawls"
     ) +
     labs(x = "Date", y = "Fraction of tracks with nest") +
     ggplot2::scale_x_continuous(labels = function(x) fdate_as_tdate(x)) +
@@ -256,6 +256,7 @@ disturbance_by_season <- . %>%
   dplyr::arrange(-n)
 
 dt <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE)
+dt0 <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE, options = list(paging = F))
 
 # Filters -----------------------------------------------------------------------------------------#
 
@@ -283,6 +284,7 @@ filter_wp_yachtblub <- . %>% dplyr::filter(site_id == 27)
 filter_wp_boat <- . %>% dplyr::filter(site_id == 46)
 filter_wp_cleaverville <- . %>% dplyr::filter(site_id == 47)
 
+filter_con <- . %>% dplyr::filter(site_id == 115)
 filter_del <- . %>% dplyr::filter(site_id == 39)
 filter_ros <- . %>% dplyr::filter(site_id == 40)
 filter_thv <- . %>% dplyr::filter(site_id %in% c(20, 28, 29))
@@ -333,3 +335,57 @@ survey_show_detail <- . %>%
     change_url, site_name, season, turtle_date, is_production,
     start_time, end_time, duration_hours,
     start_comments, end_comments, status)
+
+# map revisited
+# function (tracks, fmt = "%d/%m/%Y %H:%M")
+map_tracks <- function(
+  tracks,
+  wastd_url=wastdr::get_wastd_url(),
+  fmt = "%d/%m/%Y %H:%M",
+  cluster=FALSE){
+
+  . <- NULL
+  layersControlOptions <- NULL
+  if (cluster==TRUE){
+    co = markerClusterOptions()
+  } else {
+    co=NULL
+  }
+
+  l <- leaflet(width = 800, height = 600) %>%
+    addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+    addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+    clearBounds()
+
+  tracks.df <- tracks %>% split(tracks$species)
+
+  names(tracks.df) %>%
+    purrr::walk(function(df) {
+      l <<- l %>% addAwesomeMarkers(
+        data = tracks.df[[df]],
+        lng = ~longitude,
+        lat = ~latitude,
+        icon = leaflet::makeAwesomeIcon(
+          text = ~nest_type_text,
+          markerColor = ~species_colours),
+        label = ~glue::glue(
+          "{format(datetime, fmt)} {humanize(nest_age)} ",
+          "{humanize(species)} {humanize(nest_type)} {name}"),
+        popup = ~glue::glue(
+          "<h3>{humanize(nest_age)} {humanize(species)} {humanize(nest_type)} {name}</h3>",
+          "<p>Seen on {format(datetime, fmt)} AWST by {observer}",
+          "<p>Survey {survey_id} at {site_name} ",
+          "{format(survey_start_time, fmt)}-{format(survey_end_time, fmt)} AWST</p>",
+          "<p><a class=\"btn btn-xs btn-primary\" target=\"_\" rel=\"nofollow\" ",
+          "href=\"{wastd_url}{absolute_admin_url}\">",
+          "<span class=\"text-white\">Edit on WAStD</span></a></p>"),
+        group = df,
+        clusterOptions = co)
+    })
+
+  l %>% addLayersControl(
+    baseGroups = c("Aerial", "Place names"),
+    overlayGroups = names(tracks.df),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+}

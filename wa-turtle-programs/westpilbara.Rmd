@@ -1,6 +1,6 @@
 ---
 title: "West Pilbara Turtle Nesting Census"
-author: "West Pilbara Turtle Program with Marine Turtles WA"
+author: "West Pilbara Turtle Program with North West Shelf Flatbacks WA"
 date: "`r Sys.time()`"
 output:
   html_document:

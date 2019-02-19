@@ -69,11 +69,13 @@ hours of mind-numbing data entry and proofreading work for
 ## Maps
 ### 2017-18
 ```{r map_bme_2017}
+tracks_bme %>% filter_2017() %>% map_tracks(cluster = TRUE)
 tracks_bme %>% filter_2017() %>% map_tracks()
 ```
 
 ### 2018-19
 ```{r map_bme_2018}
+tracks_bme %>% filter_2018() %>% map_tracks(cluster = TRUE)
 tracks_bme %>% filter_2018() %>% map_tracks()
 ```
 

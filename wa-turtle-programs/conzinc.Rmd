@@ -1,0 +1,246 @@
+---
+title: "Conzinc Bay Turtle Nesting Census"
+author: "Murujuga Aboriginal Corporation, DBCA Karratha and North West Shelf Flatbacks WA"
+date: "`r Sys.time()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fig_width: 10
+    fig_height: 6
+    code_folding: hide
+    theme: lumen
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+source("tracks_setup.R")
+source("tracks_helpers.R")
+source("load_data.R")
+```
+
+# Caveat
+Data from 2017/18 at Rosemary Islands was recovered from unfinalised forms on devices.
+
+# Data
+```{r load_data}
+tracks_con <- tracks_all %>% filter_con() %>% exclude_training_species() %>% add_nest_labels()
+surveys_con <- surveys %>% filter_con()
+surveys_con_prod <- surveys_con %>% exclude_training_surveys()
+dist_con <- disturbance %>% filter_con()
+nests_con <- nests_all %>% filter_con()
+prefix_con <- "CON"
+placename_con <- "Conzinc Bay"
+```
+
+# QA
+Most QA is done across all WA records and programs in the separate QA workbook.
+
+This section identifies data requiring editing.
+
+## Provided username mismatches WAStD users
+```{r name_mismatch_con}
+surveys_con %>% filter_surveys_requiring_qa() %>% dt()
+```
+
+# Season summary
+
+## Going digital
+Entering and proofreading a record takes about 2 minutes with full concentration.
+By going digital, data entry and proofreading are fully automated.
+
+Time savings Rosemary: `r (nrow(tracks_con) + nrow(surveys_con)*2 + nrow(dist_con)) * 2 / 60` 
+hours for `r nrow(tracks_con)` Track or Treats and  `r nrow(surveys_con)*2` Site Visit Starts/Ends. 
+
+## Maps
+### 2018-19
+```{r map_con_2018}
+tracks_con %>% filter_2018() %>% map_tracks()
+```
+
+
+### Animated map
+A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
+be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
+
+```{r map_con_animated, warning=FALSE, eval=F}
+tracks_con_2018 <- tracks_con %>% filter_2018()
+gganimate_tracks(tracks_con_2018, placename_con, prefix_con)
+```
+
+### Tagged nests
+The map is saved as a PNG file `r glue::glue(prefix_con, "_tagged_nests.png")`.
+
+Coming 2020.
+
+```{r nests_con, eval=F}
+nests_con %>%
+  filter_2018() %>%
+  map_nests() %>%
+  mapview::mapshot(file = glue::glue("{prefix}_tagged_nests_2018.png"))
+```
+
+## Nesting abundance
+### All beaches
+```{r tracks_all_sectors_con}
+tracks_con %>% nesting_type_by_season_species() %>% kable()
+```
+
+## Nesting by week
+### All beaches
+The next table show data from all sites.
+
+```{r tracks_all_beaches_by_week_con}
+tracks_con %>% nesting_type_by_season_week_species() %>% kable()
+```
+
+## Nesting by day
+This section shows data from all sites.
+
+```{r nesting_success_con, warning = F}
+tracks_con %>% tracks_ts(surveys_con_prod, placename_con, prefix_con)
+nests <- tracks_con %>% track_success()
+# nests %>% ggplot_track_success_by_date("natator-depressus", placename_con, prefix_con)
+# nests %>% ggplot_track_successrate_by_date("natator-depressus", placename_con, prefix_con)
+# nests %>% ggplot_track_success_by_date("chelonia-mydas", placename_con, prefix_con)
+# nests %>% ggplot_track_successrate_by_date("chelonia-mydas", placename_con, prefix_con)
+nests %>% ggplot_track_success_by_date("eretmochelys-imbricata", placename_con, prefix_con)
+nests %>% ggplot_track_successrate_by_date("eretmochelys-imbricata", placename_con, prefix_con)
+nests %>% track_success_by_species() %>% DT::datatable(.,
+  caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
+)
+```
+
+## Hatching and emergence success
+```{r hatching_emergence_success_con}
+tracks_con %>%
+  hatching_emergence_success() %>%
+  DT::datatable(., caption = "Hatching and emergence success summary", options = list(paging = F))
+```
+
+## Disturbance and predation
+Disturbed nests are captured through form "Track or Treat" and appear here
+as "tracks" with "disturbance" recorded as "present".
+
+General signs of disturbance or predator presence are recorded through form 
+"Fox Sake" and appear here as "dist_(place)".
+
+### Disturbance and predation of nests 2018-19
+Turtle nests with recorded disturbance or predation.
+
+```{r dist_nests_con_2018}
+disturbed_nests_con_2018 <- tracks_con %>% filter_2018() %>% filter(disturbance == "present")
+disturbed_nests_con_2018 %>% map_tracks()
+```
+
+There were **`r count(disturbed_nests_con_2018)` reports** of disturbed nests. 
+
+Coming soon: details of disturbance to nests.
+
+### General disturbance 2018-19
+```{r map_dist_con_2018}
+dist_con_2018 <- dist_con %>% filter_2018() 
+dist_con_2018 %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
+dist_con %>% filter_2018() %>% map_dist()
+```
+There were **`r count(dist_con_2018)` reports** of general disturbance or predator presence.
+
+# Surveys
+Curators are to QA 
+[all `r placename_con` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=115)
+following the 
+[QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
+
+### Per season effort
+Highest level of aggregation: entire season.
+Assumption: all training surveys have been marked as such in WAStD.
+
+#### Excluding training
+
+```{r survey_season_stats_all}
+surveys_con %>% survey_season_stats %>% dt0
+```
+
+### Per day effort
+Lowest level of aggregation: daily.
+
+```{r survey_count}
+surveys_con %>% survey_count_heatmap(placename_con, prefix_con)
+surveys_con %>% list_survey_count(placename_con)
+surveys_con %>% survey_hours_heatmap(placename_con, prefix_con)
+surveys_con %>% list_survey_effort(placename_con)
+```
+
+### Individual surveys
+No aggregation: individual surveys.
+
+```{r surveys_list}
+surveys_con %>% survey_show_detail %>% dt0
+```
+
+## Survey effort per primary reporter
+
+### Caveat
+This list only includes the primary reporter. 
+This leads to under-reporting of time spent by other volunteers attending the survey.
+Their names are listed in the Site Visit Start form field "comments" as free text.
+To correctly report on team member effort, curators have to read the list of 
+team members in the Site Visit "comments" field and attach the correct users 
+to the Survey team list.
+Once the surveys are comprehensively attributed to all volunteers present, this
+workbook has to be updated to include the Survey team's effort.
+
+If the primary reporter forgot to update the username in the tablet,
+their survey effort on that day is incorrectly attributed to the previous reporter.
+The only way to reconcile attribution is to manually compare survey usernames with
+team rosters.
+
+```{r survey_effort_by_person}
+personal_effort_con <- surveys_con %>% survey_hours_per_person()
+personal_effort_con %>% kable()
+```
+
+## Survey effort in kilometers walked
+Number of surveys per sector times length of site.
+
+### Season 2018-19
+At Conzinc Bay, assuming the trip was 4 km,
+`r survey_ground_covered(surveys, 115, 4, 2018)` km were walked 
+in `r survey_count(surveys, 115, 2018)` surveys.
+
+# Data upload
+## Raw data
+* Raw data are exported into CSV spreadsheets.
+* Key figures are exported into .png raster files.
+* This report is rendered into a single HTML page.
+
+```{r data_export_csv}
+tracks_con %>%
+  select(-obs, -photos) %>%
+  readr::write_csv(glue::glue("{prefix_con}_tracks.csv"))
+surveys_con %>% readr::write_csv(glue::glue("{prefix_con}_surveys.csv"))
+dist_con %>%
+  select(-photos) %>%
+  readr::write_csv(glue::glue("{prefix_con}_disturbance.csv"))
+```
+
+## Data catalogue
+Data are uploaded to the [turtle nest census dataset](https://data.dpaw.wa.gov.au/dataset/turtle-tracks) 
+on the departmental data catalogue, accessible from the DBCA intranet only.
+
+```{r data_upload}
+# Package all output files into one ZIP archive
+products_fn_con <- glue::glue("{prefix_con}_products.zip")
+if (file.exists(products_fn_con)) file.remove(products_fn_con)
+zip(zipfile = products_fn_con, files = list.files(pattern = prefix_con))
+
+# Create a resource for the ZIP archives
+# d <- ckanr::package_show("turtle-tracks")
+# r <- resource_create(package_id=d$id, name="Conzinc Bay Turtle Nesting Census", upload="conzinc.html")
+# r <- resource_create(package_id=d$id, name="Conzinc Bay outputs", upload=products_fn_con)
+
+# Update resources on data catalogue
+ckanr::resource_update("55595ff0-092a-454c-8208-decbb7c789ba", "conzinc.html")
+ckanr::resource_update("e494eaa3-a8e6-4417-8d2b-5665e5696c2b", products_fn_con)
+```
+

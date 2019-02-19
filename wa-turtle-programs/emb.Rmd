@@ -1,6 +1,6 @@
 ---
 title: "Eighty Mile Beach Turtle Nesting Census"
-author: "Marine Turtles WA"
+author: "North West Shelf Flatbacks WA"
 date: "`r Sys.time()`"
 output:
   html_document:

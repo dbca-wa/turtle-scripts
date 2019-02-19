@@ -1,6 +1,6 @@
 ---
 title: "Delambre Island Turtle Nesting Census"
-author: "Marine Turtles WA"
+author: "North West Shelf Flatbacks WA"
 date: "`r Sys.time()`"
 output:
   html_document:
@@ -181,14 +181,15 @@ The chart is immensely tall (60 inches printed) for this huge number of tags. Lo
 
 **TODO** How many days elapse to first resighting? 
 This section depends on new functionality of WAStD (identifying recaptures).
+
 ## Maps
-### 2017
+### 2017-18
 
 ```{r map_del_2017}
 tracks_del %>% filter_2017() %>% map_tracks()
 ```
 
-### 2018
+### 2018-19
 ```{r map_del_2018}
 tracks_del %>% filter_2018() %>% map_tracks()
 ```

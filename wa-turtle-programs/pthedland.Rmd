@@ -1,6 +1,6 @@
 ---
 title: "Care for Hedland Turtle Nesting Census"
-author: "Care for Hedland with Marine Turtles WA"
+author: "Care for Hedland with North West Shelf Flatbacks WA"
 date: "`r Sys.time()`"
 output:
   html_document:

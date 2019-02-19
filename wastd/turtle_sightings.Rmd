@@ -1,6 +1,6 @@
 ---
 title: "Turtle Sightings Roebuck Bay 2018"
-author: "Florian Mayer, WA Turtles, DBCA"
+author: "North West Shelf Flatbacks WA"
 date: "`r Sys.time()`"
 output:
   html_document:

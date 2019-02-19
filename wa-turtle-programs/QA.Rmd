@@ -42,7 +42,7 @@ tracks_all %>%
   exclude_training_species() %>%
   filter_missing_site() %>%
   add_nest_labels() %>% 
-  map_tracks()
+  map_tracks(cluster=TRUE)
 ```
 
 ## Disturbance outside known sites

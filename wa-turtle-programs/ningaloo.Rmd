@@ -1,6 +1,6 @@
 ---
 title: "Ningaloo Turtle Nesting Census"
-author: "Ningaloo Turtle Program, Marine Turtles WA, Florian Mayer"
+author: "Ningaloo Turtle Program and North West Shelf Flatbacks WA"
 date: "`r Sys.time()`"
 output:
   html_document:
