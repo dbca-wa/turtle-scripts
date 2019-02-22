@@ -244,3 +244,18 @@ ckanr::resource_update("55595ff0-092a-454c-8208-decbb7c789ba", "conzinc.html")
 ckanr::resource_update("e494eaa3-a8e6-4417-8d2b-5665e5696c2b", products_fn_con)
 ```
 
+## Google Drive
+A copy of this report and all generated outputs is uploaded to Google Drive
+and shared via 
+[this link](https://drive.google.com/drive/folders/12qGo66U7iTU5vGIkVjKOIOoKHkurn4MG?usp=sharing) 
+with DBCA external collaborators.
+
+```{r google_drive_auth, eval=F}
+googledrive::drive_auth(reset = TRUE, use_oob = TRUE)
+```
+
+```{r data_upload_google}
+googledrive::drive_ls(prefix_con) %>% googledrive::drive_rm(.)
+googledrive::drive_upload("conzinc.html", path = "CON/conzinc.html")
+list.files(pattern = prefix_con) %>% purrr::map(googledrive::drive_upload, path = as_dribble(prefix_con))
+```

@@ -77,14 +77,20 @@ Nests without a clearly visible emergence point were not recorded.
 This led to under-reporting of hatched nests this season. TODO: clarify - season 2018-18 only or ongoing?
 
 ## Maps
+Maps are shown for each season, with and without clustering.
+Clustered tracks expand to allow accessing each popup (containing a link to update the record), while
+non-clustered tracks represent the location more accurately.
+
 ### Nesting at Cemetery Beach 
 #### 2017-18
 ```{r map_cem_2017}
+tracks_pth_cem %>% filter_2017() %>% map_tracks(cluster=T)
 tracks_pth_cem %>% filter_2017() %>% map_tracks()
 ```
 
 #### 2018-19
 ```{r map_cem_2018}
+tracks_pth_cem %>% filter_2018() %>% map_tracks(cluster=T)
 tracks_pth_cem %>% filter_2018() %>% map_tracks()
 ```
 
@@ -92,11 +98,13 @@ tracks_pth_cem %>% filter_2018() %>% map_tracks()
 
 #### 2017-18
 ```{r map_ppo_2017}
+tracks_pth_ppo %>% filter_2017() %>% map_tracks(cluster=T)
 tracks_pth_ppo %>% filter_2017() %>% map_tracks()
 ```
 
 #### 2018-19
 ```{r map_ppo_2018}
+tracks_pth_ppo %>% filter_2018() %>% map_tracks(cluster=T)
 tracks_pth_ppo %>% filter_2018() %>% map_tracks()
 ```
 
@@ -109,22 +117,63 @@ gganimate_tracks(tracks_pth, placename_pth, prefix_pth)
 ```
 
 ### Tagged nests
+QA: every single nest tag needs to be reviewed for spelling and format, then marked as "proofread".
+TSC links for DBCA curators:
+
+* [Cemetery Beach Tagged Nests](https://tsc.dbca.wa.gov.au/admin/observations/nesttagobservation/?encounter__site__id__exact=35)
+* [Pretty Pool Beach Tagged Nests](https://tsc.dbca.wa.gov.au/admin/observations/nesttagobservation/?encounter__site__id__exact=45)
+
 #### 2017-18
-No tagged nests.
+No tagged nests recorded digitally.
+
+TODO insert season summary from data sheets.
 
 #### 2018-19
-The map (once enabled) is saved as a PNG file `r glue::glue(prefix_pth, "_tagged_nests.png")`.
+This map shows the locations of all encounters with tagged nests. This includes newly tagged nests
+and re-sighted, already tagged nests.
+The nests shown here are a subset of the total numbers shown above. Newly tagged nests are shown above
+as "tracks with nests / successful crawls", re-sighted tagged nests are shown above as either "nest"
+or "hatched nest".
 
-QA: every single nest tag needs to be reviewed for spelling and format, then marked as "proofread".
+Multiple sightings of the same nest are possible and will appear as separate markers on the map.
 
-Multiple sightings of the same nest are possible and will appear as separate records.
+Maps are split by site and clustering.
 
-```{r nests_all}
+```{r tagged_nests_2018}
 nests_pth %>% 
   filter_2018() %>%
-  map_nests() %T>% 
-  mapview::mapshot(file = glue::glue("{prefix_pth}_tagged_nests.png"))
+  map_nests(cluster=TRUE)
 
+nests_pth %>% 
+  filter_2018() %>%
+  filter_pth_cemetery() %>% 
+  map_nests(cluster=FALSE)
+
+nests_pth %>% 
+  filter_2018() %>%
+  filter_pth_prettypool() %>% 
+  map_nests(cluster=FALSE)
+```
+
+```{r nest_tags_distinct_2018}
+distinct_nest_tags_cem <- nests_pth %>% 
+  filter_2018() %>% 
+  filter_pth_cemetery() %>% 
+  group_by(date_nest_laid, flipper_tag_id, tag_label) %>% 
+  tally()
+
+distinct_nest_tags_ppo <- nests_pth %>% 
+  filter_2018() %>% 
+  filter_pth_prettypool() %>% 
+  group_by(date_nest_laid, flipper_tag_id, tag_label) %>% 
+  tally()
+```
+
+The records show `r distinct_nest_tags_cem %>% nrow` distinct nest tags at Cemetery Beach and
+`r distinct_nest_tags_ppo %>% nrow` on Pretty Pool Beach.
+
+##### Individual nest tag observations
+```{r nest_tags_sightings}
 nests_pth %>% dt
 ```
 
@@ -184,9 +233,7 @@ nests %>% track_success_by_species() %>% DT::datatable(.,
 
 ## Hatching and emergence success
 ```{r hatching_emergence_success}
-tracks_pth %>%
-  hatching_emergence_success() %>%
-  DT::datatable(., caption = "Hatching and emergence success summary", options = list(paging = F))
+tracks_pth %>% hatching_emergence_success() %>% dt0
 ```
 
 ## Disturbance and predation
@@ -305,7 +352,7 @@ hours of mind-numbing data entry and proofreading work for
 `r nrow(dist_pth)` Disturbances, and 
 `r nrow(surveys_pth)*2` Site Visit Starts/Ends. 
 
-#### 2017-19
+#### 2017-18
 * There were **`r surveys_pth %>% filter_2017() %>% nrow` surveys** 
   including training for a total duration of 
   **`r sum(filter_2017(surveys_pth_prod)$duration_hours)` hours**.
