@@ -52,6 +52,8 @@ set QA level to "curated".
 ## Provided username mismatches WAStD users
 ```{r name_mismatch_bme}
 surveys_bme %>% filter_surveys_requiring_qa() %>% dt()
+surveys_bme %>% filter_surveys_requiring_qa() %>% extract2("start_comments") %>% unique
+surveys_bme %>% filter_surveys_requiring_qa() %>% extract2("end_comments") %>% unique
 ```
 
 # Season summary
@@ -92,12 +94,35 @@ tracks_bme_2017 <- tracks_bme %>% filter_2017()
 ### Tagged nests
 The map is saved as a PNG file `r glue::glue(prefix_bme, "_tagged_nests.png")`.
 
+### Tagged nests
+QA: Review every turtle nest encounter with nest tag observations for duplicates, spelling and 
+format, then mark as "curated". TSC links for DBCA curators:
+
+* [Sector 1 Tagged Nests](https://tsc.dbca.wa.gov.au/admin/observations/nesttagobservation/?encounter__site__id__exact=22)
+* [Sector 2 Tagged Nests](https://tsc.dbca.wa.gov.au/admin/observations/nesttagobservation/?encounter__site__id__exact=23)
+* [Sector 3 Tagged Nests](https://tsc.dbca.wa.gov.au/admin/observations/nesttagobservation/?encounter__site__id__exact=34)
+
 ```{r nests_bme}
 nests_bme %>%
   filter_2018() %>%
   map_nests() %T>%
   mapview::mapshot(file = glue::glue("{prefix_bme}_tagged_nests_2018.png"))
 ```
+
+```{r nest_tags_distinct_2018}
+distinct_nest_tags_cbb_2018 <- nests_bme %>% 
+  filter_2018() %>% 
+  group_by(date_nest_laid, flipper_tag_id, tag_label) %>% 
+  tally()
+
+distinct_nest_tags_cbb_2018 %>% dt
+
+nests_bme %>% filter_2018() %>% dt
+```
+
+The records show `r distinct_nest_tags_cbb_2018 %>% nrow` distinct nest tags at Cable Beach 
+(all sectors) in 2018-19.
+
 
 ## Nesting abundance
 ### All beaches
@@ -160,12 +185,17 @@ Caveat: QA to exclude possible training records.
 Coming soon: details of disturbance to nests.
 
 ### General disturbance
-There were **`r count(dist_bme)` reports** of general disturbance or predator presence.
+There were **`r dist_bme %>% filter_2017() %>% count()` reports** of general disturbance or 
+predator presence in 2017-18 and **`r dist_bme %>% filter_2018() %>% count()` reports** in 2018-19.
 
-```{r map_dist_bme}
+#### 2017-18
+```{r map_dist_bme_2017}
 dist_bme %>% filter_2017() %>% group_by(season, disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
 dist_bme %>% filter_2017() %>% map_dist()
+```
 
+#### 2018-19
+```{r map_dist_bme_2018}
 dist_bme %>% filter_2018() %>% group_by(season, disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
 dist_bme %>% filter_2018() %>% map_dist()
 ```
@@ -222,7 +252,7 @@ The only way to reconcile attribution is to manually compare survey usernames wi
 team rosters.
 
 ```{r survey_effort_by_person}
-personal_effort_bme <- surveys_bme %>% survey_hours_per_person()
+personal_effort_bme <- surveys_bme %>% survey_hours_per_person() %>% arrange(-season)
 personal_effort_bme %>% kable()
 ```
 

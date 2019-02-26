@@ -81,6 +81,9 @@ Maps are shown for each season, with and without clustering.
 Clustered tracks expand to allow accessing each popup (containing a link to update the record), while
 non-clustered tracks represent the location more accurately.
 
+Clustered maps have to be set to "Place names" to allow clusters to expand. The aerial background
+imagery does not exist yet for the required zoom level.
+
 ### Nesting at Cemetery Beach 
 #### 2017-18
 ```{r map_cem_2017}

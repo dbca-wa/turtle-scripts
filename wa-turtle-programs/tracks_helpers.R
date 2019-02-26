@@ -1,269 +1,16 @@
-# Deprecated --------------------------------------------------------------------------------------#
-daily_species_by_type <- . %>%
-  filter(nest_age == "fresh") %>%
-  group_by(season, turtle_date, species, nest_type) %>%
-  tally() %>%
-  ungroup()
-
-daily_summary <- . %>%
-  daily_species_by_type() %>%
-  tidyr::spread(nest_type, n, fill = 0) %>%
-  DT::datatable(.)
-
-# use nesting_type_by_season_species
-species_by_type <- . %>%
-  filter(nest_age == "fresh") %>%
-  group_by(season, species, nest_type) %>%
-  tally() %>%
-  ungroup() %>%
-  tidyr::spread(nest_type, n, fill = 0)
-
-# wastdr staging ----------------------------------------------------------------------------------#
-# Pivot table of nesting type by season and species
-nesting_type_by_season_species <- . %>%
-  dplyr::filter(nest_age == "fresh") %>%
-  dplyr::group_by(season, species, nest_type) %>%
-  dplyr::tally() %>%
-  dplyr::ungroup() %>%
-  tidyr::spread(nest_type, n, fill = 0)
-
-# Pivot table of nesting type by season, season_week, iso_week, and species
-nesting_type_by_season_week_species <- . %>%
-  dplyr::filter(nest_age == "fresh") %>%
-  dplyr::group_by(season, season_week, iso_week, species, nest_type) %>%
-  dplyr::tally() %>%
-  dplyr::ungroup() %>%
-  tidyr::spread(nest_type, n, fill = 0)
-
-
-#' True date as days since fiscal year start
-tdate_as_fdate <- . %>%
-{
-  lubridate::as.duration(as_date(glue::glue("{wastdr::datetime_as_season(.)}-07-01")) %--% .)
-} %>%
-  as.numeric("days")
-
-#' Days since fiscal year start as true date
-fdate_as_tdate <- . %>% {
-  ddays(.) + lubridate::as_date("2000-07-01")
-} %>% format("%d %b")
-
-
-# Pivot table of nesting type by season, turtle date and species
-nesting_type_by_season_day_species <- . %>%
-  dplyr::filter(nest_age == "fresh") %>%
-  # dplyr::mutate(day = tdate_as_fdate(turtle_date),
-  #               test_date = fdate_as_tdate(day)) %>%
-  dplyr::group_by(season, turtle_date, species, nest_type) %>%
-  dplyr::tally() %>%
-  dplyr::ungroup()
-
-
-
-# Plot of nesting_type_by_season_day_species over time
-tracks_ts <- function(data,
-                      surveys,
-                      placename="",
-                      prefix="") {
-  fname <- glue::glue("{prefix}_track_abundance_{wastdr::urlize(placename)}.png")
-  data %>%
-    nesting_type_by_season_day_species() %>%
-    {
-      ggplot2::ggplot() +
-        ggplot2::facet_grid(rows = vars(season), scales = "free_x") +
-        ggplot2::scale_x_continuous(labels = function(x) fdate_as_tdate(x)) +
-        ggplot2::scale_y_continuous(limits = c(0, NA)) +
-        ggplot2::geom_bar(data = surveys, aes(x = tdate_as_fdate(turtle_date)), show.legend = F) +
-        ggalt::geom_lollipop(data = .,
-                             aes(x = tdate_as_fdate(turtle_date), y = n, colour = nest_type),
-                             point.size = 2) +
-        ggplot2::ggtitle(
-          glue::glue("Nesting activity at {placename}"),
-          subtitle = "Number counted per day (points) over number of surveys (bars)") +
-        ggplot2::ylab("Number of turtle tracks or nests") +
-        ggplot2::xlab("Turtle date") +
-        ggplot2::guides(colour=guide_legend(title="Nest type")) +
-        ggplot2::theme_classic() +
-        ggplot2::ggsave(fname, width = 10, height = 6)
-    }
-}
-
-
-hatching_emergence_success <- . %>%
-  dplyr::filter(nest_type == "hatched-nest") %>%
-  dplyr::filter(hatching_success >= 0) %>%
-  dplyr::group_by(season, species) %>%
-  dplyr::summarize(
-    "count" = n(),
-    "clutch_size_fresh" = mean(clutch_size_fresh) %>% round(digits = 2),
-    "clutch_size_mean" = mean(clutch_size) %>% round(digits = 2),
-    "clutch_size_sd" = sd(clutch_size) %>% round(digits = 2),
-    "clutch_size_min" = min(clutch_size),
-    "clutch_size_max" = max(clutch_size),
-    "hatching_success_mean" = mean(hatching_success) %>% round(digits = 2),
-    "hatching_success_sd" = sd(hatching_success) %>% round(digits = 2),
-    "hatching_success_min" = min(hatching_success),
-    "hatching_success_max" = max(hatching_success),
-    "emergence_success_mean" = mean(emergence_success) %>% round(digits = 2),
-    "emergence_success_sd" = sd(emergence_success) %>% round(digits = 2),
-    "emergence_success_min" = min(emergence_success),
-    "emergence_success_max" = max(emergence_success)
-  )
-
-
-ggplot_track_success_by_date <- function(data, speciesname, placename="", prefix="") {
-  data %>%
-    dplyr::filter(species == speciesname) %>%
-    ggplot2::ggplot(aes(x = tdate_as_fdate(turtle_date))) +
-    ggplot2::facet_grid(rows = vars(season), scales = "free_x") +
-    ggplot2::geom_bar(aes(y = all), stat = "identity", color = "black", fill = "grey") +
-    ggplot2::geom_bar(aes(y = successful), stat = "identity", color = "black", fill = "green") +
-    ggplot2::ggtitle(paste("Nesting effort of", speciesname %>% humanize()),
-                     subtitle = "Number of all (grey) and successful (green) tracks"
-    ) +
-    labs(x = "Date", y = "Number of all and successful tracks") +
-    ggplot2::scale_x_continuous(labels = function(x) fdate_as_tdate(x)) +
-    ggplot2::scale_y_continuous(limits = c(0, NA)) +
-    ggplot2::theme_classic() +
-    ggsave(glue::glue("{prefix}_track_effort_{wastdr::urlize(placename)}_{speciesname}.png"), width = 10, height = 6)
-}
-
-ggplot_track_successrate_by_date <- function(data, speciesname, placename="", prefix="") {
-  data %>%
-    dplyr::filter(species == speciesname) %>%
-    ggplot2::ggplot(aes(x = tdate_as_fdate(turtle_date))) +
-    ggplot2::facet_grid(rows = vars(season), scales = "free_x") +
-    ggplot2::geom_bar(aes(y = track_success), stat = "identity", color = "black", fill = "grey") +
-    ggplot2::ggtitle(paste("Nesting success of", speciesname %>% humanize()),
-                     subtitle = "Fraction of successful over total nesting crawls"
-    ) +
-    labs(x = "Date", y = "Fraction of tracks with nest") +
-    ggplot2::scale_x_continuous(labels = function(x) fdate_as_tdate(x)) +
-    ggplot2::scale_y_continuous(limits = c(0, NA)) +
-    ggplot2::theme_classic() +
-    ggsave(glue::glue("{prefix}_track_success_{wastdr::urlize(placename)}_{speciesname}.png"), width = 10, height = 6)
-}
-
-track_success <- function(tracks) {
-  all_tracks_by_date <- tracks %>%
-    dplyr::filter(nest_type %in% c(
-      "successful-crawl",
-      "false-crawl",
-      "track-unsure",
-      "track-not-assessed"
-    )) %>%
-    dplyr::group_by(season, turtle_date, species) %>%
-    dplyr::tally() %>%
-    dplyr::ungroup() %>%
-    dplyr::rename(all = n)
-
-  successful_tracks_by_date <- tracks %>%
-    dplyr::filter(nest_type == "successful-crawl") %>%
-    dplyr::group_by(season, turtle_date, species) %>%
-    dplyr::tally() %>%
-    dplyr::ungroup() %>%
-    dplyr::rename(successful = n)
-
-  all_tracks_by_date %>%
-    dplyr::left_join(successful_tracks_by_date, by = c("turtle_date", "species", "season")) %>%
-    dplyr::mutate(
-      successful = ifelse(is.na(successful), 0, successful),
-      track_success = 100 * successful / all
-    )
-}
-
-track_success_by_species <- function(track_success) {
-  track_success %>%
-    group_by(season, species) %>%
-    dplyr::summarise(
-      mean_nesting_success = mean(track_success) %>% round(digits = 2),
-      sd_nesting_success = sd(track_success) %>% round(digits = 2)
-    )
-}
-
-gganimate_tracks <- function(data, placename=NULL, prefix=NULL, gm_apikey=NULL) {
-  require(purrr)
-
-  pl <- placename %||% "Western Australia"
-  pf <- prefix %||% "WA"
-
-  # Basemap: Google Maps
-  apikey <- gm_apikey %||%
-    Sys.getenv("GOOGLE_MAPS_APIKEY") %||%
-    stop("Need a Google Maps API key as system variable GOOGLE_MAPS_APIKEY")
-  ggmap::register_google(key = apikey)
-  bbx <- ggmap::make_bbox(longitude, latitude, data, f = 0.05)
-  ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
-  # basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
-  basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>%
-    ggmap::ggmap()
-
-  # Add turtle tracks to basemap, discard warnings
-  tracks_map <- suppressWarnings(
-    basemap + ggplot2::geom_point(aes(longitude, latitude, colour = nest_type), data = data)
-  ) +
-    ggplot2::ggtitle(glue::glue("Turtle Nesting at {pl}"), subtitle = "Turtle date: {frame_time}") +
-    gganimate::transition_time(turtle_date) +
-    gganimate::ease_aes("elastic-in") +
-    gganimate::exit_fade()
-
-  gganimate::animate(tracks_map, fps = 2, detail = 10) %T>%
-    gganimate::anim_save(glue::glue("{pf}_nesting.gif"), .)
-}
-
-survey_count <- function(surveys, sid, ssn) {
-  surveys %>% filter(site_id == sid, season == ssn) %>% nrow()
-}
-
-survey_ground_covered <- function(surveys, site_id, km_per_survey, ssn) {
-  survey_count(surveys, site_id, ssn) * km_per_survey
-}
-
-survey_count_heatmap <- function(surveys, placename, prefix) {
-  surveys %>%
-    wastdr::surveys_per_site_name_and_date(.) %>%
-    ggTimeSeries::ggplot_calendar_heatmap("turtle_date", "n") +
-    ggplot2::scale_fill_continuous(low = "green", high = "red") +
-    ggplot2::facet_grid(rows = vars(Year)) +
-    ggplot2::ggtitle(glue::glue("Survey effort at {placename}")) +
-    xlab(NULL) + ylab(NULL) +
-    ggplot2::theme_classic() +
-    ggsave(
-      glue::glue("{prefix}_survey_count_heatmap_{wastdr::urlize(placename)}.png"),
-      width = 10, height = 6
-    )
-}
-
-survey_hours_heatmap <- function(surveys, placename, prefix) {
-  surveys %>%
-    wastdr::survey_hours_per_site_name_and_date(.) %>%
-    ggTimeSeries::ggplot_calendar_heatmap("turtle_date", "hours_surveyed") +
-    ggplot2::scale_fill_continuous(low = "green", high = "red") +
-    ggplot2::facet_grid(rows = vars(Year)) +
-    ggplot2::ggtitle(glue::glue("Survey effort at {placename}")) +
-    xlab(NULL) + ylab(NULL) +
-    ggplot2::theme_classic() +
-    ggsave(
-      glue::glue("{prefix}_survey_hours_heatmap_{wastdr::urlize(placename)}.png"),
-      width = 10, height = 6
-    )
-}
-
-# disturbance
-disturbance_by_season <- . %>%
-  dplyr::group_by(season, disturbance_cause) %>%
-  dplyr::tally() %>%
-  dplyr::arrange(-n)
-
 dt <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE)
 dt0 <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE, options = list(paging = F))
 
 # Filters -----------------------------------------------------------------------------------------#
-
+#--------------------------------------------------------------------------------------------------#
+# Season filters
 filter_2017 <- . %>% dplyr::filter(season == 2017)
 filter_2018 <- . %>% dplyr::filter(season == 2018)
+filter_2019 <- . %>% dplyr::filter(season == 2019)
+filter_2020 <- . %>% dplyr::filter(season == 2020)
 
-# Sites
+#--------------------------------------------------------------------------------------------------#
+# Site filters - depends on data inside WAStD
 filter_bme <- . %>% dplyr::filter(site_id %in% c(22, 23, 24))
 filter_bme_cbb1 <- . %>% dplyr::filter(site_id == 22)
 filter_bme_cbb2 <- . %>% dplyr::filter(site_id == 23)
@@ -296,137 +43,503 @@ filter_lgcs <- . %>% dplyr::filter(site_id %in% c(51, 52))
 
 filter_nin <- . %>% dplyr::filter(site_id > 59, site_id < 113)
 
-filter_nosite <- . %>% dplyr::filter(is.na(site_id))
-filter_nosurvey <- . %>% dplyr::filter(is.na(survey_id))
-filter_realspecies <- . %>% dplyr::filter(species != "corolla-corolla")
-filter_realsurveys <- . %>% dplyr::filter(is_production == TRUE)
+#--------------------------------------------------------------------------------------------------#
+# Deprecated functions
+# daily_species_by_type <- . %>%
+#   filter(nest_age == "fresh") %>%
+#   group_by(season, turtle_date, species, nest_type) %>%
+#   tally() %>%
+#   ungroup()
+#
+# daily_summary <- . %>%
+#   daily_species_by_type() %>%
+#   tidyr::spread(nest_type, n, fill = 0) %>%
+#   DT::datatable(.)
+#
+# # use nesting_type_by_season_species
+# species_by_type <- . %>%
+#   filter(nest_age == "fresh") %>%
+#   group_by(season, species, nest_type) %>%
+#   tally() %>%
+#   ungroup() %>%
+#   tidyr::spread(nest_type, n, fill = 0)
+
+#--------------------------------------------------------------------------------------------------#
+# wastdr staging 0.1.20
+#
+# # Pivot table of nesting type by season and species
+# nesting_type_by_season_species <- . %>%
+#   # dplyr::filter(nest_age == "fresh") %>%
+#   dplyr::group_by(season, species, nest_type) %>%
+#   dplyr::tally() %>%
+#   dplyr::ungroup() %>%
+#   tidyr::spread(nest_type, n, fill = 0)
+
+# # Pivot table of nesting type by area, season and species
+# nesting_type_by_area_season_species <- . %>%
+#   # dplyr::filter(nest_age == "fresh") %>%
+#   dplyr::group_by(area_name, season, species, nest_type) %>%
+#   dplyr::tally() %>%
+#   dplyr::ungroup() %>%
+#   tidyr::spread(nest_type, n, fill = 0)
+#
+# # Pivot table of nesting type by site, season and species
+# nesting_type_by_site_season_species <- . %>%
+#   # dplyr::filter(nest_age == "fresh") %>%
+#   dplyr::group_by(area_name, site_name, season, species, nest_type) %>%
+#   dplyr::tally() %>%
+#   dplyr::ungroup() %>%
+#   tidyr::spread(nest_type, n, fill = 0)
+#
+#
+# # Pivot table of nesting type by season, season_week, iso_week, and species
+# nesting_type_by_season_week_species <- . %>%
+#   dplyr::filter(nest_age == "fresh") %>%
+#   dplyr::group_by(season, season_week, iso_week, species, nest_type) %>%
+#   dplyr::tally() %>%
+#   dplyr::ungroup() %>%
+#   tidyr::spread(nest_type, n, fill = 0)
+
+
+#' #' True date as days since fiscal year start
+#' tdate_as_fdate <- . %>%
+#' {
+#'   lubridate::as.duration(as_date(glue::glue("{wastdr::datetime_as_season(.)}-07-01")) %--% .)
+#' } %>%
+#'   as.numeric("days")
+#'
+#' #' Days since fiscal year start as true date
+#' fdate_as_tdate <- . %>% {
+#'   ddays(.) + lubridate::as_date("2000-07-01")
+#' } %>% format("%d %b")
+
+
+# # Pivot table of nesting type by season, turtle date and species
+# nesting_type_by_season_day_species <- . %>%
+#   # dplyr::filter(nest_age == "fresh") %>%
+#   dplyr::group_by(season, turtle_date, species, nest_type) %>%
+#   dplyr::tally() %>%
+#   dplyr::ungroup()
+
+
+
+# # Plot of nesting_type_by_season_day_species over time
+# tracks_ts <- function(data,
+#                       surveys,
+#                       placename="",
+#                       prefix="") {
+#   fname <- glue::glue("{prefix}_track_abundance_{wastdr::urlize(placename)}.png")
+#   data %>%
+#     nesting_type_by_season_day_species() %>%
+#     {
+#       ggplot2::ggplot() +
+#         ggplot2::facet_grid(rows = vars(season), scales = "free_x") +
+#         ggplot2::scale_x_continuous(labels = function(x) fdate_as_tdate(x)) +
+#         ggplot2::scale_y_continuous(limits = c(0, NA)) +
+#         ggplot2::geom_bar(data = surveys, aes(x = tdate_as_fdate(turtle_date)), show.legend = F) +
+#         ggalt::geom_lollipop(data = .,
+#                              aes(x = tdate_as_fdate(turtle_date), y = n, colour = nest_type),
+#                              point.size = 2) +
+#         ggplot2::ggtitle(
+#           glue::glue("Nesting activity at {placename}"),
+#           subtitle = "Number counted per day (points) over number of surveys (bars)") +
+#         ggplot2::ylab("Number of turtle tracks or nests") +
+#         ggplot2::xlab("Turtle date") +
+#         ggplot2::guides(colour=guide_legend(title="Nest type")) +
+#         ggplot2::theme_classic() +
+#         ggplot2::ggsave(fname, width = 10, height = 6)
+#     }
+# }
+
+
+# hatching_emergence_success <- . %>%
+#   dplyr::filter(nest_type == "hatched-nest") %>%
+#   dplyr::filter(hatching_success >= 0) %>%
+#   dplyr::group_by(season, species) %>%
+#   dplyr::summarize(
+#     "count" = n(),
+#     "clutch_size_fresh" = mean(clutch_size_fresh) %>% round(digits = 2),
+#     "clutch_size_mean" = mean(clutch_size) %>% round(digits = 2),
+#     "clutch_size_sd" = sd(clutch_size) %>% round(digits = 2),
+#     "clutch_size_min" = min(clutch_size),
+#     "clutch_size_max" = max(clutch_size),
+#     "hatching_success_mean" = mean(hatching_success) %>% round(digits = 2),
+#     "hatching_success_sd" = sd(hatching_success) %>% round(digits = 2),
+#     "hatching_success_min" = min(hatching_success),
+#     "hatching_success_max" = max(hatching_success),
+#     "emergence_success_mean" = mean(emergence_success) %>% round(digits = 2),
+#     "emergence_success_sd" = sd(emergence_success) %>% round(digits = 2),
+#     "emergence_success_min" = min(emergence_success),
+#     "emergence_success_max" = max(emergence_success)
+#   )
+#
+#
+# hatching_emergence_success_area <- . %>%
+#   dplyr::filter(nest_type == "hatched-nest") %>%
+#   dplyr::filter(hatching_success >= 0) %>%
+#   dplyr::group_by(area_name, season, species) %>%
+#   dplyr::summarize(
+#     "count" = n(),
+#     "clutch_size_fresh" = mean(clutch_size_fresh) %>% round(digits = 2),
+#     "clutch_size_mean" = mean(clutch_size) %>% round(digits = 2),
+#     "clutch_size_sd" = sd(clutch_size) %>% round(digits = 2),
+#     "clutch_size_min" = min(clutch_size),
+#     "clutch_size_max" = max(clutch_size),
+#     "hatching_success_mean" = mean(hatching_success) %>% round(digits = 2),
+#     "hatching_success_sd" = sd(hatching_success) %>% round(digits = 2),
+#     "hatching_success_min" = min(hatching_success),
+#     "hatching_success_max" = max(hatching_success),
+#     "emergence_success_mean" = mean(emergence_success) %>% round(digits = 2),
+#     "emergence_success_sd" = sd(emergence_success) %>% round(digits = 2),
+#     "emergence_success_min" = min(emergence_success),
+#     "emergence_success_max" = max(emergence_success)
+#   )
+#
+# hatching_emergence_success_site <- . %>%
+#   dplyr::filter(nest_type == "hatched-nest") %>%
+#   dplyr::filter(hatching_success >= 0) %>%
+#   dplyr::group_by(site_name, season, species) %>%
+#   dplyr::summarize(
+#     "count" = n(),
+#     "clutch_size_fresh" = mean(clutch_size_fresh) %>% round(digits = 2),
+#     "clutch_size_mean" = mean(clutch_size) %>% round(digits = 2),
+#     "clutch_size_sd" = sd(clutch_size) %>% round(digits = 2),
+#     "clutch_size_min" = min(clutch_size),
+#     "clutch_size_max" = max(clutch_size),
+#     "hatching_success_mean" = mean(hatching_success) %>% round(digits = 2),
+#     "hatching_success_sd" = sd(hatching_success) %>% round(digits = 2),
+#     "hatching_success_min" = min(hatching_success),
+#     "hatching_success_max" = max(hatching_success),
+#     "emergence_success_mean" = mean(emergence_success) %>% round(digits = 2),
+#     "emergence_success_sd" = sd(emergence_success) %>% round(digits = 2),
+#     "emergence_success_min" = min(emergence_success),
+#     "emergence_success_max" = max(emergence_success)
+#   )
+
+
+# ggplot_track_success_by_date <- function(data, speciesname, placename="", prefix="") {
+#   data %>%
+#     dplyr::filter(species == speciesname) %>%
+#     ggplot2::ggplot(aes(x = tdate_as_fdate(turtle_date))) +
+#     ggplot2::facet_grid(rows = vars(season), scales = "free_x") +
+#     ggplot2::geom_bar(aes(y = all), stat = "identity", color = "black", fill = "grey") +
+#     ggplot2::geom_bar(aes(y = successful), stat = "identity", color = "black", fill = "green") +
+#     ggplot2::ggtitle(paste("Nesting effort of", speciesname %>% humanize()),
+#                      subtitle = "Number of all (grey) and successful (green) tracks"
+#     ) +
+#     labs(x = "Date", y = "Number of all and successful tracks") +
+#     ggplot2::scale_x_continuous(labels = function(x) fdate_as_tdate(x)) +
+#     ggplot2::scale_y_continuous(limits = c(0, NA)) +
+#     ggplot2::theme_classic() +
+#     ggsave(glue::glue("{prefix}_track_effort_{wastdr::urlize(placename)}_{speciesname}.png"), width = 10, height = 6)
+# }
+#
+# ggplot_track_successrate_by_date <- function(data, speciesname, placename="", prefix="") {
+#   data %>%
+#     dplyr::filter(species == speciesname) %>%
+#     ggplot2::ggplot(aes(x = tdate_as_fdate(turtle_date))) +
+#     ggplot2::facet_grid(rows = vars(season), scales = "free_x") +
+#     ggplot2::geom_bar(aes(y = track_success), stat = "identity", color = "black", fill = "grey") +
+#     ggplot2::ggtitle(paste("Nesting success of", speciesname %>% humanize()),
+#                      subtitle = "Fraction of successful over total nesting crawls"
+#     ) +
+#     labs(x = "Date", y = "Fraction of tracks with nest") +
+#     ggplot2::scale_x_continuous(labels = function(x) fdate_as_tdate(x)) +
+#     ggplot2::scale_y_continuous(limits = c(0, NA)) +
+#     ggplot2::theme_classic() +
+#     ggsave(glue::glue("{prefix}_track_success_{wastdr::urlize(placename)}_{speciesname}.png"), width = 10, height = 6)
+# }
+
+# track_success <- function(tracks) {
+#   all_tracks_by_date <- tracks %>%
+#     dplyr::filter(nest_type %in% c(
+#       "successful-crawl",
+#       "false-crawl",
+#       "track-unsure",
+#       "track-not-assessed"
+#     )) %>%
+#     dplyr::group_by(season, turtle_date, species) %>%
+#     dplyr::tally() %>%
+#     dplyr::ungroup() %>%
+#     dplyr::rename(all = n)
+#
+#   successful_tracks_by_date <- tracks %>%
+#     dplyr::filter(nest_type == "successful-crawl") %>%
+#     dplyr::group_by(season, turtle_date, species) %>%
+#     dplyr::tally() %>%
+#     dplyr::ungroup() %>%
+#     dplyr::rename(successful = n)
+#
+#   all_tracks_by_date %>%
+#     dplyr::left_join(successful_tracks_by_date, by = c("turtle_date", "species", "season")) %>%
+#     dplyr::mutate(
+#       successful = ifelse(is.na(successful), 0, successful),
+#       track_success = 100 * successful / all
+#     )
+# }
+#
+# track_success_by_species <- function(track_success) {
+#   track_success %>%
+#     group_by(season, species) %>%
+#     dplyr::summarise(
+#       mean_nesting_success = mean(track_success) %>% round(digits = 2),
+#       sd_nesting_success = sd(track_success) %>% round(digits = 2)
+#     )
+# }
+
+gganimate_tracks <- function(data, placename=NULL, prefix=NULL, gm_apikey=NULL) {
+  require(purrr)
+
+  pl <- placename %||% "Western Australia"
+  pf <- prefix %||% "WA"
+
+  # Basemap: Google Maps
+  apikey <- gm_apikey %||%
+    Sys.getenv("GOOGLE_MAPS_APIKEY") %||%
+    stop("Need a Google Maps API key as system variable GOOGLE_MAPS_APIKEY")
+  ggmap::register_google(key = apikey)
+  bbx <- ggmap::make_bbox(longitude, latitude, data, f = 0.05)
+  ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
+  # basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
+  basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>%
+    ggmap::ggmap()
+
+  # Add turtle tracks to basemap, discard warnings
+  tracks_map <- suppressWarnings(
+    basemap + ggplot2::geom_point(aes(longitude, latitude, colour = nest_type), data = data)
+  ) +
+    ggplot2::ggtitle(glue::glue("Turtle Nesting at {pl}"), subtitle = "Turtle date: {frame_time}") +
+    gganimate::transition_time(turtle_date) +
+    gganimate::ease_aes("elastic-in") +
+    gganimate::exit_fade()
+
+  gganimate::animate(tracks_map, fps = 2, detail = 10) %T>%
+    gganimate::anim_save(glue::glue("{pf}_nesting.gif"), .)
+}
+
+# survey_count <- function(surveys, site_id, season) {
+#   surveys %>% filter(site_id == site_id, season == season) %>% nrow()
+# }
+#
+# survey_ground_covered <- function(surveys, site_id, km_per_survey, season) {
+#   survey_count(surveys, site_id, season) * km_per_survey))
+# }
+
+# survey_count_heatmap <- function(surveys, placename, prefix) {
+#   surveys %>%
+#     wastdr::surveys_per_site_name_and_date(.) %>%
+#     ggTimeSeries::ggplot_calendar_heatmap("turtle_date", "n") +
+#     ggplot2::scale_fill_continuous(low = "green", high = "red") +
+#     ggplot2::facet_grid(rows = vars(Year)) +
+#     ggplot2::ggtitle(glue::glue("Survey effort at {placename}")) +
+#     xlab(NULL) + ylab(NULL) +
+#     ggplot2::theme_classic() +
+#     ggsave(
+#       glue::glue("{prefix}_survey_count_heatmap_{wastdr::urlize(placename)}.png"),
+#       width = 10, height = 6
+#     )
+# }
+
+# survey_hours_heatmap <- function(surveys, placename, prefix) {
+#   surveys %>%
+#     wastdr::survey_hours_per_site_name_and_date(.) %>%
+#     ggTimeSeries::ggplot_calendar_heatmap("turtle_date", "hours_surveyed") +
+#     ggplot2::scale_fill_continuous(low = "green", high = "red") +
+#     ggplot2::facet_grid(rows = vars(Year)) +
+#     ggplot2::ggtitle(glue::glue("Survey effort at {placename}")) +
+#     xlab(NULL) + ylab(NULL) +
+#     ggplot2::theme_classic() +
+#     ggsave(
+#       glue::glue("{prefix}_survey_hours_heatmap_{wastdr::urlize(placename)}.png"),
+#       width = 10, height = 6
+#     )
+# }
+
+
+
+
+# filter_nosite <- . %>% dplyr::filter(is.na(site_id))
+# filter_nosurvey <- . %>% dplyr::filter(is.na(survey_id))
+# filter_realspecies <- . %>% dplyr::filter(species != "corolla-corolla")
+# filter_realsurveys <- . %>% dplyr::filter(is_production == TRUE)
 
 # filters for wastdr ------------------------------------------------------------------------------#
 # Encounters
-exclude_training_species <- . %>% dplyr::filter(species != "corolla-corolla")
-filter_missing_survey <- . %>% dplyr::filter(is.na(survey_id))
-filter_missing_site <- . %>% dplyr::filter(is.na(site_id))
+# exclude_training_species <- . %>% dplyr::filter(species != "corolla-corolla")
+# filter_missing_survey <- . %>% dplyr::filter(is.na(survey_id))
+# filter_missing_site <- . %>% dplyr::filter(is.na(site_id))
+#
+# # Surveys
+# exclude_training_surveys <- . %>% dplyr::filter(is_production == TRUE)
+# filter_surveys_requiring_qa <- . %>%
+#   dplyr::filter(grepl("NEEDS QA", start_comments) | grepl("NEEDS QA", end_comments)) %>%
+#   dplyr::select(change_url, turtle_date, site_name, reporter, reporter_username,
+#                 start_comments, end_comments)
+#
+# filter_surveys_missing_end <- . %>%
+#   dplyr::filter(is.na(end_source_id)) %>%
+#   dplyr::select(
+#     change_url, turtle_date, site_name, reporter, season,
+#     start_time, end_time, start_comments, end_comments
+#   )
 
-# Surveys
-exclude_training_surveys <- . %>% dplyr::filter(is_production == TRUE)
-filter_surveys_requiring_qa <- . %>%
-  dplyr::filter(grepl("NEEDS QA", start_comments) | grepl("NEEDS QA", end_comments)) %>%
-  dplyr::select(change_url, turtle_date, site_name, reporter, reporter_username,
-                start_comments, end_comments)
+# survey_season_stats <- . %>%
+#   dplyr::group_by(season, site_name) %>%
+#   dplyr::summarise(
+#     first_day = min(turtle_date),
+#     last_day = max(turtle_date),
+#     season_length_days = as.numeric(first_day %--% last_day)/(3600*24),
+#     number_surveys = n(),
+#     hours_surveyed = round(sum(duration_hours))
+#   )
 
-filter_surveys_missing_end <- . %>%
-  dplyr::filter(is.na(end_source_id)) %>%
-  dplyr::select(
-    change_url, turtle_date, site_name, reporter, season,
-    start_time, end_time, start_comments, end_comments
-  )
+# survey_show_detail <- . %>%
+#   dplyr::select(
+#     change_url, site_name, season, turtle_date, is_production,
+#     start_time, end_time, duration_hours,
+#     start_comments, end_comments, status)
 
-survey_season_stats <- . %>%
-  dplyr::group_by(season) %>%
-  dplyr::summarise(
-    first_day = min(turtle_date),
-    last_day = max(turtle_date),
-    season_length_days = as.numeric(first_day %--% last_day)/(3600*24),
-    number_surveys = n(),
-    hours_surveyed = round(sum(duration_hours))
-  )
 
-survey_show_detail <- . %>%
-  dplyr::select(
-    change_url, site_name, season, turtle_date, is_production,
-    start_time, end_time, duration_hours,
-    start_comments, end_comments, status)
-
+# wastdr 0.1.20
 # map revisited
 # function (tracks, fmt = "%d/%m/%Y %H:%M")
-map_tracks <- function(
-  tracks,
-  wastd_url=wastdr::get_wastd_url(),
-  fmt = "%d/%m/%Y %H:%M",
-  cluster=FALSE){
+# map_tracks <- function(
+#   tracks,
+#   wastd_url=wastdr::get_wastd_url(),
+#   fmt = "%d/%m/%Y %H:%M",
+#   cluster=FALSE){
+#
+#   . <- NULL
+#   layersControlOptions <- NULL
+#   if (cluster == TRUE){
+#     co = markerClusterOptions()
+#   } else {
+#     co = NULL
+#   }
+#
+#   l <- leaflet(width = 800, height = 600) %>%
+#     addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+#     addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+#     clearBounds()
+#
+#   tracks.df <- tracks %>% split(tracks$species)
+#
+#   names(tracks.df) %>%
+#     purrr::walk(function(df) {
+#       l <<- l %>% addAwesomeMarkers(
+#         data = tracks.df[[df]],
+#         lng = ~longitude,
+#         lat = ~latitude,
+#         icon = leaflet::makeAwesomeIcon(
+#           text = ~nest_type_text,
+#           markerColor = ~species_colours),
+#         label = ~glue::glue(
+#           "{format(datetime, fmt)} {humanize(nest_age)} ",
+#           "{humanize(species)} {humanize(nest_type)} {name}"),
+#         popup = ~glue::glue(
+#           "<h3>{humanize(nest_age)} {humanize(species)} {humanize(nest_type)} {name}</h3>",
+#           "<p>Seen on {format(datetime, fmt)} AWST by {observer}",
+#           "<p>Survey {survey_id} at {site_name} ",
+#           "{format(survey_start_time, fmt)}-{format(survey_end_time, fmt)} AWST</p>",
+#           "<p><a class=\"btn btn-xs btn-secondary\" target=\"_\" rel=\"nofollow\" ",
+#           "href=\"{wastd_url}{absolute_admin_url}\">Edit on WAStD</a></p>"),
+#         group = df,
+#         clusterOptions = co)
+#     })
+#
+#   l %>% addLayersControl(
+#     baseGroups = c("Aerial", "Place names"),
+#     overlayGroups = names(tracks.df),
+#     options = layersControlOptions(collapsed = FALSE)
+#   )
+# }
+#
+# map_nests <- function (data,
+#                        wastd_url=wastdr::get_wastd_url(),
+#                        fmt = "%d/%m/%Y %H:%M",
+#                        cluster=FALSE)
+# {
+#   . <- NULL
+#   layersControlOptions <- NULL
+#   if (cluster == TRUE){
+#     co = markerClusterOptions()
+#   } else {
+#     co = NULL
+#   }
+#   pal <- leaflet::colorFactor(palette = "RdYlBu", domain = data$tag_status)
+#   l <- leaflet::leaflet(width = 800, height = 600) %>%
+#     leaflet::addProviderTiles(., "Esri.WorldImagery", group = "Aerial") %>%
+#     leaflet::addProviderTiles(., "OpenStreetMap.Mapnik", group = "Place names") %>%
+#     leaflet::clearBounds(.) %>%
+#     leaflet::addAwesomeMarkers(.,
+#       data = data, lng = ~longitude,
+#       lat = ~latitude,
+#       icon = leaflet::makeAwesomeIcon(
+#         icon = "tag", text = ~tag_label, markerColor = ~pal(tag_status)),
+#       label = ~glue::glue(
+#         "{format(datetime, \"%d/%m/%Y %H:%M\")} {tag_status} ",
+#         "{flipper_tag_id} {date_nest_laid} {tag_label}"),
+#       popup = ~glue::glue(
+#         "<h3>{flipper_tag_id} {date_nest_laid} {tag_label}</h3>",
+#         "<p>{humanize(tag_status)} on {format(datetime, fmt)} AWST by {observer}",
+#         "<p>Survey {survey_id} at {site_name} ",
+#         "{format(survey_start_time, fmt)}-{format(survey_end_time, fmt)} AWST</p>",
+#         "<p><a class=\"btn btn-xs btn-secondary\" target=\"_\" rel=\"nofollow\" ",
+#         "href=\"{wastd_url}{absolute_admin_url}\">Edit on WAStD</a></p>"),
+#       group = "Nests",
+#       clusterOptions = co) %>%
+#     leaflet::addLayersControl(.,
+#       baseGroups = c("Aerial", "Place names"),
+#       overlayGroups = c("Nests"),
+#       options = leaflet::layersControlOptions(collapsed = FALSE))
+#   l
+# }
+#
+#
+# parse_surveys <- function(wastd_api_response, wastd_url=wastdr::get_wastd_url()) {
+#   obs <- NULL
+#   . <- NULL
+#   start_time <- NULL
+#   end_time <- NULL
+#   duration_minutes <- NULL
+#   wastd_api_response$features %>% {
+#     tibble::tibble(site_name = map_chr_hack(., c("properties", "site", "name")),
+#                    site_type = map_chr_hack(., c("properties", "site", "area_type")),
+#                    site_id = map_chr_hack(., c("properties", "site", "pk")) %>% as.integer(),
+#                    reporter = map_chr_hack(., c("properties", "reporter", "name")),
+#                    reporter_username = map_chr_hack(., c("properties", "reporter", "username")),
+#                    reporter_id = map_chr_hack(.,c("properties", "reporter", "pk")),
+#                    start_time = purrr::map_chr(., c("properties", "start_time")) %>% httpdate_as_gmt08(),
+#                    end_time = map_chr_hack(., c("properties", "end_time")) %>% httpdate_as_gmt08(),
+#                    start_comments = map_chr_hack(., c("properties", "start_comments")),
+#                    end_comments = map_chr_hack(.,c("properties", "end_comments")),
+#                    turtle_date = start_time %>% datetime_as_turtle_date(),
+#                    season = start_time %>% datetime_as_season(),
+#                    season_week = start_time %>% datetime_as_seasonweek(),
+#                    iso_week = start_time %>% datetime_as_isoweek(),
+#                    source = purrr::map_chr(.,c("properties", "source")),
+#                    source_id = map_chr_hack(.,c("properties", "source_id")),
+#                    end_source_id = map_chr_hack(.,c("properties", "end_source_id")),
+#                    device_id = map_chr_hack(., c("properties", "device_id")),
+#                    end_device_id = map_chr_hack(., c("properties", "end_device_id")),
+#                    status = map_chr_hack(., c("properties", "status")),
+#                    id = purrr::map_int(., "id"),
+#                    is_production = map_chr_hack(., c("properties", "production")) %>% as.logical(),
+#                    absolute_admin_url = map_chr_hack(.,c("properties", "absolute_admin_url")))
+#   } %>% dplyr::mutate(
+#     change_url = glue::glue('<a href="{wastd_url}/admin/observations/survey/{id}/change/" target="_">Update Survey {id}</a>'),
+#     duration_minutes = (
+#       lubridate::interval(start_time, end_time) %>%
+#         lubridate::as.period() %>%
+#         as.numeric())/60 %>%
+#         round(digits = 2
+#     ),
+#     duration_hours = duration_minutes/60 %>% round(digits = 2))
+# }
+#
 
-  . <- NULL
-  layersControlOptions <- NULL
-  if (cluster == TRUE){
-    co = markerClusterOptions()
-  } else {
-    co = NULL
-  }
-
-  l <- leaflet(width = 800, height = 600) %>%
-    addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
-    addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
-    clearBounds()
-
-  tracks.df <- tracks %>% split(tracks$species)
-
-  names(tracks.df) %>%
-    purrr::walk(function(df) {
-      l <<- l %>% addAwesomeMarkers(
-        data = tracks.df[[df]],
-        lng = ~longitude,
-        lat = ~latitude,
-        icon = leaflet::makeAwesomeIcon(
-          text = ~nest_type_text,
-          markerColor = ~species_colours),
-        label = ~glue::glue(
-          "{format(datetime, fmt)} {humanize(nest_age)} ",
-          "{humanize(species)} {humanize(nest_type)} {name}"),
-        popup = ~glue::glue(
-          "<h3>{humanize(nest_age)} {humanize(species)} {humanize(nest_type)} {name}</h3>",
-          "<p>Seen on {format(datetime, fmt)} AWST by {observer}",
-          "<p>Survey {survey_id} at {site_name} ",
-          "{format(survey_start_time, fmt)}-{format(survey_end_time, fmt)} AWST</p>",
-          "<p><a class=\"btn btn-xs btn-secondary\" target=\"_\" rel=\"nofollow\" ",
-          "href=\"{wastd_url}{absolute_admin_url}\">Edit on WAStD</a></p>"),
-        group = df,
-        clusterOptions = co)
-    })
-
-  l %>% addLayersControl(
-    baseGroups = c("Aerial", "Place names"),
-    overlayGroups = names(tracks.df),
-    options = layersControlOptions(collapsed = FALSE)
-  )
-}
-
-map_nests <- function (data,
-                       wastd_url=wastdr::get_wastd_url(),
-                       fmt = "%d/%m/%Y %H:%M",
-                       cluster=FALSE)
-{
-  . <- NULL
-  layersControlOptions <- NULL
-  if (cluster == TRUE){
-    co = markerClusterOptions()
-  } else {
-    co = NULL
-  }
-  pal <- leaflet::colorFactor(palette = "RdYlBu", domain = data$tag_status)
-  l <- leaflet::leaflet(width = 800, height = 600) %>%
-    leaflet::addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
-    leaflet::addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
-    leaflet::clearBounds() %>%
-    leaflet::addAwesomeMarkers(
-      data = data, lng = ~longitude,
-      lat = ~latitude,
-      icon = leaflet::makeAwesomeIcon(
-        icon = "tag", text = ~tag_label, markerColor = ~pal(tag_status)),
-      label = ~glue::glue(
-        "{format(datetime, \"%d/%m/%Y %H:%M\")} {tag_status} ",
-        "{flipper_tag_id} {date_nest_laid} {tag_label}"),
-      popup = ~glue::glue(
-        "<h3>{flipper_tag_id} {date_nest_laid} {tag_label}</h3>",
-        "<p>{humanize(tag_status)} on {format(datetime, fmt)} AWST by {observer}",
-        "<p>Survey {survey_id} at {site_name} ",
-        "{format(survey_start_time, fmt)}-{format(survey_end_time, fmt)} AWST</p>",
-        "<p><a class=\"btn btn-xs btn-secondary\" target=\"_\" rel=\"nofollow\" ",
-        "href=\"{wastd_url}{absolute_admin_url}\">Edit on WAStD</a></p>"),
-      group = "Nests",
-      clusterOptions = co) %>%
-    leaflet::addLayersControl(
-      baseGroups = c("Aerial", "Place names"),
-      overlayGroups = c("Nests"),
-      options = leaflet::layersControlOptions(collapsed = FALSE))
-  l
-}
+# disturbance
+# disturbance_by_season <- . %>%
+#   dplyr::group_by(season, disturbance_cause) %>%
+#   dplyr::tally() %>%
+#   dplyr::arrange(-n)

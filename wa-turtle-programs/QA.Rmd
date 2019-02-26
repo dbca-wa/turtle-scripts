@@ -20,7 +20,29 @@ source("tracks_helpers.R")
 source("load_data.R")
 ```
 
-# Missing sites
+# QA
+This chapter supports various QA tasks.
+
+
+ Which data did you QA?
+
+    Surveys S3 https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=24
+    Surveys S2 https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=23
+    Surveys S1 https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=22
+    Turtle nests (all sectors) https://tsc.dbca.wa.gov.au/admin/observations/turtlenestencounter/?area__id__exact=19
+    Tagged turtle nests (a subset of turtle nests): https://tsc.dbca.wa.gov.au/admin/observations/nesttagobservation/?encounter__area__id__exact=19
+    Disturbed nests broome: https://tsc.dbca.wa.gov.au/admin/observations/encounter/?area__id__exact=19&encounter_type__exact=other&source__exact=odk
+
+What did you QA for?
+
+    Unexpected species e.g. Hawksbill is https://tsc.dbca.wa.gov.au/admin/observations/turtlenestencounter/?area__id__exact=19&species__exact=eretmochelys-imbricata (filter to other unexpected species)
+    Unidentified turtle species https://tsc.dbca.wa.gov.au/admin/observations/turtlenestencounter/?area__id__exact=19&species__exact=cheloniidae-fam
+    Missing tag label (e.g. sector 3 https://tsc.dbca.wa.gov.au/admin/observations/nesttagobservation/?encounter__site__id__exact=24&o=-10, same for sectors 2 and 1)
+    Are training surveys (multiple surveys on one day in the tetris chart is a good indication) on training days marked as "not production"?
+    
+    
+
+## Missing sites
 * If tracks are just outside of known sites: Extend WAStD site polygons to include GPS error.
 * Add WAStD sites for new surveyed sites (production or training) and include those sites in existing or new report.
 * Change confirmed training records outside training areas to "Hatchback turtles" and mark as "curated" to
@@ -61,7 +83,7 @@ disturbance %>% filter_missing_site() %>% map_dist()
 
 
 
-## Missing surveys
+## Surveys
 
 ### Tracks with missing surveys
 ```{r missing_surveys}
@@ -84,7 +106,7 @@ These surveys should be closed a few minutes after the last recorded track or di
 
 Surveys with missing end contribute to an over-estimation of survey effort.
 
-This task will be automated soon.
+This task is now automated, this section is only for QA.
   
 ```{r surveys_missing_end}
 surveys %>% filter_surveys_missing_end() %>% dt()
@@ -110,7 +132,54 @@ TODO: define QA rules for mismatches of usernames as (possibly mis)typed by data
 surveys %>% filter_surveys_requiring_qa() %>% dt()
 ```
 
-## Data catalogue
+# State-wide season summary
+This section contains state-wide season stats.
+
+## Survey effort
+
+For each monitoring program:
+
+* Number of volunteers
+* Hours surveyed (with/without training)
+* Kms walked (with/without training)
+* Number of days surveyed
+* Season length in days (days between first and last season survey)
+
+## Nesting
+
+For each monitoring program / for each site:
+
+* Rookery size (# nests per season per species)
+* Track density (# nesting emergences per km of coastline)
+* Hatching and emergence success with number of excavated nests
+* Percentage of nests disturbed
+* Number of disturbances recorded
+* Density of disturbances per km of coastline
+* Disturbance causes: number and category
+
+```{r}
+tracks_all %>% exclude_training_species() %>% nesting_type_by_season_species() %>% dt0
+tracks_all %>% exclude_training_species() %>% nesting_type_by_area_season_species() %>% dt
+tracks_all %>% exclude_training_species() %>% nesting_type_by_site_season_species() %>% dt
+
+tracks_all %>% hatching_emergence_success %>% dt0
+tracks_all %>% hatching_emergence_success_area %>% dt
+tracks_all %>% hatching_emergence_success_site %>% dt
+```
+
+## Disturbance
+
+```{r}
+disturbance %>% 
+  group_by(area_name, season, disturbance_cause) %>% 
+  tally() %>% 
+  filter(n>3) %>% 
+  filter(!is.null(area_name)) %>% 
+  arrange(area_name, season, -n) %>% 
+  dt
+```
+
+# Data upload
 Data are uploaded to the [turtle nest census dataset](https://data.dpaw.wa.gov.au/dataset/turtle-tracks) 
 on the departmental data catalogue, accessible from the DBCA intranet only.
 

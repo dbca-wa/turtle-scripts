@@ -11,10 +11,7 @@ if (file.exists(here::here("data", "tracks.Rda"))) {
   disturbance_records <- wastdr::wastd_GET("disturbance-observations")
   disturbance <- disturbance_records %>% wastdr::parse_disturbance_observations()
   survey_records <- wastdr::wastd_GET("surveys")
-  surveys <- survey_records %>%
-    wastdr::parse_surveys() %>%
-    dplyr::mutate(change_url = glue::glue(
-      '<a href="{wastd_url}/admin/observations/survey/{id}/change/" target="_">Update Survey {id}</a>'))
+  surveys <- survey_records %>% parse_surveys()
   nest_records <- wastdr::wastd_GET("nesttag-observations")
   nests_all <- nest_records %>% wastdr::parse_nesttag_observations()
   save(
