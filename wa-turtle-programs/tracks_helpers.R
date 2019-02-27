@@ -4,6 +4,7 @@ dt0 <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE, options = list(p
 # Filters -----------------------------------------------------------------------------------------#
 #--------------------------------------------------------------------------------------------------#
 # Season filters
+filter_2016 <- . %>% dplyr::filter(season == 2016)
 filter_2017 <- . %>% dplyr::filter(season == 2017)
 filter_2018 <- . %>% dplyr::filter(season == 2018)
 filter_2019 <- . %>% dplyr::filter(season == 2019)
@@ -42,6 +43,39 @@ filter_thv_tagging <- . %>% dplyr::filter(site_id == 20)
 filter_lgcs <- . %>% dplyr::filter(site_id %in% c(51, 52))
 
 filter_nin <- . %>% dplyr::filter(site_id > 59, site_id < 113)
+
+
+
+gganimate_tracks <- function(data, placename=NULL, prefix=NULL, gm_apikey=NULL) {
+  require(purrr)
+
+  pl <- placename %||% "Western Australia"
+  pf <- prefix %||% "WA"
+
+  # Basemap: Google Maps
+  apikey <- gm_apikey %||%
+    Sys.getenv("GOOGLE_MAPS_APIKEY") %||%
+    stop("Need a Google Maps API key as system variable GOOGLE_MAPS_APIKEY")
+  ggmap::register_google(key = apikey)
+  bbx <- ggmap::make_bbox(longitude, latitude, data, f = 0.05)
+  ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
+  # basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
+  basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>%
+    ggmap::ggmap()
+
+  # Add turtle tracks to basemap, discard warnings
+  tracks_map <- suppressWarnings(
+    basemap + ggplot2::geom_point(aes(longitude, latitude, colour = nest_type), data = data)
+  ) +
+    ggplot2::ggtitle(glue::glue("Turtle Nesting at {pl}"), subtitle = "Turtle date: {frame_time}") +
+    gganimate::transition_time(turtle_date) +
+    gganimate::ease_aes("elastic-in") +
+    gganimate::exit_fade()
+
+  gganimate::animate(tracks_map, fps = 2, detail = 10) %T>%
+    gganimate::anim_save(glue::glue("{pf}_nesting.gif"), .)
+}
+
 
 #--------------------------------------------------------------------------------------------------#
 # Deprecated functions
@@ -287,35 +321,6 @@ filter_nin <- . %>% dplyr::filter(site_id > 59, site_id < 113)
 #     )
 # }
 
-gganimate_tracks <- function(data, placename=NULL, prefix=NULL, gm_apikey=NULL) {
-  require(purrr)
-
-  pl <- placename %||% "Western Australia"
-  pf <- prefix %||% "WA"
-
-  # Basemap: Google Maps
-  apikey <- gm_apikey %||%
-    Sys.getenv("GOOGLE_MAPS_APIKEY") %||%
-    stop("Need a Google Maps API key as system variable GOOGLE_MAPS_APIKEY")
-  ggmap::register_google(key = apikey)
-  bbx <- ggmap::make_bbox(longitude, latitude, data, f = 0.05)
-  ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
-  # basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
-  basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>%
-    ggmap::ggmap()
-
-  # Add turtle tracks to basemap, discard warnings
-  tracks_map <- suppressWarnings(
-    basemap + ggplot2::geom_point(aes(longitude, latitude, colour = nest_type), data = data)
-  ) +
-    ggplot2::ggtitle(glue::glue("Turtle Nesting at {pl}"), subtitle = "Turtle date: {frame_time}") +
-    gganimate::transition_time(turtle_date) +
-    gganimate::ease_aes("elastic-in") +
-    gganimate::exit_fade()
-
-  gganimate::animate(tracks_map, fps = 2, detail = 10) %T>%
-    gganimate::anim_save(glue::glue("{pf}_nesting.gif"), .)
-}
 
 # survey_count <- function(surveys, site_id, season) {
 #   surveys %>% filter(site_id == site_id, season == season) %>% nrow()

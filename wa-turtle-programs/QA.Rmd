@@ -1,5 +1,5 @@
 ---
-title: "WA Turtles Quality Control"
+title: "WA Turtles Summary and Quality Control"
 author: "Florian Mayer, WA Turtles DBCA"
 date: "9/20/2018"
 output:
@@ -20,25 +20,96 @@ source("tracks_helpers.R")
 source("load_data.R")
 ```
 
+# Turtle nesting census
+
+## All seasons
+```{r}
+tracks_all %>%
+  exclude_training_species() %>% 
+  dplyr::group_by(season, species) %>% 
+  dplyr::tally() %>% 
+  dplyr::arrange(season, -n) %>% 
+  dt0
+```
+
+## Nesting 2016-17
+```{r maps_2016}
+tracks_2016 <- tracks_all %>% 
+  filter_2016() %>% 
+  exclude_training_species() %>%
+  add_nest_labels()
+
+tracks_2016 %>% map_tracks(cluster=TRUE)
+tracks_2016 %>% nesting_type_by_season_species()
+```
+
+
+## Nesting 2017-18
+```{r maps_2017}
+tracks_all %>% 
+  filter_2017 %>% 
+  exclude_training_species() %>%
+  add_nest_labels() %>% 
+  map_tracks(cluster=TRUE)
+
+tracks_all %>% 
+  filter_2017 %>% 
+  nesting_type_by_season_species()
+```
+
+## Nesting 2018-19
+```{r maps_2018}
+tracks_all %>% 
+  filter_2018 %>% 
+  exclude_training_species() %>%
+  add_nest_labels() %>% 
+  map_tracks(cluster=TRUE)
+
+tracks_all %>% 
+  filter_2018 %>% 
+  nesting_type_by_season_species()
+```
+
+
+## Disturbance
+```{r dist}
+disturbance %>% disturbance_by_season() %>% dplyr::arrange(season, -n)
+disturbance %>% map_dist(cluster=T)
+```
+
+## Survey effort
+
+### Including training
+```{r surv_incl_tr}
+surveys %>% survey_hours_heatmap(placename = "Western Australia", prefix = "WA")
+```
+
+### Including training
+```{r surv_excl_tr}
+surveys_prod <- surveys %>% exclude_training_surveys()
+surveys_prod %>% survey_season_stats() %>% dt0
+surveys_prod %>% survey_hours_heatmap(placename = "Western Australia", prefix = "WA")
+```
+
+
 # QA
 This chapter supports various QA tasks.
 
+Which data did you QA?
 
- Which data did you QA?
-
-    Surveys S3 https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=24
-    Surveys S2 https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=23
-    Surveys S1 https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=22
-    Turtle nests (all sectors) https://tsc.dbca.wa.gov.au/admin/observations/turtlenestencounter/?area__id__exact=19
-    Tagged turtle nests (a subset of turtle nests): https://tsc.dbca.wa.gov.au/admin/observations/nesttagobservation/?encounter__area__id__exact=19
-    Disturbed nests broome: https://tsc.dbca.wa.gov.au/admin/observations/encounter/?area__id__exact=19&encounter_type__exact=other&source__exact=odk
+Surveys S3 https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=24
+Surveys S2 https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=23
+Surveys S1 https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=22
+Turtle nests (all sectors) https://tsc.dbca.wa.gov.au/admin/observations/turtlenestencounter/?area__id__exact=19
+Tagged turtle nests (a subset of turtle nests): https://tsc.dbca.wa.gov.au/admin/observations/nesttagobservation/?encounter__area__id__exact=19
+Disturbed nests broome: https://tsc.dbca.wa.gov.au/admin/observations/encounter/?area__id__exact=19&encounter_type__exact=other&source__exact=odk
 
 What did you QA for?
 
-    Unexpected species e.g. Hawksbill is https://tsc.dbca.wa.gov.au/admin/observations/turtlenestencounter/?area__id__exact=19&species__exact=eretmochelys-imbricata (filter to other unexpected species)
-    Unidentified turtle species https://tsc.dbca.wa.gov.au/admin/observations/turtlenestencounter/?area__id__exact=19&species__exact=cheloniidae-fam
-    Missing tag label (e.g. sector 3 https://tsc.dbca.wa.gov.au/admin/observations/nesttagobservation/?encounter__site__id__exact=24&o=-10, same for sectors 2 and 1)
-    Are training surveys (multiple surveys on one day in the tetris chart is a good indication) on training days marked as "not production"?
+Unexpected species e.g. Hawksbill is https://tsc.dbca.wa.gov.au/admin/observations/turtlenestencounter/?area__id__exact=19&species__exact=eretmochelys-imbricata (filter to other unexpected species)
+Unidentified turtle species https://tsc.dbca.wa.gov.au/admin/observations/turtlenestencounter/?area__id__exact=19&species__exact=cheloniidae-fam
+Missing tag label (e.g. sector 3 https://tsc.dbca.wa.gov.au/admin/observations/nesttagobservation/?encounter__site__id__exact=24&o=-10, same for sectors 2 and 1)
+Are training surveys (multiple surveys on one day in the tetris chart is a good indication) on training days marked as "not production"?
     
     
 
