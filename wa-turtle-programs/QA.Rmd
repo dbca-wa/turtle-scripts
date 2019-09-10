@@ -23,13 +23,22 @@ source("load_data.R")
 # Turtle nesting census
 
 ## All seasons
+Total sums of turtle tracks or nests across all regions per season 
+(start year given as column names).
+
+This is not corrected for survey effort, so a higher number could come from
+more nesting, or higher survey effort.
+
+The numbers combine unsuccessful (false crawls) and successful (nests) nesting
+attempts of female turtles.
+
 ```{r}
 tracks_all %>%
   exclude_training_species() %>% 
-  dplyr::group_by(season, species) %>% 
+  dplyr::group_by(season, species) %>%
   dplyr::tally() %>% 
-  dplyr::arrange(season, -n) %>% 
-  dt0
+  tidyr::pivot_wider(names_from = season, values_from = n) %>% 
+  DT::datatable(., caption = "Total numbers of turtle tracks and nests in WA")
 ```
 
 ## Nesting 2016-17
@@ -40,7 +49,9 @@ tracks_2016 <- tracks_all %>%
   add_nest_labels()
 
 tracks_2016 %>% map_tracks(cluster=TRUE)
-tracks_2016 %>% nesting_type_by_season_species()
+tracks_2016 %>% 
+  nesting_type_by_season_species() %>% 
+  DT::datatable(., caption = "Track or Nest type by season and species in WA 2016-17")
 ```
 
 
@@ -54,7 +65,8 @@ tracks_all %>%
 
 tracks_all %>% 
   filter_2017 %>% 
-  nesting_type_by_season_species()
+  nesting_type_by_season_species() %>% 
+  DT::datatable(caption = "Track or Nest type by season and species in WA 2017-18")
 ```
 
 ## Nesting 2018-19
@@ -67,30 +79,45 @@ tracks_all %>%
 
 tracks_all %>% 
   filter_2018 %>% 
-  nesting_type_by_season_species()
+  nesting_type_by_season_species() %>% 
+  DT::datatable(caption = "Track or Nest type by season and species in WA 2018-19")
 ```
 
 
 ## Disturbance
+Disturbance from all regions. Some regions joined in season 2017-18 
+(WPTP, PtHedland, Broome, EMB), some 2018-19 (Ningaloo).
+
+This dataset is not corrected for survey effort.
+
 ```{r dist}
-disturbance %>% disturbance_by_season() %>% dplyr::arrange(season, -n)
+disturbance %>% 
+  disturbance_by_season() %>% 
+  dplyr::arrange(season, -n) %>% 
+  tidyr::pivot_wider(names_from = season, values_from = n)%>% 
+  DT::datatable(caption = "Disturbance and predator presence in WA (2016-19)")
+
+
 disturbance %>% map_dist(cluster=T)
+
+
 ```
 
 ## Survey effort
 
 ### Including training
 ```{r surv_incl_tr}
-surveys %>% survey_hours_heatmap(placename = "Western Australia", prefix = "WA")
+surveys %>% survey_hours_heatmap(placename = "Western Australia (excl. training)", prefix = "WA")
 ```
 
 ### Including training
 ```{r surv_excl_tr}
 surveys_prod <- surveys %>% exclude_training_surveys()
 surveys_prod %>% survey_season_stats() %>% dt0
-surveys_prod %>% survey_hours_heatmap(placename = "Western Australia", prefix = "WA")
+surveys_prod %>% survey_hours_heatmap(placename = "Western Australia (incl. training)", prefix = "WA")
 ```
 
+This is the end of the season stats part. The following part serves Quality Assurance.
 
 # QA
 This chapter supports various QA tasks.
@@ -110,8 +137,6 @@ Unexpected species e.g. Hawksbill is https://tsc.dbca.wa.gov.au/admin/observatio
 Unidentified turtle species https://tsc.dbca.wa.gov.au/admin/observations/turtlenestencounter/?area__id__exact=19&species__exact=cheloniidae-fam
 Missing tag label (e.g. sector 3 https://tsc.dbca.wa.gov.au/admin/observations/nesttagobservation/?encounter__site__id__exact=24&o=-10, same for sectors 2 and 1)
 Are training surveys (multiple surveys on one day in the tetris chart is a good indication) on training days marked as "not production"?
-    
-    
 
 ## Missing sites
 * If tracks are just outside of known sites: Extend WAStD site polygons to include GPS error.
