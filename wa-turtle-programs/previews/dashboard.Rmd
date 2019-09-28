@@ -1,0 +1,236 @@
+---
+title: "Turtle Nesting Census Previews 2019-20"
+author: "Flatbacks WA, DBCA"
+date: "`r Sys.Date()`"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    social: menu
+    source_code: https://git.io/vaZdx
+---
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(ckanr)
+library(dplyr)
+library(DT)
+library(fs)
+library(googledrive)
+library(knitr)
+library(leaflet)
+library(readr)
+library(skimr)
+library(wastdr)
+library(ruODK)
+
+tz <- "Australia/Perth"
+loc <- fs::path("media")
+fs::dir_create(loc)
+
+pl <- ruODK::project_list()
+pl
+
+fl <- ruODK::form_list(pid = 1)
+fl
+
+# SV start
+ruODK::ru_setup(pid=1, fid=fl$fid[[5]])
+message(glue::glue("Downloading {ruODK::get_default_fid()}"))
+ft <- ruODK::odata_service_get()
+ft %>% knitr::kable(.)
+svs <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+
+# SV end
+ruODK::ru_setup(pid=1, fid=fl$fid[[4]])
+message(glue::glue("Downloading {ruODK::get_default_fid()}"))
+ft <- ruODK::odata_service_get()
+ft %>% knitr::kable(.)
+sve <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+
+# MWI
+ruODK::ru_setup(pid=1, fid=fl$fid[[2]])
+message(glue::glue("Downloading {ruODK::get_default_fid()}"))
+ft <- ruODK::odata_service_get()
+ft %>% knitr::kable(.)
+mwi <- ft$url[[1]] %>% 
+  ruODK::odata_submission_get(table = ., verbose = T) %>% 
+  dplyr::rename(
+    longitude = x11,
+    latitude = x12,
+    altitude = x13
+  )
+mwi_dmg <- ft$url[[2]] %>% 
+  ruODK::odata_submission_get(table = ., verbose = T) #%>%
+  # dplyr::left_join(mwi, by = c("submissions_id" = "id"))
+mwi_tag <- ft$url[[3]] %>% 
+  ruODK::odata_submission_get(table = ., verbose = T)  # %>%
+  # dplyr::left_join(mwi, by = c("submissions_id" = "id"))
+
+# Dist
+message(glue::glue("Downloading {ruODK::get_default_fid()}"))
+ruODK::ru_setup(pid=1, fid=fl$fid[[3]])
+ft <- ruODK::odata_service_get()
+ft %>% knitr::kable(.)
+dist <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+
+# Tracks
+ruODK::ru_setup(pid=1, fid=fl$fid[[8]])
+message(glue::glue("Downloading {ruODK::get_default_fid()}"))
+ft <- ruODK::odata_service_get()
+ft %>% knitr::kable(.)
+tracks <- ft$url[1] %>% 
+  ruODK::odata_submission_get(table = ., verbose = T) %>% 
+  dplyr::rename(
+    # Adjust coordinate colnames
+    longitude = x14,
+    latitude = x15,
+    altitude = x16
+  ) %>% 
+  wastdr::exclude_training_species()
+
+tracks_dist <- ft$url[2] %>% 
+  ruODK::odata_submission_get(table = ., verbose = T) %>% 
+  dplyr::left_join(tracks, by = c("submissions_id" = "id"))
+
+tracks_egg <- ft$url[3] %>%
+  ruODK::odata_submission_get(table = ., verbose = T) #%>%
+  # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
+
+tracks_log <- ft$url[4] %>% 
+  ruODK::odata_submission_get(table = ., verbose = T) #%>%
+  # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
+
+tracks_hatch <- ft$url[5] %>% 
+  ruODK::odata_submission_get(table = ., verbose = T) #%>%
+  # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
+
+tracks_fan_outlier <- ft$url[6] %>% 
+  ruODK::odata_submission_get(table = ., verbose = T) #%>%
+  # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
+
+tracks_light <- ft$url[7] %>% 
+  ruODK::odata_submission_get(table = ., verbose = T) #%>%
+  # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
+```
+
+
+Sidebar {.sidebar}
+=======================================================================
+
+### Location
+Select location.
+
+### Time
+Filter to a date range.
+
+### Species
+Filter to a species.
+
+### Download
+Download the data shown.
+
+```{r, eval=F}
+# Rate at which to flag high download traffic
+sliderInput("rateThreshold", "Warn when rate exceeds:",
+            min = 0, max = 50, value = 3, step = 0.1
+)
+# Maximum number of raw data rows to keep
+numericInput("maxrows", "Recent downloads window:", 50)
+```
+
+
+Dashboard
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Tracks & Nests {.value-box}
+
+```{r}
+no_tracks <- tracks %>% nrow
+valueBox(no_tracks, icon = "fa-shoe-prints")
+```
+
+### Strandings {.value-box}
+
+```{r}
+no_mwi <- mwi %>% nrow
+valueBox(no_mwi, icon = "fa-dizzy")
+```
+
+### Disturbance {.value-box}
+
+```{r}
+no_dist <- dist %>% nrow
+valueBox(no_dist, icon = "fa-paw")
+```
+
+### Nesting success
+
+```{r}
+nesting <- tracks %>% 
+  dplyr::mutate(season=2019) %>% 
+  wastdr::nesting_type_by_season_species() %>% 
+  dplyr::mutate(
+    nesting_success_rate = (
+      `successful-crawl` / 
+        (`false-crawl` + `track-not-assessed` + `track-unsure`)
+      )
+    ) 
+
+ns <- nesting %>% 
+  dplyr::filter(species == 'natator-depressus') %>% 
+  dplyr::select(nesting_success_rate)
+
+gauge(ns, min = 0, max = 100, symbol = '%', gaugeSectors(
+  success = c(80, 100), warning = c(40, 79), danger = c(0, 39)
+))
+```
+
+Row
+-----------------------------------------------------------------------
+
+```{r data_map}
+tracks %>% 
+  dplyr::mutate(
+    datetime = observation_start_time, 
+    name="", 
+    observer=reporter, 
+    survey_id="TBA", 
+    site_name="TBA", 
+    survey_start_time=datetime, 
+    survey_end_time=datetime, 
+    absolute_admin_url=NA
+    ) %>% 
+  wastdr::map_tracks(cluster = T)
+
+
+# leaflet::leaflet(width = 800, height = 600) %>%
+#   leaflet::addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+#   leaflet::addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+#   leaflet::clearBounds() %>%
+#   leaflet::addAwesomeMarkers(
+#     data = tracks,
+#     lng = ~longitude, lat = ~latitude,
+#     icon = leaflet::makeAwesomeIcon(text = "Q", markerColor = "red"),
+#     label = ~ glue::glue("{species} {nest_type}"),
+#     popup = ~ glue::glue(
+#       "<h3>{nest_age} {species} {nest_type}</h3>",
+#       "Seen on {observation_start_time}</br>",
+#       "Seen by {reporter}</br>",
+#       "Device {device_id}</br>",
+#       "<h5>Track</h5>",
+#       '<div><img src="{photo_track_1}"',
+#       ' height="150px" alt="Track photo 1"></img></div>',
+#       '<div><img src="{photo_track_2}"',
+#       ' height="150px" alt="Track photo 2"></img></div>'
+#     ),
+#     clusterOptions = leaflet::markerClusterOptions()
+#   ) %>%
+#   leaflet::addLayersControl(
+#     baseGroups = c("Place names", "Aerial"),
+#     options = leaflet::layersControlOptions(collapsed = FALSE)
+#   )
+```
+
+
