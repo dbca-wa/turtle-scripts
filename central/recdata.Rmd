@@ -1,6 +1,6 @@
 ---
-title: "Turtle Nesting Census Previews 2019-20"
-author: "Flatbacks WA, DBCA"
+title: "RecData"
+author: "PVS"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -15,7 +15,48 @@ output:
     latex_engine: xelatex
   word_document: default
 ---
+<!--  
+This Rmd template provides an example workflow to access submissions and 
+attachments of a given ODK Central form using its OData API and disseminate
+data, attachments, and this report via CKAN or Google Drive.
 
+You will need:
+* An ODK Central form's OData Service URL (ending in .svc), accessed from the 
+"Analyse using OData" button on the form submission tab.
+* Username and password of an ODK Central webuser authorised to view this form.
+* Optional: base URL and write-permitted API key for a CKAN instance.
+* Optional: a Google account and the means to authenticate (e.g. phone for 2FA).
+-->
+
+<!--
+Step 1: Setup ruODK, ckanr
+Secrets are set as environment variables to keep them outside of this document. 
+Read vignette "setup" for further information.
+-->
+<!-- 1a. Open the .Renviron file:  -->
+```{r edit_renviron, echo=FALSE, eval=FALSE}
+usethis::edit_r_environ()
+```
+
+<!-- 1b. Paste the following block usign your own, working credentials:  -->
+```{r paste_env_vars, echo=FALSE, eval=FALSE}
+# ODK Central web user with "manager" role on project
+ODKC_UN="my@email.com"
+ODKC_PW="my-odkc-password"
+
+# CKAN user with permissions to create a dataset
+CKAN_URL="https://demo.ckan.org"
+CKAN_KEY="my-ckan-api-key"
+```
+<!-- 1c: Restart the R session to load these environment variables. -->
+
+<!-- 
+* Configure ODK Central base URL (url), project ID (pid), and form ID (fid) 
+in one step using the OData Service URL.
+* Paste your own Service URL over `svc="..."`.
+* Paste your local timezone over `Australia/Perth`.
+* Adjust `loc` to a local subfolder for downloaded attachments.
+-->
 ```{r setup, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 
@@ -31,151 +72,71 @@ library(readr)
 # library(skimr)
 library(ruODK)
 
+# Set ruODK defaults to an ODK Central form
+ruODK::ru_setup(
+  svc="https://odkcentral.dbca.wa.gov.au/v1/projects/2/forms/build_RecData-0-1_1570427499.svc"
+)
 tz <- "Australia/Perth"
-loc <- fs::path("media")
+loc <- fs::path("attachments", "media")
 fs::dir_create(loc)
 ```
 
 # Download data
-
+<!-- Get table names. `form_tables` will contain one row per separate table. -->
 ```{r svc_get}
-pl <- ruODK::project_list()
-pl
+form_tables <- ruODK::odata_service_get()
+form_tables %>% knitr::kable(.)
+```
 
-fl <- ruODK::form_list(pid = 1)
-fl
+<!-- 
+Get and parse submissions.
 
-# SV start
-ruODK::ru_setup(pid=1, fid=fl$fid[[5]])
-message(glue::glue("Downloading {ruODK::get_default_fid()}"))
-ft <- ruODK::odata_service_get()
-ft %>% knitr::kable(.)
-svs <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+* Rename any point coordinates which come out as `xn`, `xn+1`, `xn+2` into 
+longitude, latitude, altitude.
+* Repeat parse_datetime for each form field name that symbolises a datetime.
+Default assumes "time", example shows an additional step to also parse any
+form field with "date" in its name.
 
-# SV end
-ruODK::ru_setup(pid=1, fid=fl$fid[[4]])
-message(glue::glue("Downloading {ruODK::get_default_fid()}"))
-ft <- ruODK::odata_service_get()
-ft %>% knitr::kable(.)
-sve <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
 
-# MWI
-ruODK::ru_setup(pid=1, fid=fl$fid[[2]])
-message(glue::glue("Downloading {ruODK::get_default_fid()}"))
-ft <- ruODK::odata_service_get()
-ft %>% knitr::kable(.)
-mwi <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
-mwi_dmg <- ft$url[[2]] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) %>%
-  dplyr::left_join(mwi, by = c("submissions_id" = "id"))
-mwi_tag <- ft$url[[3]] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) %>%
-  dplyr::left_join(mwi, by = c("submissions_id" = "id"))
-
-# Dist
-message(glue::glue("Downloading {ruODK::get_default_fid()}"))
-ruODK::ru_setup(pid=1, fid=fl$fid[[3]])
-ft <- ruODK::odata_service_get()
-ft %>% knitr::kable(.)
-dist <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
-
-# Tracks
-ruODK::ru_setup(pid=1, fid=fl$fid[[8]])
-message(glue::glue("Downloading {ruODK::get_default_fid()}"))
-ft <- ruODK::odata_service_get()
-ft %>% knitr::kable(.)
-tracks <- ft$url[1] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) %>% 
+Repeat for each table name in form_tables$url. 
+-->
+```{r dl_submissions}
+data <- ruODK::odata_submission_get(
+  table = form_tables$url[1], verbose = TRUE, tz = tz, local_dir = loc
+) %>%
   dplyr::rename(
-    # Adjust coordinate colnames
-    longitude = x14,
-    latitude = x15,
-    altitude = x16
+    longitude = x11,
+    latitude = x12,
+    altitude = x13
   )
+# data_sub1 <- ruODK::odata_submission_get(
+#   table = form_tables$url[2], verbose = TRUE, tz = tz, local_dir = loc
+# ) %>%
+#   dplyr::left_join(data, by = c("submissions_id" = "id"))
+# 
+# data_sub2 <- ruODK::odata_submission_get(
+#   table = form_tables$url[3], verbose = TRUE, tz = tz, local_dir = loc
+# ) %>% 
+#   dplyr::rename(
+#     # Adjust coordinate colnames as needed, avoid name conflicts with main data
+#     # lon = x6,
+#     # lat = x7,
+#     # alt = x8
+#   ) %>%
+#   dplyr::left_join(data, by = c("submissions_id" = "id"))
 
-tracks_dist <- ft$url[2] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) %>% 
-  dplyr::left_join(tracks, by = c("submissions_id" = "id"))
-
-tracks_egg <- ft$url[3] %>%
-  ruODK::odata_submission_get(table = ., verbose = T) #%>%
-  # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
-
-tracks_log <- ft$url[4] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) #%>%
-  # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
-
-tracks_hatch <- ft$url[5] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) #%>%
-  # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
-
-data_fan_outlier <- ft$url[6] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) #%>%
-  # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
-
-data_light <- ft$url[7] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) #%>%
-  # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
-```
-
-# Analyse data
-## Tracks
-### Nests
-### Disturbed nests
-
-## Pred and dist (non-nest)
-
-## Strandings
-
-## Surveys (start and end)
-
-<!-- Summarise, analyse, visualise the tibble(s) data (, data_sub1, data_sub2) -->
-```{r data_vis2}
-skimr::skim(data)
-dplyr::glimpse(data)
-DT::datatable(data)
-```
-
-```{r data_map, eval=F}
-leaflet::leaflet(width = 800, height = 600) %>%
-  leaflet::addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
-  leaflet::addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
-  leaflet::clearBounds() %>%
-  leaflet::addAwesomeMarkers(
-    data = data,
-    lng = ~longitude, lat = ~latitude,
-    icon = leaflet::makeAwesomeIcon(text = "Q", markerColor = "red"),
-    label = ~ glue::glue("{species} {nest_type}"),
-    popup = ~ glue::glue(
-      "<h3>{nest_age} {species} {nest_type}</h3>",
-      "Seen on {observation_start_time}</br>",
-      "Seen by {reporter}</br>",
-      "Device {device_id}</br>",
-      "<h5>Track</h5>",
-      '<div><img src="{photo_track_1}"',
-      ' height="150px" alt="Track photo 1"></img></div>',
-      '<div><img src="{photo_track_2}"',
-      ' height="150px" alt="Track photo 2"></img></div>'
-    ),
-    clusterOptions = leaflet::markerClusterOptions()
-  ) %>%
-  leaflet::addLayersControl(
-    baseGroups = c("Place names", "Aerial"),
-    options = leaflet::layersControlOptions(collapsed = FALSE)
-  )
-```
-
+# repeat for any remaining nested tables
 ```
 
 # Analyse data
 <!-- Summarise, analyse, visualise the tibble(s) data (, data_sub1, data_sub2) -->
-```{r data_vis, eval=F}
-skimr::skim(data)
+```{r data_vis}
+# skimr::skim(data)
 dplyr::glimpse(data)
 DT::datatable(head(data))
 ```
 
-```{r data_map2, eval=F}
+```{r data_map}
 leaflet::leaflet(width = 800, height = 600) %>%
   leaflet::addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
   leaflet::addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
@@ -187,16 +148,20 @@ leaflet::leaflet(width = 800, height = 600) %>%
     # 
     # # With your own field names
     # 
-    # label = ~ glue::glue("{area_name} {encounter_start_datetime}"),
-    # popup = ~ glue::glue(
-    #   "<h3>{area_name}</h3>",
-    #   "Survey start {encounter_start_datetime}</br>",
-    #   "Reporter {reporter}</br>",
-    #   "Device {device_id}</br>",
-    #   "<h5>Site</h5>",
-    #   '<div><img src="{my_photo}"',
-    #   ' height="150px" alt="My photo"></img></div>'
-    # ),
+    label = ~ glue::glue("[{asset_type}] {asset_label}"),
+    popup = ~ glue::glue(
+      "<h3>Asset</h3>",
+      "Seen on {observation_start_time}</br>",
+      "Seen by {reporter}</br>",
+      "Device {device_id}</br>",
+      '<div><img src="{asset_photo}"',
+      ' height="150px" alt="asset photo"></img></div>',
+      "Maintenance required: {maintenance_required}<br/>",
+      "Visitor risk: {visitor_risk}",
+      "Reputation risk: {reputation_risk}",
+      "Task: [{task_category}] {task}"
+      
+    ),
     clusterOptions = leaflet::markerClusterOptions()
   ) %>%
   leaflet::addLayersControl(
@@ -265,7 +230,7 @@ res_zip <- ckanr::resource_create(
 r <- ckanr::resource_update(res_data_main$id, path = data_fn)
 r <- ckanr::resource_update(res_data_sub1$id, path = data_sub1_fn)
 r <- ckanr::resource_update(res_data_sub2$id, path = data_sub2_fn)
-r <- ckanr::resource_update(res_report$id, path = res_report)
+r <- ckanr::resource_update("110ae1d3-691b-4530-b288-58cccf6c20ab", path = "recdata.html")
 r <- ckanr::resource_update(res_zip$id, path = zip_fn)
 
 #------------------------------------------------------------------------------#
@@ -282,4 +247,13 @@ googledrive::drive_upload(data_fn, path=data_fn)           # Main data as CSV
 googledrive::drive_upload(data_sub1_fn, path=data_sub1_fn) # Nested table 1 as CSV
 googledrive::drive_upload(data_sub2_fn, path=data_sub2_fn) # Nested table 2 as CSV
 googledrive::drive_upload(zip_fn, path=zip_fn)             # All outputs as ZIP
+```
+
+The report is uploaded to the corresponding dataset on the  
+[DBCA data catalogue](https://data.dpaw.wa.gov.au/dataset/recdata-asset-management-data-capture).
+This requires an account with write access on the data catalogue.
+
+```{r}
+ckanr::ckanr_setup(url = Sys.getenv("CKAN_URL"), key = Sys.getenv("CKAN_API_KEY"))
+r <- ckanr::resource_update("110ae1d3-691b-4530-b288-58cccf6c20ab", path = "recdata.html")
 ```
