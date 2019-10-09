@@ -31,6 +31,46 @@ prefix_nin <- "NIN"
 placename_nin <- "Ningaloo"
 ```
 
+
+# Products for Ningaloo
+
+* Predation separate from disturbance
+* For each of NW Cape, Bungelup, Janes Bay, Gnaraloo: species, number false 
+  crawls, number of nests (table > CSV, figure > PNG)
+
+We need the following issues to be addressed to be able to use the data:
+
+ 
+
+* Survey dates. Please correct the survey dates to the date the surveys were actually done. For some reason they have been adjusted to the day before. This is wasting our time correcting. We need the actual dates to compare among years and importantly for operational reasons on the ground at Ningaloo. Not at all helpful to have them changed to the day before.
+* Predation versus predator tracks. We need to be able to access records of predation where there is actually evidence of a nest being preyed upon, versus just tracks of predators being recorded where there was no evidence of predation occurring. At this stage, the two seem to have been lumped together. We need to be able to extract each separately.
+* Survey effort. We need to be able to access the individual and the total number of days each subsection was monitored. This doesn’t appear possible at present.
+* Reliable records of which subsections were monitored and when. At present the data provided indicate that some subsections were monitored twice on some days and adjacent subsections weren’t monitored at all. We know this to be incorrect. It needs to be fixed.
+* Gnaraloo Bay. We need to be able to distinguish among Divisions and Gnaraloo Bay from Janes Bay from the North West Cape, etc. Don’t appear to be able to distinguish Gnaraloo Bay at present.
+* Training records. Training records appear to still be in the data we’ve been provided. These need to be removed.
+* Dead turtles and rescued turtles. We need to be able to distinguish between dead turtles and rescued turtles and at which subsection they were found.
+* We have records of some turtle rescues that weren’t recorded with the tablets. Need to have the facility to add these to the database.
+
+All good points, some are gaps in training, some in QA, others in reports. Nothing impossible.
+
+1 Likely a misunderstanding of turtle vs calendar date. will make sure Peter uses the CSV with both dates in them.
+
+2 Those are split up correctly in reports: predated/disturbed nests vs stand-alone signs of pred/dist. will make two separate CSVs.
+
+3 Depends on QA of surveys. Some work needed there from my end. Corrine could help once I have specified work to be done.
+
+4 See report, should be there, but will make sure it's in there
+
+5 Need to review. Shouldn't be hard.
+
+6 Will review and remove.
+
+7 Working on that. NTP have been reporting rescues as strandings but will find a way to distinguish. That's a new CSV I'll add for them.
+
+8 Dani Rob is trained how to enter those.
+
+
+
 # QA
 Most QA is done across all WA records and programs in the separate QA workbook.
 

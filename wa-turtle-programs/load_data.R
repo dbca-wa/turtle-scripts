@@ -14,6 +14,19 @@ if (file.exists(here::here("data", "tracks.Rda"))) {
   surveys <- survey_records %>% wastdr::parse_surveys()
   nest_records <- wastdr::wastd_GET("nesttag-observations")
   nests_all <- nest_records %>% wastdr::parse_nesttag_observations()
+  area_records <- wastdr::wastd_GET("area")
+  areas <- area_records$features %>% {
+    tibble::tibble(
+      pk = purrr::map_chr(., c("properties", "pk")),
+      area_type = purrr::map_chr(., c("properties", "area_type")),
+      name = purrr::map_chr(., c("properties", "name")),
+      northern_extent = purrr::map_dbl(., c("properties", "northern_extent")),
+      centroid = purrr::map(., c("properties", "centroid", "coordinates")),
+      length_surveyed_m = purrr::map_chr(., c("properties", "length_surveyed_m"), .default=NA),
+      length_survey_roundtrip_m = purrr::map_chr(., c("properties", "length_survey_roundtrip_m"), .default=NA)
+    )} %>%
+    tidyr::unnest_wider("centroid") %>%
+    dplyr::rename(longitude = `...1`, latitude = `...2`)
   save(
     animal_records,
     animals,
@@ -25,6 +38,13 @@ if (file.exists(here::here("data", "tracks.Rda"))) {
     surveys,
     nest_records,
     nests_all,
+    area_records,
+    areas,
     file = here::here("data", "tracks.Rda")
   )
 }
+
+library(magrittr)
+
+
+

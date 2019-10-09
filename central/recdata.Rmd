@@ -253,7 +253,7 @@ The report is uploaded to the corresponding dataset on the
 [DBCA data catalogue](https://data.dpaw.wa.gov.au/dataset/recdata-asset-management-data-capture).
 This requires an account with write access on the data catalogue.
 
-```{r}
+```{r, eval=F}
 ckanr::ckanr_setup(url = Sys.getenv("CKAN_URL"), key = Sys.getenv("CKAN_API_KEY"))
 r <- ckanr::resource_update("110ae1d3-691b-4530-b288-58cccf6c20ab", path = "recdata.html")
 ```
