@@ -315,7 +315,7 @@ TODO: Review and update WAMTRAM to WAStD stag status mapping.
 
 ```{r}
 ts <- sqlQuery(con, "select * from dbo.TRT_TAG_STATES;")
-ts %>% DT::datatable()
+ts %>% kable()
 ```
 
 ## Observations
@@ -395,16 +395,19 @@ recorded_tags <- sqlQuery(
     tag_state=TAG_STATE,
     tag_position=TAG_POSITION,
     comments=COMMENTS
-  )
+  ) %>% 
+  arrange(desc(tag_name))
+
 # save(recorded_tags, file="data/tag_observations.Rda")
 # load("data/tag_observations.Rda")
 
 
-# 55k+ inferred turtle identities
+# 55k+ inferred turtle identities, reconstructed from encounters.
 turtles <- sqlQuery(con, "select * from dbo.TRT_TURTLES;")
 summary(turtles)
 
-tags <- sqlQuery(con, "select * from dbo.TRT_TAGS;")
+# Synthesised information about tags, reconstructed from recorded_tags and other tag asset management operations.
+tags <- sqlQuery(con, "select * from dbo.TRT_TAGS;") %>% arrange(desc(TAG_ID))
 
 samples <- sqlQuery(con, "select * from dbo.TRT_SAMPLES;")
 sample_tissue_type <- sqlQuery(con, "select * from dbo.TRT_TISSUE_TYPES;")
@@ -439,7 +442,7 @@ damage_codes <- sqlQuery(con, "select * from dbo.TRT_DAMAGE_CODES;")
 damage_causes <- sqlQuery(con, "select * from dbo.TRT_DAMAGE_CAUSE_CODES;")
 damages <- sqlQuery(con, "select * from dbo.TRT_DAMAGE;")
 
-# 147k+
+# 149k+
 obs <- sqlQuery(con, "select * from dbo.TRT_OBSERVATIONS;")
 
 # save all objects

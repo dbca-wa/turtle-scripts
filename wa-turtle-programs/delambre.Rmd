@@ -21,15 +21,16 @@ source("tracks_helpers.R")
 source("load_data.R")
 ```
 
-# Caveat
-Training and test data from Delambre Island are not yet separated out.
-Data from Rosemary Islands was recovered from unfinalised forms on devices.
+
 
 # Data
+Data are downloaded from [WAStD](https://tsc.dbca.wa.gov.au/) and filtered to the report's location.
+
 ```{r load_data}
 tracks_del <- tracks_all %>% filter_del() %>% exclude_training_species() %>% add_nest_labels()
 tags_del <- animals %>% filter_del() %>% exclude_training_species()
 tags_del_2017 <- tags_del %>% filter_2017()
+tags_del_2018 <- tags_del %>% filter_2018()
 surveys_del <- surveys %>% filter_del()
 surveys_del_prod <- surveys_del %>% exclude_training_surveys()
 dist_del <- disturbance %>% filter_del()
@@ -38,43 +39,116 @@ prefix_del <- "DEL"
 placename_del <- "Delambre Is"
 ```
 
-
-# QA
-Most QA is done across all WA records and programs in the separate QA workbook.
-
-This section identifies data requiring editing.
-
-## Provided username mismatches WAStD users
-```{r name_mismatch_del}
-surveys_del %>% filter_surveys_requiring_qa() %>% dt()
-```
-
 # Background
-Source: Milani Chaloupka, presentation to DBCA / NWS committee 8/5/2018.
+## The history of turtle monitoring at Thevenard and Delambre Islands
+TBA
 
-Demographic focus is essential for diagnosing population status and trend.
-Survival rates, conditional breeding rates, hatchling production rates, recruitment rates and population abundance.
+## Scope of works and objectives
 
-Three major flatback pops in Pilbara: Delambre 3.5k nesting/y, 
-Mundabullangana 2.5k nesting/y, Barrow Is 2k/y.
-Biggest pop in GBR is 700 nests/y.
+# Methodology
+## Location
+TODO Location and site description.
 
-Milani presented: 
+TODO Map with monitored area highlighted (tagging, nest census) and labels.
 
-* Bayesian gompertz state-space model trend
-* Random effects forest plot with rookery specific posterior distribution
+## Turtle Nesting Census methods
+The methodology, data collection protocols and hardware setup are described in detail in the [WAStD Manual](https://dbca-wa.github.io/wastd/index.html#document-data_collection/data_collection_training).
 
-# Season summary
+## Survey effort
+TODO linear  “calendar” with one box per day and colour one colour for tagging, one colour for morning surveys, one colour for marking nests and excavating . that will show start and end date of nesting season + number of days for each year +missed days
 
-## Going digital
-Entering and proofreading a record takes about 2 minutes with full concentration.
-By going digital, data entry and proofreading are fully automated.
+# Turtle Nesting
+urtle Nesting
+replace “Turtle nesting” by “Results”
+Replace “tagged animals” by “Tagging census results”
+This has to be updated once the full tagging database has been imported and problems fixed
 
-Time savings Delambre: `r (nrow(tracks_del) + nrow(surveys_del)*2 + nrow(dist_del)) * 2 / 60` 
-hours for `r nrow(tracks_del)` Track or Treats and  `r nrow(surveys_del)*2` Site Visit Starts/Ends. 
+For each season:
+    • show as text the total number of processed turtles and percentage of each species
+Flatback turtles
+Nesting abundance
+TABLE:
+    • Total, mean, SD and range number of processed turtles
+    • Total, mean, SD and range number of unique individuals
+    • Total, mean, SD and range number of new turtles
+    • Total, mean, SD and range number of remigrants
+    • Mean, SD, range of number of missed turtles per night, and percentage of missed turtles per night (compared to number of processed turtles)
+    • Total, mean, SD and range number of nests (need to discuss methodology to QA data to identify nests)
+    • Total, mean, SD and range number of false crawls
+    • mean, SD and range nesting success
+hide table “animals processed per day”
+hide table “ tags processed per day”
+keep figure “Number of processed turtles per day” but add number of missed turtles per day to the figure, staked histograms
+add figure “Number of new and remigrant turtles per day” : show the number of new turtles and remigrants each day (unique sighting, not observations)
+add figure “Nesting success”: show the number of false crawls and nests each day + dashed line showing the mean
 
-# Delambre Nesting
+Inter-nesting interval and clutch frequency 
+TABLE:
+- mean, SD, range of inter-nesting interval in days + number of animals
+- mean, SD, range of clutch frequency
+
+hide figure “nesting intervals”
+add figure “Clutch Frequency”: show estimated number of turtles that lay 1 clutch, 2 clutches, 3 clutches, etc
+
+Remigrants
+Add figure “remigration interval”: show the number of remigrants coming back after 1,2,3, 4+ years
+Add text about remigrant turtles coming for other rookeries
+
+Morphometric
+TABLE with mean, SD, range for CCl, CCW and weight
+
+Track census results
+Add section “Track census results”
+TABLE “nesting abundance – All beaches” – should be in this section but no need to show raw numbers
+show Total, mean, SD, range tracks per day for each species (excluding olive ridley and loggehreads)
+show successful tracks, false crawls, unsure and not assessed, remove all other categories
+show only fresh tracks
+clearly separate years as not obvious as it is
+show mean, SD, range for nesting success for flatbacks
+
+keep maps : “tracks and nests”
+hide “animated map”
+Table “ Nesting by week – All beaches” : hide for report but should appear on website instead during the nesting season
+Figures “nesting by day”:
+remove figure : “nesting activity” as data shown in table + difficult to read the figure
+keep figure “nesting effort”  but add dashed line to show mean nesting success. All tracks should only be false crawls + successful (remove unsure and unchecked)
+remove figure “nesting success” for all species but flatbacks
+
+Add Heat maps under section “Nesting abundance and distribution -summary”
+For Thevenard: 
+heat map for the whole island combining track count, tagging data, missed turtles for both greens and flatbacks:
+    • one map showing total number of tracks per cell
+    • one map showing successful tracks per cell
+For Delambre
+heat map for the whole island combining track count, tagging data, missed turtles for flatbacks:
+    • one map showing total number of tracks per cell
+    • one map showing successful tracks per cell
+
+Replace “Hatching and emergence success” by “Incubation success and hatchling production”
+make sure tables fit on landscape A4 format 
+keep table
+add map showing locations of hatched nests throughout the season
+add map showing location of excavated nests and their hatching success. Hatching success can be shown in categories
+add histogram showing proportion of nests in each hatching success categories
+
+Disturbance and predation
+remove text. if need add a paragraph about the methods in methodology section
+clarify the difference between disturbed nests and general disturbance. does that mean tracks?
+If possible both types should appear on the same map
+Merge both tables 
+
+
+
+
+
+
+
+
+
+
 ## Tagged animals
+
+### 2017-18
 ```{r}
 tags_by_date <- tags_del %>% filter_2017 %>% group_by(turtle_date) %>% tally() %>% ungroup()
 animals_by_date <- tags_del %>% filter_2017 %>% group_by(turtle_date, name) %>% tally() %>% ungroup()
@@ -96,6 +170,28 @@ This number relates to new animals, but contains the tag "NA" and resightings.
 This number also omits the invalid records from WAMTRAM with missing coordinates 
 or dates.
 
+### 2018-19
+```{r}
+tags_by_date_2018 <- tags_del %>% filter_2018 %>% group_by(turtle_date) %>% tally() %>% ungroup()
+animals_by_date_2018 <- tags_del %>% filter_2018 %>% group_by(turtle_date, name) %>% tally() %>% ungroup()
+```
+
+A total of `r tags_del %>% filter_2018 %>% nrow()` turtles were processed (captured new or resighted)
+during the `r length(unique(tags_by_date_2018$turtle_date))` days of field work on which tagging took place in season 2018-19.
+
+This number excludes records in WAMTRAM with missing coordinates or time stamps. 
+Re-sightings of the same turtle are counted as separate handling events.
+
+On average, `r mean(tags_by_date_2018$n) %>% round(digits = 2)` 
+(SD `r sd(tags_by_date_2018$n) %>% round(digits = 2)`, 
+range `r min(tags_by_date_2018$n)` to `r max(tags_by_date_2018$n)`) turtles were processed 
+per surveyed day.
+
+`r length(unique(animals_by_date_2018$name))` distinct tags were applied.
+This number relates to new animals, but contains the tag "NA" and resightings.
+This number also omits the invalid records from WAMTRAM with missing coordinates 
+or dates.
+
 **TODO**
 
 * For each tag with nesting `present`, count number of of sightings before.
@@ -110,7 +206,11 @@ or dates.
 
 ```{r}
 datatable(tags_by_date,
-  caption = "Number of turtles processed per day"
+  caption = "Number of turtles processed per day 2017-18"
+)
+
+datatable(tags_by_date_2018,
+  caption = "Number of turtles processed per day 2018-19"
 )
 ```
 
@@ -118,7 +218,10 @@ datatable(tags_by_date,
 
 ```{r}
 datatable(animals_by_date,
-  caption = "Number of individual tags processed per day"
+  caption = "Number of individual tags processed per day 2017-18"
+)
+datatable(animals_by_date_2018,
+  caption = "Number of individual tags processed per day 2018-19"
 )
 ```
 
@@ -130,7 +233,7 @@ ggplot2::ggplot(tags_by_date, ggplot2::aes(x = turtle_date, y = n)) +
     labels = scales::date_format("%d %b %Y")
   ) +
   ggplot2::labs(x = "Turtle date", y = "Number of turtles processed") +
-  ggplot2::ggtitle("Turtles processed per day (new and recaptured)") +
+  ggplot2::ggtitle("Turtles processed per day (new and recaptured) 2017-18") +
   ggplot2::theme_classic() +
   # ggplot2::ggsave(ggplot2::ggsave(glue::glue("{prefix_del}_turtles_processed_per_day.png"), 
   # device = png(), width = 10, height = 15)) + 
@@ -138,6 +241,7 @@ ggplot2::ggplot(tags_by_date, ggplot2::aes(x = turtle_date, y = n)) +
 ```
 
 ## Nesting intervals
+### 2017-18
 
 ```{r, fig.width=10, fig.height=30}
 tags_del_2017_tally <- tags_del_2017 %>% group_by(name) %>% tally() 
@@ -159,7 +263,7 @@ ggplot(tags_del_2017_resighted_records,
     breaks = scales::pretty_breaks(),
     labels = scales::date_format("%d %b %Y")
   ) +
-  ggtitle("Nesting history of tagged turtles") +
+  ggtitle("Nesting history of tagged turtles 2017-18") +
   theme_classic() + 
   ggsave(glue::glue("{prefix_del}_nesting_intervals.png"), 
          width = 10, height = 30, limitsize = FALSE)
@@ -179,17 +283,48 @@ The natural progression of new tag IDs versus date reflects the tagging teams go
 The chart is immensely tall (60 inches printed) for this huge number of tags. Looking for clever ways to shrink the chart height.
 
 
+
 **TODO** How many days elapse to first resighting? 
 This section depends on new functionality of WAStD (identifying recaptures).
 
+### 2018-19
+
+```{r, fig.width=10, fig.height=30}
+tags_del_2018_tally <- tags_del_2018 %>% group_by(name) %>% tally() 
+
+tags_del_2018_resighted_records <- tags_del_2018 %>% 
+  filter(name %in% filter(tags_del_2018_tally, n>1)$name) %>% 
+  tidyr::replace_na(list(name = "Tag unknown"))
+
+tags_del_2018_single_records <- tags_del_2018 %>% 
+  filter(name %in% filter(tags_del_2018_tally, n==1)$name) %>% 
+  mutate(name="Seen once")
+
+ggplot(tags_del_2018_resighted_records, 
+       aes(x = turtle_date, y = name, color = nesting_event)) +
+  geom_point(data = tags_del_2018_single_records) +
+  geom_point(data = tags_del_2018_resighted_records) +
+  geom_line(data = tags_del_2018_resighted_records, aes(turtle_date, name)) +
+  scale_x_date(
+    breaks = scales::pretty_breaks(),
+    labels = scales::date_format("%d %b %Y")
+  ) +
+  ggtitle("Nesting history of tagged turtles 2018-19") +
+  theme_classic() + 
+  ggsave(glue::glue("{prefix_del}_nesting_intervals.png"), 
+         width = 10, height = 30, limitsize = FALSE)
+```
+
 ## Maps
-### 2017-18
+### Tracks and Nests 2017-18
 
 ```{r map_del_2017}
 tracks_del %>% filter_2017() %>% map_tracks()
 ```
 
-### 2018-19
+### Tracks and Nests 2018-19
+Android bug with GPS accuracy introduced spread of copordinates.
+
 ```{r map_del_2018}
 tracks_del %>% filter_2018() %>% map_tracks()
 ```
@@ -202,19 +337,21 @@ be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 # tracks_del %>% filter_2017() %>% gganimate_tracks(placename_del, prefix_del)
 ```
 
-### Tagged nests
+### Tagged nests 2017-18
 The map is saved as a PNG file `r glue::glue(prefix_del, "_tagged_nests_YYYY.png")`.
-
-```{r nests_del}
+```{r nests_del_2017}
 nests_del %>%
   filter_2017() %>%
   map_nests() %T>%
   mapview::mapshot(file = glue::glue("{prefix_del}_tagged_nests_2017.png"))
+```
 
-# nests_del %>%
-#   filter_2018() %>%
-#   map_nests() %T>%
-#   mapview::mapshot(file = glue::glue("{prefix_del}_tagged_nests_2018.png"))
+### Tagged nests 2018-19
+```{r nests_del_2018}
+nests_del %>%
+  filter_2018() %>%
+  map_nests() %T>%
+  mapview::mapshot(file = glue::glue("{prefix_del}_tagged_nests_2018.png"))
 ```
 
 ## Nesting abundance
@@ -263,13 +400,13 @@ General signs of disturbance or predator presence are recorded through form
 ### Disturbance and predation of nests
 Turtle nests with recorded disturbance or predation.
 
-#### 2017
+#### Disturbance 2017-18
 ```{r dist_nests_del_2017}
 disturbed_nests_del_2017 <- tracks_del %>% filter_2017() %>% filter(disturbance == "present")
 disturbed_nests_del_2017 %>% map_tracks()
 ```
 
-#### 2018
+#### Disturbance 2018-19
 ```{r dist_nests_del_2018}
 disturbed_nests_del_2018 <- tracks_del %>% filter_2018() %>% filter(disturbance == "present")
 disturbed_nests_del_2018 %>% map_tracks()
@@ -282,15 +419,16 @@ Caveat: QA to exclude possible training records.
 Coming soon: details of disturbance to nests.
 
 ### General disturbance
-There were **`r count(dist_del)` reports** of general disturbance or predator presence.
+There were **`r dist_del %>% filter_2017() %>% count()` reports** of general disturbance or predator 
+presence in 2017-18 and **`r dist_del %>% filter_2018() %>% count()` reports** in 2018-19.
 
-#### 2017
+#### General disturbance 2017-18
 ```{r map_dist_del_2017}
 dist_del %>% filter_2017() %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
 dist_del %>% filter_2017() %>% map_dist()
 ```
 
-#### 2018
+#### General disturbance 2018-19
 ```{r map_dist_del_2018}
 dist_del %>% filter_2018() %>% group_by(disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
 dist_del %>% filter_2018() %>% map_dist()
@@ -302,6 +440,16 @@ Curators are to QA
 [all `r placename_del` surveys on WAStD](https://tsc.dbca.wa.gov.au/admin/observations/survey/?site__id__exact=39)
 following the 
 [QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
+
+
+## Going digital
+Entering and proofreading a record takes about 2 minutes with full concentration.
+By going digital, data entry and proofreading are fully automated.
+
+Time savings Delambre: `r (nrow(tracks_del) + nrow(surveys_del)*2 + nrow(dist_del)) * 2 / 60` 
+hours for `r nrow(tracks_del)` Track or Treats and  `r nrow(surveys_del)*2` Site Visit Starts/Ends 
+over all seasons.
+
 
 ### Per season effort
 Highest level of aggregation: entire season.
@@ -368,6 +516,11 @@ At Delambre, assuming the trip was 4 km,
 `r survey_ground_covered(surveys, 39, 4, 2018)` km were walked 
 in `r survey_count(surveys, 39, 2018)` surveys.
 
+## Surveys requiring QA
+```{r name_mismatch_del}
+surveys_del %>% filter_surveys_requiring_qa() %>% dt()
+```
+
 # Data upload
 ## Raw data
 * Raw data are exported into CSV spreadsheets.
@@ -419,7 +572,7 @@ token locally for future use.
 googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
 ```
 
-```{r google_drive_upload}
+```{r google_drive_upload, eval=F}
 googledrive::drive_ls("Delambre") %>% googledrive::drive_rm(.)
 googledrive::drive_upload("delambre.html", path=glue::glue("Delambre/delambre.html"))
 products <- list.files(pattern = prefix_del)

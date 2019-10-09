@@ -48,6 +48,12 @@ Most QA is done across all WA records and programs in the separate QA workbook.
 
 This section identifies data likely to require editing.
 
+
+```{r}
+# Today was our final day of monitoring (yay!) so I've uploaded the last of the forms for you. One thing I need you to change is the latest record of a laid nest. Sam recorded this on the 25th Feb and I tried to delete it from the tablet this morning but it wouldn't let me so I think the date has changed to this morning at 7:06am. There is absolutely no new adult nest and I don't know why the volunteer thought this was the case. So please erase that record and we'll stick with our final nest being on the 17th Feb!
+```
+
+
 ## Species
 Although species other than Flatbacks are not expected to nest at Pt. Hedland's beaches,
 they are still reported.
@@ -300,7 +306,7 @@ Split up per site:
 
 ### Caveat 
 * Survey data includes training surveys. (Not production, but also effort)
-* Surveys with missing end points are auto-closed after 5 hours (over-estimation of effort).
+* Surveys with missing end points are auto-closed after 0.5 hours.
 * Data excludes commute to survey site.
 
 ### Dates

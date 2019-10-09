@@ -147,11 +147,15 @@ Caveat: QA to exclude possible training records.
 
 Coming soon: details of disturbance to nests.
 
-### General disturbance
+### General and nest disturbance and predator presence
 There were **`r count(dist_nin)` reports** of general disturbance or predator presence.
+These counts include both disturbed nests (encounter type "nest") and stand-alone signs
+of predator presence or disturbance (encounter type "other").
+Those records deemed (by observer or QA) having "negligible" impact or significance are excluded here.
 
 ```{r map_dist_nin}
-dist_nin %>% filter_2018() %>% group_by(season, disturbance_cause) %>% tally() %>% arrange(-n) %>% kable()
+dist_nin %>% filter_2018() %>% group_by(season, disturbance_cause, encounter_type) %>% tally() %>% arrange(-n) %>% kable()
+dist_nin %>% filter_2018() %>% group_by(season, site_name, disturbance_cause, encounter_type) %>% tally() %>% arrange(-n) %>% dt
 dist_nin %>% filter_2018() %>% map_dist()
 ```
 

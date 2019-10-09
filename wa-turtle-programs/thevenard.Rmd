@@ -75,15 +75,25 @@ and proofreading work for `r nrow(tracks_thv)` Track or Treats and
 
 # Thevenard Nesting
 ## Maps
-### 2018-18
-```{r map_thv_2017}
+### 2017-18
+Tracks clustered.
+```{r map_thv_2017_clustered}
 tracks_thv %>% filter_2017() %>% map_tracks(cluster=T)
+```
+
+Tracks as points.
+```{r map_thv_2017_points}
 tracks_thv %>% filter_2017() %>% map_tracks()
 ```
 
 ### 2018-19
+Tracks clustered.
 ```{r map_thv_2018}
 tracks_thv %>% filter_2018() %>% map_tracks(cluster=T)
+```
+
+Tracks as points
+```{r map_thv_2018_points}
 tracks_thv %>% filter_2018() %>% map_tracks()
 ```
 
@@ -118,7 +128,7 @@ nests_thv %>%
 ## Nesting abundance
 ### All beaches
 ```{r tracks_all_sectors_thv}
-tracks_thv %>% nesting_type_by_season_species() %>% kable()
+# tracks_thv %>% nesting_type_by_season_species() %>% kable()
 ```
 
 ## Nesting by week
