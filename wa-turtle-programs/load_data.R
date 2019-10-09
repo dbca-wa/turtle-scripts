@@ -11,7 +11,7 @@ if (file.exists(here::here("data", "tracks.Rda"))) {
   disturbance_records <- wastdr::wastd_GET("disturbance-observations")
   disturbance <- disturbance_records %>% wastdr::parse_disturbance_observations()
   survey_records <- wastdr::wastd_GET("surveys")
-  surveys <- survey_records %>% parse_surveys()
+  surveys <- survey_records %>% wastdr::parse_surveys()
   nest_records <- wastdr::wastd_GET("nesttag-observations")
   nests_all <- nest_records %>% wastdr::parse_nesttag_observations()
   save(
