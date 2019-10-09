@@ -73,8 +73,7 @@ library(readr)
 library(ruODK)
 
 # Set ruODK defaults to an ODK Central form
-ruODK::ru_setup(
-  svc="https://odkcentral.dbca.wa.gov.au/v1/projects/2/forms/build_Field-Observation-0-1_1570512277.svc")
+ruODK::ru_setup(svc="https://odkcentral.dbca.wa.gov.au/v1/projects/2/forms/build_Field-Observation-0-1_1570512277.svc")
 tz <- "Australia/Perth"
 loc <- fs::path("attachments", "media")
 fs::dir_create(loc)
@@ -104,26 +103,26 @@ data <- ruODK::odata_submission_get(
   table = form_tables$url[1], verbose = TRUE, tz = tz, local_dir = loc
 ) %>%
   dplyr::rename(
-    # Adjust coordinate colnames as needed
     longitude = x9,
     latitude = x10,
     altitude = x11
   )
-data_sub1 <- ruODK::odata_submission_get(
-  table = form_tables$url[2], verbose = TRUE, tz = tz, local_dir = loc
-) %>%
-  dplyr::left_join(data, by = c("submissions_id" = "id"))
 
-data_sub2 <- ruODK::odata_submission_get(
-  table = form_tables$url[3], verbose = TRUE, tz = tz, local_dir = loc
-) %>% 
-  dplyr::rename(
-    # Adjust coordinate colnames as needed, avoid name conflicts with main data
-    # lon = x6,
-    # lat = x7,
-    # alt = x8
-  ) %>%
-  dplyr::left_join(data, by = c("submissions_id" = "id"))
+# data_sub1 <- ruODK::odata_submission_get(
+#   table = form_tables$url[2], verbose = TRUE, tz = tz, local_dir = loc
+# ) %>%
+#   dplyr::left_join(data, by = c("submissions_id" = "id"))
+# 
+# data_sub2 <- ruODK::odata_submission_get(
+#   table = form_tables$url[3], verbose = TRUE, tz = tz, local_dir = loc
+# ) %>% 
+#   dplyr::rename(
+#     # Adjust coordinate colnames as needed, avoid name conflicts with main data
+#     # lon = x6,
+#     # lat = x7,
+#     # alt = x8
+#   ) %>%
+#   dplyr::left_join(data, by = c("submissions_id" = "id"))
 
 # repeat for any remaining nested tables
 ```
