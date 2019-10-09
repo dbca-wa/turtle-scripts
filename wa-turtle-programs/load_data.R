@@ -27,6 +27,7 @@ if (file.exists(here::here("data", "tracks.Rda"))) {
     )} %>%
     tidyr::unnest_wider("centroid") %>%
     dplyr::rename(longitude = `...1`, latitude = `...2`)
+  areas_sf <- geojsonio::as.json(area_records$features) %>% geojsonsf::geojson_sf()
   save(
     animal_records,
     animals,
@@ -40,11 +41,12 @@ if (file.exists(here::here("data", "tracks.Rda"))) {
     nests_all,
     area_records,
     areas,
+    areas_sf,
     file = here::here("data", "tracks.Rda")
   )
 }
 
-library(magrittr)
-
-
-
+# areas_sf %>%
+#   # dplyr::filter(area_type=="Site") %>%
+#   # magrittr::extract("name") %>%
+#   plot(.)
