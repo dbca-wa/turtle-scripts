@@ -8,6 +8,7 @@ output:
     theme: spacelab
     social: menu
     source_code: https://git.io/vaZdx
+    self_contained: true
 ---
 
 
@@ -21,7 +22,7 @@ library(googledrive)
 library(knitr)
 library(leaflet)
 library(readr)
-library(skimr)
+# library(skimr)
 library(wastdr)
 library(ruODK)
 

@@ -135,7 +135,7 @@ data_light <- ft$url[7] %>%
 # data stored in data/tsc_odk.RData
 # skimr::skim(data)
 dplyr::glimpse(data)
-DT::datatable(data)
+# DT::datatable(data)
 ```
 
 ```{r data_map, eval=F}

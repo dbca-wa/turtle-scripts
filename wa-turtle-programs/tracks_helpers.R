@@ -42,8 +42,23 @@ filter_thv_tagging <- . %>% dplyr::filter(site_id == 20)
 
 filter_lgcs <- . %>% dplyr::filter(site_id %in% c(51, 52))
 
-filter_nin <- . %>% dplyr::filter(site_id > 59, site_id < 113)
+filter_nin <- . %>% dplyr::filter(site_id %in% 59:113)
+filter_nin_nwc <- . %>% dplyr::filter(site_id %in% 66:79)
+filter_nin_cr <- . %>% dplyr::filter(site_id %in% 80:95)
+filter_nin_bn <- . %>% dplyr::filter(site_id %in% 96:106)
+filter_nin_cb <- . %>% dplyr::filter(site_id %in% 107:109)
+filter_nin_wr <- . %>% dplyr::filter(site_id %in% 110:111)
+filter_nin_gn <- . %>% dplyr::filter(site_id == 112)
 
+causes_disturbance <- c("human", "unknown", "tide", "turtle", "other",
+                        "vehicle", "cyclone")
+causes_predation <- c("bandicoot", "bird", "cat", "crab", "croc", "dingo",
+                       "dog", "fox", "goanna", "pig")
+filter_disturbance <- . %>% dplyr::filter(disturbance_cause %in% causes_disturbance)
+filter_predation <- . %>% dplyr::filter(disturbance_cause %in% causes_predation)
+
+areas_nin <- areas %>% dplyr::filter(area_type=="Site", pk %in% 59:113)
+areas_nin_nwcape <- areas_nin %>% dplyr::filter(area_type=="Site")
 
 
 gganimate_tracks <- function(data, placename=NULL, prefix=NULL, gm_apikey=NULL) {

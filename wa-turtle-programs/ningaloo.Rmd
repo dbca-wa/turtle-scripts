@@ -14,18 +14,44 @@ output:
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+source("load_data.R")
 source("tracks_setup.R")
 source("tracks_helpers.R")
-source("load_data.R")
 ```
 
 # Data
 
 ```{r filter_data}
-tracks_nin <- tracks_all %>% filter_nin() %>% exclude_training_species() %>% add_nest_labels()
+tracks_nin <- tracks_all %>% 
+  filter_nin() %>% 
+  exclude_training_species() %>% 
+  add_nest_labels()
+tracks_nin_nwc <- tracks_nin %>% filter_nin_nwc
+tracks_nin_cr <- tracks_nin %>% filter_nin_cr
+tracks_nin_bn <- tracks_nin %>% filter_nin_bn
+tracks_nin_cb <- tracks_nin %>% filter_nin_cb
+tracks_nin_wr <- tracks_nin %>% filter_nin_wr
+tracks_nin_gn <- tracks_nin %>% filter_nin_gn
+
 surveys_nin <- surveys %>% filter_nin()
 surveys_nin_prod <- surveys_nin %>% exclude_training_surveys()
-dist_nin <- disturbance %>% filter_nin()
+
+dist_nin <- disturbance %>% filter_nin() %>% filter_disturbance()
+dist_nin_nwc <- dist_nin %>% filter_nin_nwc
+dist_nin_cr <- dist_nin %>% filter_nin_cr
+dist_nin_bn <- dist_nin %>% filter_nin_bn
+dist_nin_cb <- dist_nin %>% filter_nin_cb
+dist_nin_wr <- dist_nin %>% filter_nin_wr
+dist_nin_gn <- dist_nin %>% filter_nin_gn
+
+pred_nin <- disturbance %>% filter_nin() %>% filter_predation()
+pred_nin_nwc <- pred_nin %>% filter_nin_nwc
+pred_nin_cr <- pred_nin %>% filter_nin_cr
+pred_nin_bn <- pred_nin %>% filter_nin_bn
+pred_nin_cb <- pred_nin %>% filter_nin_cb
+pred_nin_wr <- pred_nin %>% filter_nin_wr
+pred_nin_gn <- pred_nin %>% filter_nin_gn
+
 nests_nin <- nests_all %>% filter_nin()
 prefix_nin <- "NIN"
 placename_nin <- "Ningaloo"
@@ -37,15 +63,26 @@ placename_nin <- "Ningaloo"
 * Predation separate from disturbance
 * For each of NW Cape, Bungelup, Janes Bay, Gnaraloo: species, number false 
   crawls, number of nests (table > CSV, figure > PNG)
+* Tour guides want to know highest likelihood of finding hatchlings.
+* Nat cons teams want to know where to put predator traps.
 
 We need the following issues to be addressed to be able to use the data:
 
  
 
-* Survey dates. Please correct the survey dates to the date the surveys were actually done. For some reason they have been adjusted to the day before. This is wasting our time correcting. We need the actual dates to compare among years and importantly for operational reasons on the ground at Ningaloo. Not at all helpful to have them changed to the day before.
-* Predation versus predator tracks. We need to be able to access records of predation where there is actually evidence of a nest being preyed upon, versus just tracks of predators being recorded where there was no evidence of predation occurring. At this stage, the two seem to have been lumped together. We need to be able to extract each separately.
-* Survey effort. We need to be able to access the individual and the total number of days each subsection was monitored. This doesn’t appear possible at present.
-* Reliable records of which subsections were monitored and when. At present the data provided indicate that some subsections were monitored twice on some days and adjacent subsections weren’t monitored at all. We know this to be incorrect. It needs to be fixed.
+* Survey dates. Clarify confusion between turtle date and calendar date.
+* Predation versus predator tracks: Clarify predated nests vs disturbed nests vs 
+  signs of predator presence and signs of disturbances
+* Survey effort: 
+  * list dates surveyed (calendar date) per site. 
+  * list dates surveyed (calendar date) per subsection.
+  * tally dates surveyed per site.
+  * tally dates surveyed per subsection.
+
+* Reliable records of which subsections were monitored and when. At present the 
+  data provided indicate that some subsections were monitored twice on some days 
+  and adjacent subsections weren’t monitored at all. This is an artifact of 
+  sites being started (site visit start geolocation) incorrectly against training.
 * Gnaraloo Bay. We need to be able to distinguish among Divisions and Gnaraloo Bay from Janes Bay from the North West Cape, etc. Don’t appear to be able to distinguish Gnaraloo Bay at present.
 * Training records. Training records appear to still be in the data we’ve been provided. These need to be removed.
 * Dead turtles and rescued turtles. We need to be able to distinguish between dead turtles and rescued turtles and at which subsection they were found.
@@ -132,7 +169,7 @@ nests_nin %>%
 ## Nesting abundance
 ### All beaches
 ```{r tracks_all_sectors_nin}
-tracks_nin %>% nesting_type_by_season_species() %>% kable()
+tracks_nin %>% nesting_type_by_season_species() %>% knitr::kable()
 ```
 
 ## Nesting by week
@@ -164,7 +201,9 @@ Not measured in 2018.
 ```{r hatching_emergence_success_nin}
 tracks_nin %>%
   hatching_emergence_success() %>%
-  DT::datatable(., caption = "Hatching and emergence success summary", options = list(paging = F))
+  DT::datatable(., 
+                caption = "Hatching and emergence success summary", 
+                options = list(paging = F))
 ```
 
 ## Disturbance and predation
@@ -282,13 +321,14 @@ products <- list.files(pattern=prefix_nin)
 zip(zipfile = products_fn_nin, files = products)
 
 # Create a resource for the ZIP archives
-d <- ckanr::package_show("turtle-tracks")
+# d <- ckanr::package_show("turtle-tracks")
 # r <- resource_create(package_id=d$id, name="Ningaloo Turtle Nesting Census", upload="ningaloo.html")
 # r <- resource_create(package_id=d$id, name="Ningaloo outputs", upload=products_fn_nin)
 
-ckanr::resource_update("0c35791e-c478-451e-94c6-9c82d03c721d", "ningaloo.html")
-ckanr::resource_update("7c141bdb-f3b0-4a89-8465-b6aff1d43679", products_fn_nin)
+# ckanr::resource_update("0c35791e-c478-451e-94c6-9c82d03c721d", "ningaloo.html")
+# ckanr::resource_update("7c141bdb-f3b0-4a89-8465-b6aff1d43679", products_fn_nin)
 ```
+
 ## Google Drive
 A copy of this report and all generated outputs is uploaded to 
 Google Drive and shared via 
@@ -303,7 +343,7 @@ Running the following chunk manually once per machine will cache the authenticat
 token locally for future use.
 
 ```{r google_drive_auth, eval=F}
-googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
+googledrive::drive_auth(use_oob = TRUE)
 ```
 
 The following code refreshes the [shared folder on Google Drive](https://drive.google.com/drive/folders/1ovTwAfUXm8hCK7ct_neemwHCQ3TAHbfF?usp=sharing) 
