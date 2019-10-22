@@ -42,13 +42,15 @@ filter_thv_tagging <- . %>% dplyr::filter(site_id == 20)
 
 filter_lgcs <- . %>% dplyr::filter(site_id %in% c(51, 52))
 
-filter_nin <- . %>% dplyr::filter(site_id %in% 59:113)
+filter_nin <- . %>% dplyr::filter(site_id %in% 58:114)
+filter_nin_mi <- . %>% dplyr::filter(site_id %in% c(58, 59, 113))
 filter_nin_nwc <- . %>% dplyr::filter(site_id %in% 66:79)
 filter_nin_cr <- . %>% dplyr::filter(site_id %in% 80:95)
 filter_nin_bn <- . %>% dplyr::filter(site_id %in% 96:106)
 filter_nin_cb <- . %>% dplyr::filter(site_id %in% 107:109)
 filter_nin_wr <- . %>% dplyr::filter(site_id %in% 110:111)
-filter_nin_gn <- . %>% dplyr::filter(site_id == 112)
+filter_nin_gn <- . %>% dplyr::filter(site_id == 114)
+
 
 causes_disturbance <- c("human", "unknown", "tide", "turtle", "other",
                         "vehicle", "cyclone")

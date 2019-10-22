@@ -26,6 +26,7 @@ tracks_nin <- tracks_all %>%
   filter_nin() %>% 
   exclude_training_species() %>% 
   add_nest_labels()
+tracks_nin_mi <- tracks_nin %>% filter_nin_mi
 tracks_nin_nwc <- tracks_nin %>% filter_nin_nwc
 tracks_nin_cr <- tracks_nin %>% filter_nin_cr
 tracks_nin_bn <- tracks_nin %>% filter_nin_bn
@@ -37,6 +38,7 @@ surveys_nin <- surveys %>% filter_nin()
 surveys_nin_prod <- surveys_nin %>% exclude_training_surveys()
 
 dist_nin <- disturbance %>% filter_nin() %>% filter_disturbance()
+dist_nin_mi <- dist_nin %>% filter_nin_mi
 dist_nin_nwc <- dist_nin %>% filter_nin_nwc
 dist_nin_cr <- dist_nin %>% filter_nin_cr
 dist_nin_bn <- dist_nin %>% filter_nin_bn
@@ -45,6 +47,7 @@ dist_nin_wr <- dist_nin %>% filter_nin_wr
 dist_nin_gn <- dist_nin %>% filter_nin_gn
 
 pred_nin <- disturbance %>% filter_nin() %>% filter_predation()
+pred_nin_mi <- pred_nin %>% filter_nin_mi
 pred_nin_nwc <- pred_nin %>% filter_nin_nwc
 pred_nin_cr <- pred_nin %>% filter_nin_cr
 pred_nin_bn <- pred_nin %>% filter_nin_bn
@@ -61,6 +64,7 @@ placename_nin <- "Ningaloo"
 # Products for Ningaloo
 
 * Predation separate from disturbance
+* Add filters for sections as well
 * For each of NW Cape, Bungelup, Janes Bay, Gnaraloo: species, number false 
   crawls, number of nests (table > CSV, figure > PNG)
 * Tour guides want to know highest likelihood of finding hatchlings.
@@ -68,9 +72,9 @@ placename_nin <- "Ningaloo"
 
 We need the following issues to be addressed to be able to use the data:
 
- 
-
 * Survey dates. Clarify confusion between turtle date and calendar date.
+  * Calendar date of encounter_datetime in local timezone. 
+  
 * Predation versus predator tracks: Clarify predated nests vs disturbed nests vs 
   signs of predator presence and signs of disturbances
 * Survey effort: 
@@ -349,7 +353,7 @@ googledrive::drive_auth(use_oob = TRUE)
 The following code refreshes the [shared folder on Google Drive](https://drive.google.com/drive/folders/1ovTwAfUXm8hCK7ct_neemwHCQ3TAHbfF?usp=sharing) 
 with this report and a zip archive of all products.
 
-```{r google_drive_upload}
+```{r google_drive_upload, eval=F}
 googledrive::drive_ls(prefix_nin) %>% googledrive::drive_rm(.)
 googledrive::drive_upload("ningaloo.html", path=glue::glue("{prefix_nin}/ningaloo.html"))
 products %>% purrr::map(googledrive::drive_upload, path = googledrive::as_dribble(prefix_nin))
