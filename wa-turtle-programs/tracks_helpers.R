@@ -45,6 +45,14 @@ filter_lgcs <- . %>% dplyr::filter(site_id %in% c(51, 52))
 filter_nin <- . %>% dplyr::filter(site_id %in% 58:114)
 filter_nin_mi <- . %>% dplyr::filter(site_id %in% c(58, 59, 113))
 filter_nin_nwc <- . %>% dplyr::filter(site_id %in% 66:79)
+filter_nin_nwc_tantabiddi <- . %>% dplyr::filter(site_id %in% 76:79)
+filter_nin_nwc_graveyards <- . %>% dplyr::filter(site_id %in% 72:75)
+filter_nin_nwc_hunters <- . %>% dplyr::filter(site_id %in% 69:71)
+filter_nin_nwc_lighthouse <- . %>% dplyr::filter(site_id %in% 66:68)
+filter_nin_nwc_navypier <- . %>% dplyr::filter(site_id %in% 62:65)
+filter_nin_nwc_bundegi <- . %>% dplyr::filter(site_id %in% 60:61)
+
+
 filter_nin_cr <- . %>% dplyr::filter(site_id %in% 80:95)
 filter_nin_bn <- . %>% dplyr::filter(site_id %in% 96:106)
 filter_nin_cb <- . %>% dplyr::filter(site_id %in% 107:109)
@@ -58,9 +66,6 @@ causes_predation <- c("bandicoot", "bird", "cat", "crab", "croc", "dingo",
                        "dog", "fox", "goanna", "pig")
 filter_disturbance <- . %>% dplyr::filter(disturbance_cause %in% causes_disturbance)
 filter_predation <- . %>% dplyr::filter(disturbance_cause %in% causes_predation)
-
-areas_nin <- areas %>% dplyr::filter(area_type=="Site", pk %in% 59:113)
-areas_nin_nwcape <- areas_nin %>% dplyr::filter(area_type=="Site")
 
 
 gganimate_tracks <- function(data, placename=NULL, prefix=NULL, gm_apikey=NULL) {

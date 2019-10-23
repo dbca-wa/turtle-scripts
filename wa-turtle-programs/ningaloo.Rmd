@@ -14,30 +14,66 @@ output:
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
-source("load_data.R")
 source("tracks_setup.R")
 source("tracks_helpers.R")
+source("load_data.R")
 ```
 
-# Data
 
 ```{r filter_data}
+animals_nin <- animals %>% filter_nin
+animals_nin_rescued <- animals_nin %>% 
+  dplyr::filter(
+    health %in% c("na", "other", "alive", "alive-injured"), 
+    encounter_type == "inwater"
+  )
+
+animals_nin_stranded <- animals_nin %>% 
+  dplyr::filter(
+    health %in% c(
+      "alive-then-died",
+      "dead-advanced",
+      "dead-organs-intact",
+      "dead-edible",
+      "dead-mummified",
+      "dead-disarticulated",
+      "deadedible",
+      "deadadvanced"
+    )
+  )
+
+split_site_name <- . %>% 
+  dplyr::mutate(
+    division = stringr::str_split(site_name, " - ")[[1]][1],
+    section = stringr::str_split(site_name, " - ")[[1]][2],
+    subsection = stringr::str_split(site_name, " - ")[[1]][3]
+    )
+
 tracks_nin <- tracks_all %>% 
   filter_nin() %>% 
   exclude_training_species() %>% 
-  add_nest_labels()
+  add_nest_labels() %>% 
+  split_site_name()
 tracks_nin_mi <- tracks_nin %>% filter_nin_mi
 tracks_nin_nwc <- tracks_nin %>% filter_nin_nwc
+tracks_nin_nwc_tantabiddi <- tracks_nin %>% filter_nin_nwc_tantabiddi
+tracks_nin_nwc_graveyards <- tracks_nin %>% filter_nin_nwc_graveyards
+tracks_nin_nwc_hunters <- tracks_nin %>% filter_nin_nwc_hunters
+tracks_nin_nwc_lighthouse <- tracks_nin %>% filter_nin_nwc_lighthouse
+tracks_nin_nwc_navypier <- tracks_nin %>% filter_nin_nwc_navypier
+tracks_nin_nwc_bundegi <- tracks_nin %>% filter_nin_nwc_bundegi
+
 tracks_nin_cr <- tracks_nin %>% filter_nin_cr
 tracks_nin_bn <- tracks_nin %>% filter_nin_bn
 tracks_nin_cb <- tracks_nin %>% filter_nin_cb
 tracks_nin_wr <- tracks_nin %>% filter_nin_wr
 tracks_nin_gn <- tracks_nin %>% filter_nin_gn
 
-surveys_nin <- surveys %>% filter_nin()
+surveys_nin <- surveys %>% filter_nin() %>% split_site_name()
 surveys_nin_prod <- surveys_nin %>% exclude_training_surveys()
 
-dist_nin <- disturbance %>% filter_nin() %>% filter_disturbance()
+dist_pred_nin <- disturbance %>% filter_nin() %>% split_site_name()
+dist_nin <- dist_pred_nin %>% filter_disturbance()
 dist_nin_mi <- dist_nin %>% filter_nin_mi
 dist_nin_nwc <- dist_nin %>% filter_nin_nwc
 dist_nin_cr <- dist_nin %>% filter_nin_cr
@@ -46,7 +82,7 @@ dist_nin_cb <- dist_nin %>% filter_nin_cb
 dist_nin_wr <- dist_nin %>% filter_nin_wr
 dist_nin_gn <- dist_nin %>% filter_nin_gn
 
-pred_nin <- disturbance %>% filter_nin() %>% filter_predation()
+pred_nin <- dist_pred_nin %>% filter_predation()
 pred_nin_mi <- pred_nin %>% filter_nin_mi
 pred_nin_nwc <- pred_nin %>% filter_nin_nwc
 pred_nin_cr <- pred_nin %>% filter_nin_cr
@@ -55,13 +91,35 @@ pred_nin_cb <- pred_nin %>% filter_nin_cb
 pred_nin_wr <- pred_nin %>% filter_nin_wr
 pred_nin_gn <- pred_nin %>% filter_nin_gn
 
+# no tagged nests
 nests_nin <- nests_all %>% filter_nin()
 prefix_nin <- "NIN"
 placename_nin <- "Ningaloo"
+
+areas_nin <- areas %>% dplyr::filter(area_type=="Site", pk %in% 58:114)
+areas_nin_nwc <- areas_nin %>% dplyr::filter(area_type=="Site")
 ```
 
 
-# Products for Ningaloo
+# Background
+This section will provide context for this document.
+
+## About the NTP
+* website
+* links to data on DBCA data catalogue
+* links to DBCA turtle wiki (which links Google Drive folder with products)
+
+## About this document
+This document is the primary reporting mechanism for turtle data from the WA Sea
+Turtle Database (WAStD). It tells a story about the data.
+This document is a live workbook: it contains code which automates
+the retrieval of the data from WAStD, preparation and visualisation of the data, 
+export of the data and products into files, and finally uploading of these 
+products as well as of this document itself to points of dissemination, such as
+the DBCA data catalogue, and Google Drive folders.
+
+## Changes in Season 2019-20
+This section summarises changes to this document in Season 2019-20.
 
 * Predation separate from disturbance
 * Add filters for sections as well
@@ -73,28 +131,33 @@ placename_nin <- "Ningaloo"
 We need the following issues to be addressed to be able to use the data:
 
 * Survey dates. Clarify confusion between turtle date and calendar date.
-  * Calendar date of encounter_datetime in local timezone. 
+  * Added `calendar_date_awst` in local timezone to tracks.csv, surveys.csv, dist.csv.
   
 * Predation versus predator tracks: Clarify predated nests vs disturbed nests vs 
   signs of predator presence and signs of disturbances
+  
 * Survey effort: 
-  * list dates surveyed (calendar date) per site. 
-  * list dates surveyed (calendar date) per subsection.
-  * tally dates surveyed per site.
-  * tally dates surveyed per subsection.
+  * list dates surveyed (calendar date AWST) per division. 
+  * list dates surveyed (calendar date AWST) per section. 
+  * list dates surveyed (calendar date AWST) per subsection/site.
+  * Survey effort per subsection: tally dates surveyed per subsection/site 
+    across season. How many times was each site sampled per season?
+  * Duplicate surveys: list sites surveyed more than once per day
+  * Figure out what to do with duplicate surveys
+  * Find orphaned end points: forgot SVS, found no tracks, found no dist, did SVE.
 
 * Reliable records of which subsections were monitored and when. At present the 
   data provided indicate that some subsections were monitored twice on some days 
   and adjacent subsections weren’t monitored at all. This is an artifact of 
-  sites being started (site visit start geolocation) incorrectly against training.
-* Gnaraloo Bay. We need to be able to distinguish among Divisions and Gnaraloo Bay from Janes Bay from the North West Cape, etc. Don’t appear to be able to distinguish Gnaraloo Bay at present.
+  sites being started (site visit start geolocation) incorrectly against training or 
+  TSC areas (based on NTP db areas) have incorrect coordinates.
+
+* Gnaraloo Bay. We need to be able to distinguish among Divisions and Gnaraloo Bay from Janes Bay from the North West Cape, etc. Don’t appear to be able to distinguish Gnaraloo Bay at present. FIXED updated filters.
 * Training records. Training records appear to still be in the data we’ve been provided. These need to be removed.
-* Dead turtles and rescued turtles. We need to be able to distinguish between dead turtles and rescued turtles and at which subsection they were found.
+* Dead turtles and rescued turtles. We need to be able to distinguish between dead turtles and rescued turtles and at which subsection they were found. FIX: split by health
+into dead (stranding) and alive (rescue).
 * We have records of some turtle rescues that weren’t recorded with the tablets. Need to have the facility to add these to the database.
 
-All good points, some are gaps in training, some in QA, others in reports. Nothing impossible.
-
-1 Likely a misunderstanding of turtle vs calendar date. will make sure Peter uses the CSV with both dates in them.
 
 2 Those are split up correctly in reports: predated/disturbed nests vs stand-alone signs of pred/dist. will make two separate CSVs.
 
@@ -110,25 +173,7 @@ All good points, some are gaps in training, some in QA, others in reports. Nothi
 
 8 Dani Rob is trained how to enter those.
 
-
-
-# QA
-Most QA is done across all WA records and programs in the separate QA workbook.
-
-This section identifies data requiring editing.
-
-Training dates:
-
-* TODO insert
-
-## Provided username mismatches WAStD users
-```{r name_mismatch_nin}
-surveys_nin %>% filter_surveys_requiring_qa() %>% dt()
-```
-
-# Season summary
-
-## Going digital
+## Effort saved by going digital
 Entering and proofreading a record takes about 2 minutes with full concentration.
 By going digital, data entry and proofreading are fully automated.
 Overall, the Volunteers have saved 
@@ -138,6 +183,12 @@ hours of mind-numbing data entry and proofreading work for
 `r nrow(dist_nin)` Disturbances, and 
 `r nrow(surveys_nin)*2` Site Visit Starts/Ends. 
 
+# Turtle Nesting
+This section visualises and summarises turtle nesting.
+Data are summarised at different spatial resolutions 
+(entire locality of Ningaloo, divisions, sections, subsections) 
+and temporal resolutions (season, 4 week core season, weekly, daily).
+
 ## Maps
 ### 2018-19
 All  turtle tracks or nests recorded in season 2018-19. 
@@ -146,48 +197,146 @@ and link to original record on WAStD.
 Toggle visibility of individual species in the legend.
 
 ```{r map_nin_2018}
-tracks_nin %>% filter_2018() %>% map_tracks()
+tracks_nin %>% filter_2018() %>% map_tracks(cluster = T)
 ```
 
-### Animated map
-A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must
-be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 
 ```{r map_nin_animated, eval=F, warning=FALSE, message=FALSE}
+# Animated map
+# A [Google API key](https://developers.google.com/maps/documentation/geocoding/start?csw=1) must be present as R environment variable `GOOGLE_MAPS_APIKEY` for the next step.
 tracks_nin_2018 <- tracks_nin %>% filter_2018()
 # gganimate_tracks(tracks_nin_2018, placename_nin, prefix_nin)
 ```
 
-### Tagged nests
-The map is saved as a PNG file `r glue::glue(prefix_nin, "_tagged_nests.png")`.
-
-Currently unused.
-
 ```{r nests_nin, eval=F}
+# Tagged nests, currently unused
 nests_nin %>%
   filter_2018() %>%
-  map_nests() %>%
+  map_nests(cluster = T) %>%
   mapview::mapshot(file = glue::glue("{prefix_nin}_tagged_nests_2018.png"))
 ```
 
 ## Nesting abundance
-### All beaches
-```{r tracks_all_sectors_nin}
-tracks_nin %>% nesting_type_by_season_species() %>% knitr::kable()
+### All sites
+```{r tracks_all_by_season}
+tracks_nin %>% 
+  nesting_type_by_season_species() %>% 
+  knitr::kable(caption = "Nesting over entire season at Ningaloo")
 ```
 
+### Divisions
+
+```{r tracks_divisions_by_season}
+tracks_nin_nwc %>% 
+  nesting_type_by_season_species() %>% 
+  kable(caption = "Nesting over entire season at Division North West Cape")
+tracks_nin_bn %>% 
+  nesting_type_by_season_species() %>% 
+  kable(caption = "Nesting over entire season at Division Bundera Ningaloo")
+# TODO insert other divisions
+```
+
+### Sections
+
+```{r tracks_sections_by_season}
+tracks_nin_nwc_bundegi %>% 
+  nesting_type_by_season_species() %>% 
+  kable(caption = "Nesting over entire season at Section North West Cape - Bundegi")
+tracks_nin_nwc_navypier %>% 
+  nesting_type_by_season_species() %>% 
+  kable(caption = "Nesting over entire season at Section North West Cape - Navy Pier")
+tracks_nin_nwc_lighthouse %>% 
+  nesting_type_by_season_species() %>% 
+  kable(caption = "Nesting over entire season at Section North West Cape - Lighthouse")
+tracks_nin_nwc_graveyards %>% 
+  nesting_type_by_season_species() %>% 
+  kable(caption = "Nesting over entire season at Section North West Cape - Graveyards")
+tracks_nin_nwc_hunters %>% 
+  nesting_type_by_season_species() %>% 
+  kable(caption = "Nesting over entire season at Section North West Cape - Hunters")
+tracks_nin_nwc_tantabiddi %>% 
+  nesting_type_by_season_species() %>% 
+  kable(caption = "Nesting over entire season at Section North West Cape - Tantabiddi")
+
+# TODO insert other sections
+```
+
+### Subsections
+
+## Nesting over standard season
+The Ningaloo Turtle Program defines its standard season as the four weeks over
+the new year's break, which spans calendar weeks 51, 52, 1, and 2, or season
+week 25--28.
+
+### All sites
+### Divisions
+### Sections
+### Subsections
+
 ## Nesting by week
-### All beaches
+### All sites
 The next table show data from all sites.
 
 ```{r tracks_all_beaches_by_week_nin}
 tracks_nin %>% nesting_type_by_season_week_species() %>% kable()
 ```
 
+### Divisions
+
+TODO export as CSV
+
+```{r tracks_all_beaches_by_week_nin_divisions}
+tracks_nin_nwc %>% 
+  nesting_type_by_season_week_species() %>% 
+  kable(caption = "Nesting by week at Division North West Cape")
+tracks_nin_bn %>% 
+  nesting_type_by_season_week_species() %>% 
+  kable(caption = "Nesting by week at Division Bundera Ningaloo")
+# TODO other divisions
+```
+
+
+### Sections
+
+```{r tracks_all_beaches_by_week_nin_sections}
+tracks_nin_nwc_bundegi %>% 
+  nesting_type_by_season_week_species() %>% 
+  kable(caption = "Nesting by week at Section North West Cape - Bundegi")
+tracks_nin_nwc_navypier %>% 
+  nesting_type_by_season_week_species() %>% 
+  kable(caption = "Nesting by week at Section North West Cape - Navy Pier")
+tracks_nin_nwc_lighthouse %>% 
+  nesting_type_by_season_week_species() %>% 
+  kable(caption = "Nesting by week at Section North West Cape - Lighthouse")
+tracks_nin_nwc_graveyards %>% 
+  nesting_type_by_season_week_species() %>% 
+  kable(caption = "Nesting by week at Section North West Cape - Graveyards")
+tracks_nin_nwc_hunters %>% 
+  nesting_type_by_season_week_species() %>% 
+  kable(caption = "Nesting by week at Section North West Cape - Hunters")
+tracks_nin_nwc_tantabiddi %>% 
+  nesting_type_by_season_week_species() %>% 
+  kable(caption = "Nesting by week at Section North West Cape - Tantabiddi")
+
+# TODO other sections
+```
+
 ## Nesting by day
+
+### All sites
+
 This section shows data from all sites.
+The data visualised as figure here is also exported as spreadsheet.
 
 ```{r nesting_success_nin, warning = F}
+tracks_nin_day_site <- tracks_nin %>% 
+  dplyr::group_by(division, section, subsection, site_name,
+                  season, iso_week, season_week, calendar_date_awst, 
+                  species, nest_type) %>%
+  dplyr::tally() %>%
+  tidyr::pivot_wider(names_from = nest_type, values_from = n) %>% 
+  dplyr::arrange(calendar_date_awst, site_name, species)
+
 tracks_ts(tracks_nin, surveys_nin_prod, placename_nin, prefix_nin)
 nests <- tracks_nin %>% track_success()
 nests %>% ggplot_track_success_by_date("caretta-caretta", placename_nin, prefix_nin)
@@ -198,6 +347,10 @@ nests %>% track_success_by_species() %>% DT::datatable(.,
   caption = "Nesting success of fresh tracks (excl. nests without tracks and tagging)"
 )
 ```
+
+### Divisions
+### Sections
+### Subsections
 
 ## Hatching and emergence success
 Not measured in 2018.
@@ -210,14 +363,34 @@ tracks_nin %>%
                 options = list(paging = F))
 ```
 
-## Disturbance and predation
+# Disturbance and predation
 Disturbed nests are captured through form "Track or Treat" and appear here
 as "tracks" with "disturbance" recorded as "present".
 
 General signs of disturbance or predator presence are recorded through form 
 "Disturbance or Predation" and appear here as "dist_(place)".
 
-### Disturbance and predation of nests
+## Predation
+Predated nests as well as signs of predator presence on nesting beaches.
+
+```{r predation}
+pred_nin %>% DT::datatable(caption="Predation at Ningaloo")
+
+pred_nests_nin_2018 <- tracks_nin %>% filter_2018() %>% 
+  filter(disturbance == "present")
+pred_nests_nin_2018 %>% map_tracks()
+```
+
+
+## Disturbance
+Disturbed nests as well as disturbance on nesting beaches.
+
+```{r disturbance}
+# TODO map, table
+```
+
+
+## OLD: Disturbance and predation of nests
 Turtle nests with recorded disturbance or predation.
 
 ```{r dist_nests_nin}
@@ -230,8 +403,10 @@ Caveat: QA to exclude possible training records.
 
 Coming soon: details of disturbance to nests.
 
-### General and nest disturbance and predator presence
-There were **`r count(dist_nin)` reports** of general disturbance or predator presence.
+### OLD General and nest disturbance and predator presence
+There were **`r count(dist_nin)` reports** of general disturbance and **`r count(pred_nin)` reports** predator presence.
+
+TODO is the following true:
 These counts include both disturbed nests (encounter type "nest") and stand-alone signs
 of predator presence or disturbance (encounter type "other").
 Those records deemed (by observer or QA) having "negligible" impact or significance are excluded here.
@@ -248,17 +423,19 @@ Curators are to QA
 following the 
 [QA instructions for surveys](https://wastd.readthedocs.io/data_curators.html#data-flow-of-surveys).
 
-### Per season effort
+TODO update QA instructions for duplicate surveys after TSC survey reconstruction.
+
+## Per season effort
 Highest level of aggregation: entire season.
 Assumption: all training surveys have been marked as such in WAStD.
 
-#### Excluding training
+### Excluding training
 
 ```{r survey_season_stats_all}
 surveys_nin %>% survey_season_stats %>% dt
 ```
 
-### Per day effort
+## Per day effort
 Lowest level of aggregation: daily.
 
 ```{r survey_count}
@@ -268,7 +445,7 @@ surveys_nin %>% survey_hours_heatmap(placename_nin, prefix_nin)
 surveys_nin %>% list_survey_effort(placename_nin)
 ```
 
-### Individual surveys
+## Individual surveys
 No aggregation: individual surveys.
 
 ```{r surveys_list}
@@ -309,11 +486,31 @@ in `r survey_count(surveys, 60, 2018)` surveys.
 
 TODO: table of survey volunteer effort at all subsections (sites).
 
+## Training dates
+
+* TODO insert dates
+* Action required: Find duplicate surveys at NIN in TSC and mark as training.
+* Update 2019-10: TSC Areas at NIN were built from incorrect data. New NIN areas will be added, surveys and sites will be reconstructed again. 
+
+## Provided username mismatches WAStD users
+
+* TODO: get Chantelle's list of username mismatches > update TSC users (aliases).
+
+```{r name_mismatch_nin}
+surveys_nin %>% filter_surveys_requiring_qa() %>% dt()
+```
+
+
 # Data upload
+In this section, this report, exported data, and exported figures are
+uploaded to the DBCA data catalogue as well as to a Google Drive folder.
 
 ```{r data_upload}
 tracks_nin %>% dplyr::select(-obs, -photos) %>% 
   readr::write_csv(glue::glue("{prefix_nin}_tracks.csv"))
+tracks_nin_day_site %>% 
+  readr::write_csv(glue::glue("{prefix_nin}_tracks_by_day.csv"))
+
 surveys_nin %>% readr::write_csv(glue::glue("{prefix_nin}_surveys.csv"))
 dist_nin %>% dplyr::select(-photos) %>% 
   readr::write_csv(glue::glue("{prefix_nin}_disturbance.csv"))

@@ -38,7 +38,7 @@ fs::dir_create(loc)
 
 # Download data
 
-```{r svc_get}
+```{r svc_get, message=F}
 pl <- ruODK::project_list()
 pl
 
@@ -50,7 +50,9 @@ ruODK::ru_setup(pid=1, fid=fl$fid[[5]])
 message(glue::glue("Downloading {ruODK::get_default_fid()}"))
 ft <- ruODK::odata_service_get()
 ft %>% knitr::kable(.)
-svs <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+svs <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T) %>% 
+  dplyr::rename(longitude = x10, latitude = x11, altitude = x12) %>%
+  invisible()
 
 # SV end
 ruODK::ru_setup(pid=1, fid=fl$fid[[4]])
@@ -64,12 +66,13 @@ ruODK::ru_setup(pid=1, fid=fl$fid[[2]])
 message(glue::glue("Downloading {ruODK::get_default_fid()}"))
 ft <- ruODK::odata_service_get()
 ft %>% knitr::kable(.)
-mwi <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+mwi <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T) %>% 
+  dplyr::rename(longitude = x11, latitude = x12, altitude = x13)
 # nothing yet:
-# mwi_dmg <- ft$url[[2]] %>% 
+# mwi_dmg <- ft$url[[2]] %>%
 #   ruODK::odata_submission_get(table = ., verbose = T) %>%
 #   dplyr::left_join(mwi, by = c("submissions_id" = "id"))
-# mwi_tag <- ft$url[[3]] %>% 
+# mwi_tag <- ft$url[[3]] %>%
 #   ruODK::odata_submission_get(table = ., verbose = T) %>%
 #   dplyr::left_join(mwi, by = c("submissions_id" = "id"))
 
@@ -88,7 +91,6 @@ ft %>% knitr::kable(.)
 tracks <- ft$url[1] %>% 
   ruODK::odata_submission_get(table = ., verbose = T) %>% 
   dplyr::rename(
-    # Adjust coordinate colnames
     longitude = x14,
     latitude = x15,
     altitude = x16
@@ -121,22 +123,6 @@ data_light <- ft$url[7] %>%
 
 # Analyse data
 ## Tracks
-### Nests
-### Disturbed nests
-
-## Pred and dist (non-nest)
-
-## Strandings
-
-## Surveys (start and end)
-
-<!-- Summarise, analyse, visualise the tibble(s) data (, data_sub1, data_sub2) -->
-```{r data_vis2}
-# data stored in data/tsc_odk.RData
-# skimr::skim(data)
-dplyr::glimpse(data)
-# DT::datatable(data)
-```
 
 ```{r data_map, eval=F}
 leaflet::leaflet(width = 800, height = 600) %>%
@@ -144,7 +130,7 @@ leaflet::leaflet(width = 800, height = 600) %>%
   leaflet::addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
   leaflet::clearBounds() %>%
   leaflet::addAwesomeMarkers(
-    data = data,
+    data = tracks,
     lng = ~longitude, lat = ~latitude,
     icon = leaflet::makeAwesomeIcon(text = "Q", markerColor = "red"),
     label = ~ glue::glue("{species} {nest_type}"),
@@ -167,38 +153,35 @@ leaflet::leaflet(width = 800, height = 600) %>%
   )
 ```
 
-```
+### Nests
 
-# Analyse data
-<!-- Summarise, analyse, visualise the tibble(s) data (, data_sub1, data_sub2) -->
-```{r data_vis, eval=F}
-skimr::skim(data)
-dplyr::glimpse(data)
-DT::datatable(head(data))
-```
+### Disturbed nests
 
-```{r data_map2, eval=F}
+## Pred and dist (non-nest)
+
+## Strandings
+
+```{r data_map, eval=F}
 leaflet::leaflet(width = 800, height = 600) %>%
   leaflet::addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
   leaflet::addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
   leaflet::clearBounds() %>%
   leaflet::addAwesomeMarkers(
-    data = data,
+    data = mwi,
     lng = ~longitude, lat = ~latitude,
     icon = leaflet::makeAwesomeIcon(text = "Q", markerColor = "red"),
-    # 
-    # # With your own field names
-    # 
-    # label = ~ glue::glue("{area_name} {encounter_start_datetime}"),
-    # popup = ~ glue::glue(
-    #   "<h3>{area_name}</h3>",
-    #   "Survey start {encounter_start_datetime}</br>",
-    #   "Reporter {reporter}</br>",
-    #   "Device {device_id}</br>",
-    #   "<h5>Site</h5>",
-    #   '<div><img src="{my_photo}"',
-    #   ' height="150px" alt="My photo"></img></div>'
-    # ),
+    label = ~ glue::glue("{observation_start_time} {health} {maturity} {species}"),
+    popup = ~ glue::glue(
+      "<h3>{health} {maturity} {species}</h3>",
+      "Seen on {observation_start_time}</br>",
+      "Seen by {reporter}</br>",
+      "Device {device_id}</br>",
+      '<div><img src="{photo_habitat}"  height="150px" alt="Habitat"></img></div>',
+      '<div><img src="{photo_head_top}" height="150px" alt="Head top"></img></div>',
+      '<div><img src="{photo_head_side}" height="150px" alt="Head side"></img></div>',
+      '<div><img src="{photo_head_front}" height="150px" alt="Head front"></img></div>',
+      '<div><img src="{photo_carapace_top}" height="150px" alt="Cpce top"></img></div>',
+    ),
     clusterOptions = leaflet::markerClusterOptions()
   ) %>%
   leaflet::addLayersControl(
@@ -206,6 +189,47 @@ leaflet::leaflet(width = 800, height = 600) %>%
     options = leaflet::layersControlOptions(collapsed = FALSE)
   )
 ```
+
+## Surveys (start and end)
+
+```{r data_map2}
+leaflet::leaflet(width = 800, height = 600) %>%
+  leaflet::addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+  leaflet::addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+  leaflet::clearBounds() %>%
+  leaflet::addAwesomeMarkers(
+    data = svs,
+    lng = ~longitude, lat = ~latitude,
+    icon = leaflet::makeAwesomeIcon(text = "Q", markerColor = "red"),
+    label = ~ glue::glue("{survey_start_time} {reporter} [{accuracy}m]"),
+    popup = ~ glue::glue(
+    #   "<h3>{area_name}</h3>",
+      "Survey start {survey_start_time}</br>",
+      "Device {device_id}</br>",
+      "Reporter {reporter}</br>",
+      "Team {team}</br>",
+      "{comments}</br>",
+      "<h5>Site</h5>",
+      '<div><img src="{site_conditions}"',
+      ' height="150px" alt="Site coditions"></img></div>'
+    ),
+    # clusterOptions = leaflet::markerClusterOptions()
+  ) %>%
+  leaflet::addLayersControl(
+    baseGroups = c("Place names", "Aerial"),
+    options = leaflet::layersControlOptions(collapsed = FALSE)
+  )
+```
+
+<!-- Summarise, analyse, visualise the tibble(s) data (, data_sub1, data_sub2) -->
+```{r data_vis2}
+# data stored in data/tsc_odk.RData
+# skimr::skim(data)
+dplyr::glimpse(tracks)
+# DT::datatable(data)
+```
+
+
 
 # Export
 <!--

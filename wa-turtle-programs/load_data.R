@@ -5,15 +5,45 @@ if (file.exists(here::here("data", "tracks.Rda"))) {
   wastd_url <- wastdr::get_wastd_url()
   q <- list(taxon = "Cheloniidae", format = "json")
   animal_records <- wastdr::wastd_GET("animal-encounters", query = q)
-  animals <- wastdr::parse_animal_encounters(animal_records)
+  animals <- animal_records %>%
+    wastdr::parse_animal_encounters() %>%
+    dplyr::mutate(
+      calendar_date_awst = datetime %>%
+        lubridate::with_tz("Australia/Perth") %>%
+        lubridate::floor_date(unit = "day")
+    )
   track_records <- wastdr::wastd_GET("turtle-nest-encounters")
-  tracks_all <- wastdr::parse_turtle_nest_encounters(track_records)
+  tracks_all <- track_records %>%
+    wastdr::parse_turtle_nest_encounters() %>%
+    dplyr::mutate(
+      calendar_date_awst = datetime %>%
+        lubridate::with_tz("Australia/Perth") %>%
+        lubridate::floor_date(unit = "day")
+    )
   disturbance_records <- wastdr::wastd_GET("disturbance-observations")
-  disturbance <- disturbance_records %>% wastdr::parse_disturbance_observations()
+  disturbance <- disturbance_records %>%
+    wastdr::parse_disturbance_observations() %>%
+    dplyr::mutate(
+      calendar_date_awst = datetime %>%
+        lubridate::with_tz("Australia/Perth") %>%
+        lubridate::floor_date(unit = "day")
+    )
   survey_records <- wastdr::wastd_GET("surveys")
-  surveys <- survey_records %>% wastdr::parse_surveys()
+  surveys <- survey_records %>%
+    wastdr::parse_surveys() %>%
+    dplyr::mutate(
+      calendar_date_awst = start_time %>%
+        lubridate::with_tz("Australia/Perth") %>%
+        lubridate::floor_date(unit = "day")
+    )
   nest_records <- wastdr::wastd_GET("nesttag-observations")
-  nests_all <- nest_records %>% wastdr::parse_nesttag_observations()
+  nests_all <- nest_records %>%
+    wastdr::parse_nesttag_observations() %>%
+    dplyr::mutate(
+      calendar_date_awst = datetime %>%
+        lubridate::with_tz("Australia/Perth") %>%
+        lubridate::floor_date(unit = "day")
+    )
   area_records <- wastdr::wastd_GET("area")
   areas <- area_records$features %>% {
     tibble::tibble(
