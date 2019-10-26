@@ -38,12 +38,12 @@ fs::dir_create(loc)
 
 # Download data
 
-```{r svc_get, message=F}
+```{r dl_data, message=T}
 pl <- ruODK::project_list()
-pl
+pl %>% knitr::kable()
 
 fl <- ruODK::form_list(pid = 1)
-fl
+fl %>% knitr::kable()
 
 # SV start
 ruODK::ru_setup(pid=1, fid=fl$fid[[5]])
@@ -124,7 +124,9 @@ data_light <- ft$url[7] %>%
 # Analyse data
 ## Tracks
 
-```{r data_map, eval=F}
+```{r tracks_map}
+tracks %>% DT::datatable()
+
 leaflet::leaflet(width = 800, height = 600) %>%
   leaflet::addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
   leaflet::addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
@@ -161,7 +163,7 @@ leaflet::leaflet(width = 800, height = 600) %>%
 
 ## Strandings
 
-```{r data_map, eval=F}
+```{r mwi_map}
 leaflet::leaflet(width = 800, height = 600) %>%
   leaflet::addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
   leaflet::addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
@@ -252,19 +254,19 @@ created initially.
 #------------------------------------------------------------------------------#
 # Prepare report and products as local files
 #
-rep_fn <- "my_report.html" # The file name you save this template under
-data_fn <- here::here(loc, "data.csv") %>% as.character()           # Main data
-data_sub1_fn <- here::here(loc, "data_sub1.csv") %>% as.character() # Nested table 1
-data_sub2_fn <- here::here(loc, "data_sub2.csv") %>% as.character() # Nested table 2
-zip_fn <- "products.zip" # Attachments as one zip file (top level)
+rep_fn <- "previews_wa.html" # The file name you save this template under
+# data_fn <- here::here(loc, "data.csv") %>% as.character()           # Main data
+# data_sub1_fn <- here::here(loc, "data_sub1.csv") %>% as.character() # Nested table 1
+# data_sub2_fn <- here::here(loc, "data_sub2.csv") %>% as.character() # Nested table 2
+# zip_fn <- "products.zip" # Attachments as one zip file (top level)
 
 # Write data tbls to CSV files
-readr::write_csv(data, path = data_fn)
-readr::write_csv(data_sub1, path = data_sub1_fn)
-readr::write_csv(data_sub2, path = data_sub2_fn)
+# readr::write_csv(data, path = data_fn)
+# readr::write_csv(data_sub1, path = data_sub1_fn)
+# readr::write_csv(data_sub2, path = data_sub2_fn)
 
 # Compress everything into `zip_fn`, retain relative path to `loc`
-zip(zipfile = zip_fn, files = fs::dir_ls(loc))
+# zip(zipfile = zip_fn, files = fs::dir_ls(loc))
 
 #------------------------------------------------------------------------------#
 # CKAN
