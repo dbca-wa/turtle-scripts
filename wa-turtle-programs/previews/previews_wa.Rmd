@@ -67,13 +67,14 @@ message(glue::glue("Downloading {ruODK::get_default_fid()}"))
 ft <- ruODK::odata_service_get()
 ft %>% knitr::kable(.)
 mwi <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T) %>% 
-  dplyr::rename(longitude = x11, latitude = x12, altitude = x13)
+  dplyr::rename(longitude = x11, latitude = x12, altitude = x13) %>%
+  invisible
+mwi_dmg <- ft$url[[2]] %>%
+  ruODK::odata_submission_get(table = ., verbose = T) %>%
+  dplyr::left_join(mwi, by = c("submissions_id" = "id"))
 # nothing yet:
-# mwi_dmg <- ft$url[[2]] %>%
-#   ruODK::odata_submission_get(table = ., verbose = T) %>%
-#   dplyr::left_join(mwi, by = c("submissions_id" = "id"))
 # mwi_tag <- ft$url[[3]] %>%
-#   ruODK::odata_submission_get(table = ., verbose = T) %>%
+#   ruODK::odata_submission_get(table = ., verbose = T) %>% 
 #   dplyr::left_join(mwi, by = c("submissions_id" = "id"))
 
 # Dist
@@ -81,7 +82,7 @@ message(glue::glue("Downloading {ruODK::get_default_fid()}"))
 ruODK::ru_setup(pid=1, fid=fl$fid[[3]])
 ft <- ruODK::odata_service_get()
 ft %>% knitr::kable(.)
-dist <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+dist <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T, tz=tz)
 
 # Tracks
 ruODK::ru_setup(pid=1, fid=fl$fid[[8]])
@@ -89,7 +90,7 @@ message(glue::glue("Downloading {ruODK::get_default_fid()}"))
 ft <- ruODK::odata_service_get()
 ft %>% knitr::kable(.)
 tracks <- ft$url[1] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) %>% 
+  ruODK::odata_submission_get(table = ., verbose = T, tz=tz) %>% 
   dplyr::rename(
     longitude = x14,
     latitude = x15,
@@ -97,27 +98,27 @@ tracks <- ft$url[1] %>%
   )
 
 tracks_dist <- ft$url[2] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) %>% 
+  ruODK::odata_submission_get(table = ., verbose = T, tz=tz) %>% 
   dplyr::left_join(tracks, by = c("submissions_id" = "id"))
 
 tracks_egg <- ft$url[3] %>%
-  ruODK::odata_submission_get(table = ., verbose = T) #%>%
+  ruODK::odata_submission_get(table = ., verbose = T, tz=tz) #%>%
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
 
 tracks_log <- ft$url[4] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) #%>%
+  ruODK::odata_submission_get(table = ., verbose = T, tz=tz) #%>%
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
 
 tracks_hatch <- ft$url[5] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) #%>%
+  ruODK::odata_submission_get(table = ., verbose = T, tz=tz) #%>%
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
 
-data_fan_outlier <- ft$url[6] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) #%>%
+tracks_fan_outlier <- ft$url[6] %>% 
+  ruODK::odata_submission_get(table = ., verbose = T, tz=tz) #%>%
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
 
-data_light <- ft$url[7] %>% 
-  ruODK::odata_submission_get(table = ., verbose = T) #%>%
+tracks_light <- ft$url[7] %>% 
+  ruODK::odata_submission_get(table = ., verbose = T, tz=tz) #%>%
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
 ```
 
