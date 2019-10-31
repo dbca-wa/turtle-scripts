@@ -183,6 +183,25 @@ hours of mind-numbing data entry and proofreading work for
 `r nrow(dist_nin)` Disturbances, and 
 `r nrow(surveys_nin)*2` Site Visit Starts/Ends. 
 
+
+# QA for legaxcy data
+Peter Barnes advises:
+
+When importing legacy NTP data, be aware that locations may contain typos, but
+NTP subsection (TSC site) names are accurate.
+
+Analysis requires to retain the exact coordinates to retain spatial patterns
+within sites, even though a fraction of the coordinates are clearly wrong (outside
+site boundaries).
+
+Therefore, import and present the data as follows:
+* Where coordinates match site boundaries, retain coordinates as is (although these
+  may contain a typo error within site boundaries).
+* Where nest coordinates fall outside of site boundaries, use site centroid as
+  coordinates and add a comment `[QA][Geo][wrong] coordinates outside site, using site centroid`.
+* Import false crawls (tracks without nest) with comment `"[QA][Geo][missing] coordinates missing, using site centroid`.
+* Present data with filters for unchanged and reconstructed coordinates.
+
 # Turtle Nesting
 This section visualises and summarises turtle nesting.
 Data are summarised at different spatial resolutions 

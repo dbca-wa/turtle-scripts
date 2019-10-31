@@ -36,7 +36,7 @@ Then, load required libraries and source `setup.R`.
 
 ```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-source(here("config", "setup.R"))
+source(here::here('wa-turtle-programs', 'tracks_setup.R'))
 library(wastdr)
 library(ckanr)
 library(dplyr)
@@ -47,7 +47,7 @@ library(ggplot2)
 library(lubridate)
 library(sp)
 library(rgdal)
-refresh_data <- TRUE # download fresh database snapshot or use local copy
+refresh_data <- FALSE # download fresh database snapshot or use local copy
 ```
 
 
@@ -57,10 +57,10 @@ Download, unzip and open the Access mdb file from the data catalogue.
 if (refresh_data) {
   tmp <- tempfile()
   download.file(ckanr::resource_show(Sys.getenv("MDB_RID"))$url, tmp)
-  unzip(tmp, "ningaloov6.mdb", exdir = here("ningaloo", "data"))
+  unzip(tmp, "ningaloov6.mdb", exdir = here::here("ningaloo", "data"))
   unlink(tmp)
 }
-db <- here("ningaloo", "data", "ningaloov6.mdb")
+db <- here::here("ningaloo", "data", "ningaloov6.mdb")
 # con <- Hmisc::mdb.get(db, dateformat = '%Y-%m-%d', as.is = T)
 mdbget <- . %>% Hmisc::mdb.get(db, dateformat = '%Y-%m-%d', as.is = T, table = .)
 ```
@@ -93,7 +93,7 @@ row.names(sites) <- sites$id
 # sites[which(sites$subsection=="Red Bluff"),]$x_max <- 113.458
 # sites[which(sites$subsection=="Red Bluff"),]$y_max <- -24.016
 
-sites %>% readr::write_csv(here("ningaloo", "data","sites.csv"))
+sites %>% readr::write_csv(here::here("ningaloo", "data","sites.csv"))
 ```
 
 ### Shapefiles - R style
@@ -151,7 +151,7 @@ polys.df <- sp::SpatialPolygonsDataFrame(polys, as.data.frame(sites_with_coords)
 Write the SPDF to GeoJSON and preview them on an interactive map.
 ```{r, echo=TRUE}
 rgdal::writeOGR(polys.df, 
-                here("ningaloo", "data", "sites.geojson"), 
+                here::here("ningaloo", "data", "sites.geojson"), 
                 layer="geojson", 
                 driver="GeoJSON", 
                 overwrite_layer = TRUE)
@@ -219,7 +219,7 @@ surveys[which(surveys$site_disturbed==2),]$site_disturbed=0
 
 
 
-surveys %>% readr::write_csv(here("ningaloo", "data","surveys.csv"))
+surveys %>% readr::write_csv(here::here("ningaloo", "data","surveys.csv"))
 # DT::datatable(surveys)
 ```
 
@@ -254,7 +254,7 @@ crawls <- mdbget("tblDBFalseCrawl") %>%
   select(-species_id) %>%
   left_join(surveys, by="survey_id")
 crawls[which(is.na(crawls$species_name)),]$species_name = 'NA'
-crawls %>% readr::write_csv(here("ningaloo", "data","crawls.csv"))
+crawls %>% readr::write_csv(here::here("ningaloo", "data","crawls.csv"))
 ```
 
 ### False crawls all time
@@ -318,8 +318,34 @@ nests <- mdbget("tblDBNestingSurvey") %>%
     time_of_high_tide, height_of_high_tide, lat, lon)
 row.names(nests) <- nests$nest_id
 nests[which(nests$nest_disturbed==2),]$nest_disturbed=0
-nests %>% readr::write_csv(here("ningaloo", "data","nests.csv"))
+nests %>% readr::write_csv(here::here("ningaloo", "data","nests.csv"))
 # DT::datatable(nests)
+
+leaflet::leaflet(width = 800, height = 800) %>%
+  leaflet::addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+  leaflet::addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+  leaflet::clearBounds() %>%
+  leaflet::addAwesomeMarkers(
+    data = nests,
+    lng = ~longitude, lat = ~latitude,
+    icon = leaflet::makeAwesomeIcon(text = "Q", markerColor = "red"),
+    label = ~ glue::glue("[{division}-{section}-{subsection}] {species_name} {nest_type}"),
+    popup = ~ glue::glue(
+      "<h3>{date} {species_name} {nest_type}</h3>",
+      "Site {division}-{section}-{subsection}<br/>",
+      "Lon {longitude}, Lat {latitude}<br/>",
+      "Position {position}<br/>",
+      "Confidence {confidence}<br/>",
+      "Disturbed {nest_disturbed}</br>",
+      "Fox tracks {fox_tracks_present}</br>",
+      "Dog tracks {dog_tracks_present}</br>"
+    ),
+    clusterOptions = leaflet::markerClusterOptions()
+  ) %>%
+  leaflet::addLayersControl(
+    baseGroups = c("Place names", "Aerial"),
+    options = leaflet::layersControlOptions(collapsed = FALSE)
+  )
 ```
 
 ### Nest map
@@ -346,7 +372,7 @@ summary_nests <- tbl_df(nests) %>%
   ungroup() %>%
   spread(species_name, n, fill=0) %>%
   inner_join(surveys)
-summary_nests %>% readr::write_csv(here("ningaloo", "data","summary_nests.csv"))
+summary_nests %>% readr::write_csv(here::here("ningaloo", "data","summary_nests.csv"))
 DT::datatable(summary_nests)
 ```
 
@@ -372,7 +398,7 @@ summary_nests_seasons <- tbl_df(nests) %>%
   spread(species_name, n, fill=0) %>%
   inner_join(sites, by="subsection") %>%
   select(-x_max, -x_min, -y_max, -y_min)
-summary_nests_seasons %>% readr::write_csv(here("ningaloo", "data","summary_nests_seasons.csv"))
+summary_nests_seasons %>% readr::write_csv(here::here("ningaloo", "data","summary_nests_seasons.csv"))
 DT::datatable(summary_nests_seasons)
 
 
@@ -411,7 +437,7 @@ summary_crawls <- tbl_df(crawls) %>%
   spread(species_name, n, fill=0) %>%
   inner_join(surveys) %>%
   select(-x_max, -x_min, -y_max, -y_min)
-summary_crawls %>% readr::write_csv(here("ningaloo", "data","summary_crawls.csv"))
+summary_crawls %>% readr::write_csv(here::here("ningaloo", "data","summary_crawls.csv"))
 DT::datatable(summary_crawls)
 ```
 
@@ -475,15 +501,15 @@ DT::datatable(filter(cr, is.na(species_name))[,1:8])
 # Data upload
 Upload outputs to CKAN.
 ```{r}
-ckanr::resource_update(Sys.getenv("ETL_RID"), "ningaloo_etl.html")
-ckanr::resource_update(Sys.getenv("SITES_RID"), path=here("ningaloo", "data", "sites.geojson"))
-ckanr::resource_update(Sys.getenv("SITES_CSV_RID"), path=here("ningaloo", "data", "sites.csv"))
-ckanr::resource_update(Sys.getenv("SURVEYS_RID"), path=here("ningaloo", "data", "surveys.csv"))
-ckanr::resource_update(Sys.getenv("CRAWL_RID"), path=here("ningaloo", "data", "crawls.csv"))
-ckanr::resource_update(Sys.getenv("NEST_RID"), path=here("ningaloo", "data", "nests.csv"))
-ckanr::resource_update(Sys.getenv("NEW_NEST_RID"), path=here("ningaloo", "data", "summary_nests.csv"))
-ckanr::resource_update(Sys.getenv("NEST_SEASON_RID"), path=here("ningaloo", "data", "summary_nests_seasons.csv"))
-ckanr::resource_update(Sys.getenv("FALSE_CRAWL_RID"), path=here("ningaloo", "data", "summary_crawls.csv"))
+ckanr::resource_update(Sys.getenv("ETL_RID"), path=here::here("ningaloo", "ningaloo_etl.html"))
+ckanr::resource_update(Sys.getenv("SITES_RID"), path=here::here("ningaloo", "data", "sites.geojson"))
+ckanr::resource_update(Sys.getenv("SITES_CSV_RID"), path=here::here("ningaloo", "data", "sites.csv"))
+ckanr::resource_update(Sys.getenv("SURVEYS_RID"), path=here::here("ningaloo", "data", "surveys.csv"))
+ckanr::resource_update(Sys.getenv("CRAWL_RID"), path=here::here("ningaloo", "data", "crawls.csv"))
+ckanr::resource_update(Sys.getenv("NEST_RID"), path=here::here("ningaloo", "data", "nests.csv"))
+ckanr::resource_update(Sys.getenv("NEW_NEST_RID"), path=here::here("ningaloo", "data", "summary_nests.csv"))
+ckanr::resource_update(Sys.getenv("NEST_SEASON_RID"), path=here::here("ningaloo", "data", "summary_nests_seasons.csv"))
+ckanr::resource_update(Sys.getenv("FALSE_CRAWL_RID"), path=here::here("ningaloo", "data", "summary_crawls.csv"))
 ```
 
 # Selecting data
