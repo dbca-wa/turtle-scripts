@@ -50,7 +50,7 @@ ruODK::ru_setup(pid=1, fid=fl$fid[[5]])
 message(glue::glue("Downloading {ruODK::get_default_fid()}"))
 ft <- ruODK::odata_service_get()
 ft %>% knitr::kable(.)
-svs <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T) %>% 
+svs <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T, tz=tz) %>% 
   dplyr::rename(longitude = x10, latitude = x11, altitude = x12) %>%
   invisible()
 
@@ -59,18 +59,18 @@ ruODK::ru_setup(pid=1, fid=fl$fid[[4]])
 message(glue::glue("Downloading {ruODK::get_default_fid()}"))
 ft <- ruODK::odata_service_get()
 ft %>% knitr::kable(.)
-sve <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+sve <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T, tz=tz)
 
 # MWI
 ruODK::ru_setup(pid=1, fid=fl$fid[[2]])
 message(glue::glue("Downloading {ruODK::get_default_fid()}"))
 ft <- ruODK::odata_service_get()
 ft %>% knitr::kable(.)
-mwi <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T) %>% 
+mwi <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T, tz=tz) %>% 
   dplyr::rename(longitude = x11, latitude = x12, altitude = x13) %>%
   invisible
 mwi_dmg <- ft$url[[2]] %>%
-  ruODK::odata_submission_get(table = ., verbose = T) %>%
+  ruODK::odata_submission_get(table = ., verbose = T, tz=tz) %>%
   dplyr::left_join(mwi, by = c("submissions_id" = "id"))
 # nothing yet:
 # mwi_tag <- ft$url[[3]] %>%
