@@ -28,6 +28,8 @@ library(ruODK)
 
 download_and_save_data <- function(){
   library(ruODK)
+  prod <- "https://odkcentral.dbca.wa.gov.au"
+  uat <- "https://odkcentral-uat.dbca.wa.gov.au"
   tz <- "Australia/Perth"
   loc <- fs::path("media")
   fs::dir_create(loc)
@@ -38,25 +40,25 @@ download_and_save_data <- function(){
   fl
   
   # SV start
-  ruODK::ru_setup(pid=1, fid=fl$fid[[5]])
+  ruODK::ru_setup(pid=1, fid=fl$fid[[5]], url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  svs <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+  svs_prod <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
   
   # SV end
-  ruODK::ru_setup(pid=1, fid=fl$fid[[4]])
+  ruODK::ru_setup(pid=1, fid=fl$fid[[4]], url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  sve <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+  sve_prod <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
   
   # MWI
-  ruODK::ru_setup(pid=1, fid=fl$fid[[2]])
+  ruODK::ru_setup(pid=1, fid=fl$fid[[2]], url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  mwi <- ft$url[[1]] %>% 
+  mwi_prod <- ft$url[[1]] %>% 
     ruODK::odata_submission_get(table = ., verbose = T) %>% 
     dplyr::rename(
       longitude = x11,
@@ -71,18 +73,18 @@ download_and_save_data <- function(){
   # dplyr::left_join(mwi, by = c("submissions_id" = "id"))
   
   # Dist
+  ruODK::ru_setup(pid=1, fid=fl$fid[[3]], url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
-  ruODK::ru_setup(pid=1, fid=fl$fid[[3]])
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  dist <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+  dist_prod <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
   
   # Tracks
-  ruODK::ru_setup(pid=1, fid=fl$fid[[8]])
+  ruODK::ru_setup(pid=1, fid=fl$fid[[8]], url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  tracks <- ft$url[1] %>% 
+  tracks_prod <- ft$url[1] %>% 
     ruODK::odata_submission_get(table = ., verbose = T) %>% 
     dplyr::rename(
       # Adjust coordinate colnames
@@ -93,7 +95,7 @@ download_and_save_data <- function(){
     wastdr::exclude_training_species() %>% 
     wastdr::add_nest_labels()
   
-  tracks_dist <- ft$url[2] %>% 
+  tracks_dist_prod <- ft$url[2] %>% 
     ruODK::odata_submission_get(table = ., verbose = T) %>% 
     dplyr::left_join(tracks, by = c("submissions_id" = "id"))
   
@@ -118,12 +120,85 @@ download_and_save_data <- function(){
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
   
   
-  save(mwi, mwi_dmg, mwi_tag, 
-       sve, svs,
-       dist,
-       tracks, tracks_dist, tracks_egg, tracks_fan_outlier, 
+
+  
+  #----------------------------------------------------------------------------#
+  # Fix error: PROD used UAT db for a week - what's in UAT but not in PROD?
+  
+  # SV start
+  ruODK::ru_setup(pid=1, fid=fl$fid[[5]], url=uat)
+  message(glue::glue("Downloading {ruODK::get_default_fid()}"))
+  ft <- ruODK::odata_service_get()
+  ft %>% knitr::kable(.)
+  svs_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+  svs_extra <- dplyr::anti_join(svs_uat, svs_prod, by="instance_id")
+  
+  # SV end
+  ruODK::ru_setup(pid=1, fid=fl$fid[[4]], url=uat)
+  message(glue::glue("Downloading {ruODK::get_default_fid()}"))
+  ft <- ruODK::odata_service_get()
+  ft %>% knitr::kable(.)
+  sve_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+  sve_extra <- dplyr::anti_join(sve_uat, sve_prod, by="instance_id")
+  
+  # MWI
+  ruODK::ru_setup(pid=1, fid=fl$fid[[2]], url=uat)
+  message(glue::glue("Downloading {ruODK::get_default_fid()}"))
+  ft <- ruODK::odata_service_get()
+  ft %>% knitr::kable(.)
+  mwi_uat <- ft$url[[1]] %>% 
+    ruODK::odata_submission_get(table = ., verbose = T) %>% 
+    dplyr::rename(
+      longitude = x11,
+      latitude = x12,
+      altitude = x13
+    )
+  mwi_extra <- dplyr::anti_join(mwi_uat, mwi_prod, by="instance_id")
+
+  # Dist
+  ruODK::ru_setup(pid=1, fid=fl$fid[[3]], url=uat)
+  message(glue::glue("Downloading {ruODK::get_default_fid()}"))
+  ft <- ruODK::odata_service_get()
+  ft %>% knitr::kable(.)
+  dist_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+  dist_extra <- dplyr::anti_join(dist_uat, dist_prod, by="instance_id")
+  
+  # Tracks
+  ruODK::ru_setup(pid=1, fid=fl$fid[[8]], url=uat)
+  message(glue::glue("Downloading {ruODK::get_default_fid()}"))
+  ft <- ruODK::odata_service_get()
+  ft %>% knitr::kable(.)
+  tracks_uat <- ft$url[1] %>% 
+    ruODK::odata_submission_get(table = ., verbose = T) %>% 
+    dplyr::rename(
+      # Adjust coordinate colnames
+      longitude = x14,
+      latitude = x15,
+      altitude = x16
+    ) %>% 
+    wastdr::exclude_training_species() %>% 
+    wastdr::add_nest_labels()
+  tracks_extra <- dplyr::anti_join(tracks_uat, tracks_prod, by="instance_id")
+
+  tracks_dist_uat <- ft$url[2] %>% 
+    ruODK::odata_submission_get(table = ., verbose = T) %>% 
+    dplyr::left_join(tracks, by = c("submissions_id" = "id"))    
+  tracks_dist_extra <- dplyr::anti_join(tracks_dist_uat, tracks_dist_prod, by="instance_id")
+  
+  save(svs_extra, sve_extra, mwi_extra, dist_extra, 
+       tracks_extra, tracks_dist_extra, file = "data_extra.Rda")
+  
+  mwi <- dplyr::bind_rows(mwi_prod, mwi_extra)
+  svs <- dplyr::bind_rows(svs_prod, svs_extra)
+  sve <- dplyr::bind_rows(sve_prod, sve_extra)
+  dist <- dplyr::bind_rows(dist_prod, dist_extra)
+  tracks <- dplyr::bind_rows(tracks, tracks_extra)
+  tracks_dist <- dplyr::bind_rows(tracks_dist, tracks_dist_extra)
+  
+  save(mwi, mwi_dmg, mwi_tag, sve, svs, dist,
+       tracks, tracks_dist_uat, tracks_egg, tracks_fan_outlier, 
        tracks_hatch, tracks_light, tracks_log, 
-       file = "data.Rda")
+       file = "data.Rda")  
 }
 
 load_saved_data <- function(){ 
@@ -191,7 +266,7 @@ no_dist <- dist %>% nrow
 valueBox(no_dist, icon = "fa-paw")
 ```
 
-### Nesting success
+### Flatback nesting success
 
 ```{r}
 nesting <- tracks %>% 
@@ -206,9 +281,10 @@ nesting <- tracks %>%
 
 ns <- nesting %>% dplyr::filter(species == 'natator-depressus')
 
-gauge(ns$nesting_success_rate * 100, min = 0, max = 100, symbol = '%', 
-      gaugeSectors(success = c(80, 100), warning = c(40, 79), danger = c(0, 39)
-      ))
+flexdashboard::gauge(
+  round(ns$nesting_success_rate * 100, 2), min = 0, max = 100, symbol = '%', 
+  gaugeSectors(success = c(80, 100), warning = c(40, 79), danger = c(0, 39)
+  ))
 ```
 
 Row
