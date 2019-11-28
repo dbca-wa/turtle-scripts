@@ -27,6 +27,7 @@ library(wastdr)
 library(ruODK)
 
 download_and_save_data <- function(){
+  suppressMessages(library(tidyverse))
   library(ruODK)
   prod <- "https://odkcentral.dbca.wa.gov.au"
   uat <- "https://odkcentral-uat.dbca.wa.gov.au"
@@ -40,75 +41,68 @@ download_and_save_data <- function(){
   fl
   
   # SV start
-  ruODK::ru_setup(pid=1, fid=fl$fid[[5]], url=prod)
+  ruODK::ru_setup(pid=1, fid="build_Site-Visit-Start-0-3_1559789550", url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  svs_prod <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+  svs_prod <- ft$url[[1]] %>% 
+    ruODK::odata_submission_get(table = ., verbose = T, wkt = T)
   
   # SV end
-  ruODK::ru_setup(pid=1, fid=fl$fid[[4]], url=prod)
+  ruODK::ru_setup(pid=1, fid="build_Site-Visit-End-0-2_1559789512", url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  sve_prod <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+  sve_prod <- ft$url[[1]] %>% 
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T)
   
   # MWI
-  ruODK::ru_setup(pid=1, fid=fl$fid[[2]], url=prod)
+  ruODK::ru_setup(
+    pid=1, fid="build_Marine-Wildlife-Incident-0-6_1559789189", url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
   mwi_prod <- ft$url[[1]] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T) %>% 
-    dplyr::rename(
-      longitude = x11,
-      latitude = x12,
-      altitude = x13
-    )
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, parse=F)
   mwi_dmg <- ft$url[[2]] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T) #%>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
   # dplyr::left_join(mwi, by = c("submissions_id" = "id"))
   mwi_tag <- ft$url[[3]] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T)  # %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T)  # %>%
   # dplyr::left_join(mwi, by = c("submissions_id" = "id"))
   
   # Dist
-  ruODK::ru_setup(pid=1, fid=fl$fid[[3]], url=prod)
+  ruODK::ru_setup(pid=1, fid="build_Predator-or-Disturbance-1-1_1559789410", url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  dist_prod <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+  dist_prod <- ft$url[[1]] %>% 
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T)
   
   # Tracks
-  ruODK::ru_setup(pid=1, fid=fl$fid[[8]], url=prod)
+  ruODK::ru_setup(pid=1, fid="build_Turtle-Track-or-Nest-1-0_1559789920", url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
   tracks_prod <- ft$url[1] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T) %>% 
-    dplyr::rename(
-      # Adjust coordinate colnames
-      longitude = x14,
-      latitude = x15,
-      altitude = x16
-    ) %>% 
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) %>% 
     wastdr::exclude_training_species() %>% 
     wastdr::add_nest_labels()
   
   tracks_dist_prod <- ft$url[2] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T) %>% 
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) %>% 
     dplyr::left_join(tracks, by = c("submissions_id" = "id"))
   
   tracks_egg <- ft$url[3] %>%
-    ruODK::odata_submission_get(table = ., verbose = T) #%>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
   
   tracks_log <- ft$url[4] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T) #%>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
   
   tracks_hatch <- ft$url[5] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T) #%>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
   
   tracks_fan_outlier <- ft$url[6] %>% 
@@ -116,17 +110,14 @@ download_and_save_data <- function(){
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
   
   tracks_light <- ft$url[7] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T) #%>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
-  
-  
-
   
   #----------------------------------------------------------------------------#
   # Fix error: PROD used UAT db for a week - what's in UAT but not in PROD?
   
   # SV start
-  ruODK::ru_setup(pid=1, fid=fl$fid[[5]], url=uat)
+  ruODK::ru_setup(pid=1, fid="build_Site-Visit-Start-0-3_1559789550", url=uat)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
@@ -134,7 +125,7 @@ download_and_save_data <- function(){
   svs_extra <- dplyr::anti_join(svs_uat, svs_prod, by="instance_id")
   
   # SV end
-  ruODK::ru_setup(pid=1, fid=fl$fid[[4]], url=uat)
+  ruODK::ru_setup(pid=1, fid="build_Site-Visit-End-0-2_1559789512", url=uat)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
@@ -142,21 +133,16 @@ download_and_save_data <- function(){
   sve_extra <- dplyr::anti_join(sve_uat, sve_prod, by="instance_id")
   
   # MWI
-  ruODK::ru_setup(pid=1, fid=fl$fid[[2]], url=uat)
+  ruODK::ru_setup(pid=1, fid="build_Marine-Wildlife-Incident-0-6_1559789189", url=uat)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
   mwi_uat <- ft$url[[1]] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T) %>% 
-    dplyr::rename(
-      longitude = x11,
-      latitude = x12,
-      altitude = x13
-    )
+    ruODK::odata_submission_get(table = ., verbose = T, parse=F)
   mwi_extra <- dplyr::anti_join(mwi_uat, mwi_prod, by="instance_id")
 
   # Dist
-  ruODK::ru_setup(pid=1, fid=fl$fid[[3]], url=uat)
+  ruODK::ru_setup(pid=1, fid="build_Predator-or-Disturbance-1-1_1559789410", url=uat)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
@@ -164,7 +150,7 @@ download_and_save_data <- function(){
   dist_extra <- dplyr::anti_join(dist_uat, dist_prod, by="instance_id")
   
   # Tracks
-  ruODK::ru_setup(pid=1, fid=fl$fid[[8]], url=uat)
+  ruODK::ru_setup(pid=1, fid="build_Turtle-Track-or-Nest-1-0_1559789920", url=uat)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
