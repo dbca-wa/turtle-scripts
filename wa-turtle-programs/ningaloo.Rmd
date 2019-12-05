@@ -236,56 +236,163 @@ nests_nin %>%
 ```
 
 ## Nesting abundance
-### All sites
+### Nesting over entire season at Ningaloo
 ```{r tracks_all_by_season}
-tracks_nin %>% 
-  nesting_type_by_season_species() %>% 
-  knitr::kable(caption = "Nesting over entire season at Ningaloo")
+tracks_nin %>% nesting_type_by_season_species() %>% rt
 ```
+
+Nesting summarised by divisions, section, or subsections, respectively, 
+are saved as spreadsheets named `r glue::glue("{prefix_nin}_tracks_by_season_[division|section|subsection].csv")`.
+
+```{r}
+tracks_nin_season_division_summary <- 
+  tracks_nin %>% 
+  dplyr::group_by(season, division, species, nest_type) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %>%
+  tidyr::spread(nest_type, n, fill = 0)
+
+tracks_nin_season_division_summary %>% 
+  readr::write_csv(glue::glue("{prefix_nin}_tracks_by_season_division.csv"))
+
+tracks_nin_season_section_summary <- 
+  tracks_nin %>% 
+  dplyr::group_by(season, section, species, nest_type) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %>%
+  tidyr::spread(nest_type, n, fill = 0)
+
+tracks_nin_season_division_summary %>% 
+  readr::write_csv(glue::glue("{prefix_nin}_tracks_by_season_section.csv"))
+
+tracks_nin_season_subsection_summary <- 
+  tracks_nin %>% 
+  dplyr::group_by(season, site_name, species, nest_type) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %>%
+  tidyr::spread(nest_type, n, fill = 0)
+
+tracks_nin_season_division_summary %>% 
+  readr::write_csv(glue::glue("{prefix_nin}_tracks_by_season_subsection.csv"))
+```
+
+In the following, we show the same data split up by respective divisions,
+sections, and subsections.
 
 ### Divisions
 
+#### Nesting over entire season at Division North West Cape
 ```{r tracks_divisions_by_season}
-tracks_nin_nwc %>% 
-  nesting_type_by_season_species() %>% 
-  kable(caption = "Nesting over entire season at Division North West Cape")
-tracks_nin_bn %>% 
-  nesting_type_by_season_species() %>% 
-  kable(caption = "Nesting over entire season at Division Bundera Ningaloo")
-# TODO insert other divisions
+tracks_nin_nwc %>% nesting_type_by_season_species() %>% rt
+```
+
+#### Nesting over entire season at Division Bundera Ningaloo
+```{r}
+tracks_nin_bn %>% nesting_type_by_season_species() %>% rt
+```
+
+#### Nesting over entire season at Division Cape Range
+```{r}
+tracks_nin_cr %>% nesting_type_by_season_species() %>% rt
+```
+
+#### Nesting over entire season at Division Coral Bay
+```{r}
+tracks_nin_cb %>% nesting_type_by_season_species() %>% rt
+```
+
+#### Nesting over entire season at Division Warroora
+```{r}
+tracks_nin_wr %>% nesting_type_by_season_species() %>% rt
+```
+
+#### Nesting over entire season at Division Gnarraloo
+```{r}
+tracks_nin_gn %>% nesting_type_by_season_species() %>% rt
 ```
 
 ### Sections
 
+#### Nesting over entire season at Section North West Cape - Bundegi
 ```{r tracks_sections_by_season}
-tracks_nin_nwc_bundegi %>% 
-  nesting_type_by_season_species() %>% 
-  kable(caption = "Nesting over entire season at Section North West Cape - Bundegi")
-tracks_nin_nwc_navypier %>% 
-  nesting_type_by_season_species() %>% 
-  kable(caption = "Nesting over entire season at Section North West Cape - Navy Pier")
-tracks_nin_nwc_lighthouse %>% 
-  nesting_type_by_season_species() %>% 
-  kable(caption = "Nesting over entire season at Section North West Cape - Lighthouse")
-tracks_nin_nwc_graveyards %>% 
-  nesting_type_by_season_species() %>% 
-  kable(caption = "Nesting over entire season at Section North West Cape - Graveyards")
-tracks_nin_nwc_hunters %>% 
-  nesting_type_by_season_species() %>% 
-  kable(caption = "Nesting over entire season at Section North West Cape - Hunters")
-tracks_nin_nwc_tantabiddi %>% 
-  nesting_type_by_season_species() %>% 
-  kable(caption = "Nesting over entire season at Section North West Cape - Tantabiddi")
-
-# TODO insert other sections
+tracks_nin_nwc_bundegi %>% nesting_type_by_season_species() %>% rt
 ```
 
+#### Nesting over entire season at Section North West Cape - Navy Pier
+```{r}  
+tracks_nin_nwc_navypier %>% nesting_type_by_season_species() %>% rt
+```
+
+#### Nesting over entire season at Section North West Cape - Lighthouse
+```{r}
+tracks_nin_nwc_lighthouse %>% nesting_type_by_season_species() %>% rt
+```
+
+#### Nesting over entire season at Section North West Cape - Graveyards
+```{r}
+tracks_nin_nwc_graveyards %>% nesting_type_by_season_species() %>% rt
+```
+
+#### Nesting over entire season at Section North West Cape - Hunters
+```{r}
+tracks_nin_nwc_hunters %>% nesting_type_by_season_species() %>% rt
+```
+
+#### Nesting over entire season at Section North West Cape - Tantabiddi
+```{r}
+tracks_nin_nwc_tantabiddi %>% nesting_type_by_season_species() %>% rt
+```
+
+TODO insert other sections
+
 ### Subsections
+TODO insert all subsections
 
 ## Nesting over standard season
 The Ningaloo Turtle Program defines its standard season as the four weeks over
 the new year's break, which spans calendar weeks 51, 52, 1, and 2, or season
 week 25--28.
+
+```{r}
+tracks_nin_standard_season_division_summary <- 
+  tracks_nin %>% 
+  dplyr::filter(season_week %in% 25:28) %>% 
+  dplyr::group_by(season, division, species, nest_type) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %>%
+  tidyr::spread(nest_type, n, fill = 0)
+
+tracks_nin_standard_season_division_summary %>% 
+  readr::write_csv(
+    glue::glue("{prefix_nin}_tracks_by_standard_season_division.csv"))
+
+tracks_nin_standard_season_section_summary <- 
+  tracks_nin %>% 
+  dplyr::filter(season_week %in% 25:28) %>% 
+  dplyr::group_by(season, section, species, nest_type) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %>%
+  tidyr::spread(nest_type, n, fill = 0)
+
+tracks_nin_standard_season_division_summary %>% 
+  readr::write_csv(
+    glue::glue("{prefix_nin}_tracks_by_standard_season_section.csv"))
+
+tracks_nin_standard_season_subsection_summary <- 
+  tracks_nin %>% 
+  dplyr::filter(season_week %in% 25:28) %>% 
+  dplyr::group_by(season, site_name, species, nest_type) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %>%
+  tidyr::spread(nest_type, n, fill = 0)
+
+tracks_nin_standard_season_division_summary %>% 
+  readr::write_csv(
+    glue::glue("{prefix_nin}_tracks_by_standard_season_subsection.csv"))
+```
+
+Below, we show the same data split up by respective divisions,
+sections, and subsections.
 
 ### All sites
 ### Divisions
@@ -294,50 +401,91 @@ week 25--28.
 
 ## Nesting by week
 ### All sites
-The next table show data from all sites.
+The next table shows data from all subsections combined and all weeks.
 
 ```{r tracks_all_beaches_by_week_nin}
-tracks_nin %>% nesting_type_by_season_week_species() %>% kable()
+tracks_nin %>% nesting_type_by_season_week_species() %>% rt
+
+tracks_nin_week_division_summary <-
+  tracks_nin %>% 
+  dplyr::filter(nest_age == "fresh") %>%
+  dplyr::group_by(division, season, season_week, iso_week, species, nest_type) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %>%
+  tidyr::spread(nest_type, n, fill = 0)
+
+tracks_nin_week_division_summary %>% 
+  readr::write_csv(
+    glue::glue("{prefix_nin}_tracks_by_week_division.csv"))
+
+tracks_nin_week_section_summary <-
+  tracks_nin %>% 
+  dplyr::filter(nest_age == "fresh") %>%
+  dplyr::group_by(section, season, season_week, iso_week, species, nest_type) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %>%
+  tidyr::spread(nest_type, n, fill = 0)
+
+tracks_nin_week_section_summary %>% 
+  readr::write_csv(
+    glue::glue("{prefix_nin}_tracks_by_week_section.csv"))
+
+tracks_nin_week_subsection_summary <-
+  tracks_nin %>% 
+  dplyr::filter(nest_age == "fresh") %>%
+  dplyr::group_by(subsection, season, season_week, iso_week, species, nest_type) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %>%
+  tidyr::spread(nest_type, n, fill = 0)
+
+tracks_nin_week_subsection_summary %>% 
+  readr::write_csv(
+    glue::glue("{prefix_nin}_tracks_by_week_subsection.csv"))
 ```
 
 ### Divisions
 
-TODO export as CSV
-
 ```{r tracks_all_beaches_by_week_nin_divisions}
-tracks_nin_nwc %>% 
-  nesting_type_by_season_week_species() %>% 
-  kable(caption = "Nesting by week at Division North West Cape")
-tracks_nin_bn %>% 
-  nesting_type_by_season_week_species() %>% 
-  kable(caption = "Nesting by week at Division Bundera Ningaloo")
-# TODO other divisions
+tracks_nin_week_division_summary %>% rt
+
+# tracks_nin_nwc %>% nesting_type_by_season_week_species() %>% rt
+#   kable(caption = "Nesting by week at Division North West Cape")
+# tracks_nin_bn %>% nesting_type_by_season_week_species() %>% rt
+#   kable(caption = "Nesting by week at Division Bundera Ningaloo")
+# # TODO other divisions
 ```
 
 
 ### Sections
 
 ```{r tracks_all_beaches_by_week_nin_sections}
-tracks_nin_nwc_bundegi %>% 
-  nesting_type_by_season_week_species() %>% 
-  kable(caption = "Nesting by week at Section North West Cape - Bundegi")
-tracks_nin_nwc_navypier %>% 
-  nesting_type_by_season_week_species() %>% 
-  kable(caption = "Nesting by week at Section North West Cape - Navy Pier")
-tracks_nin_nwc_lighthouse %>% 
-  nesting_type_by_season_week_species() %>% 
-  kable(caption = "Nesting by week at Section North West Cape - Lighthouse")
-tracks_nin_nwc_graveyards %>% 
-  nesting_type_by_season_week_species() %>% 
-  kable(caption = "Nesting by week at Section North West Cape - Graveyards")
-tracks_nin_nwc_hunters %>% 
-  nesting_type_by_season_week_species() %>% 
-  kable(caption = "Nesting by week at Section North West Cape - Hunters")
-tracks_nin_nwc_tantabiddi %>% 
-  nesting_type_by_season_week_species() %>% 
-  kable(caption = "Nesting by week at Section North West Cape - Tantabiddi")
+tracks_nin_week_section_summary %>% rt
 
-# TODO other sections
+# tracks_nin_nwc_bundegi %>% 
+#   nesting_type_by_season_week_species() %>% 
+#   kable(caption = "Nesting by week at Section North West Cape - Bundegi")
+# tracks_nin_nwc_navypier %>% 
+#   nesting_type_by_season_week_species() %>% 
+#   kable(caption = "Nesting by week at Section North West Cape - Navy Pier")
+# tracks_nin_nwc_lighthouse %>% 
+#   nesting_type_by_season_week_species() %>% 
+#   kable(caption = "Nesting by week at Section North West Cape - Lighthouse")
+# tracks_nin_nwc_graveyards %>% 
+#   nesting_type_by_season_week_species() %>% 
+#   kable(caption = "Nesting by week at Section North West Cape - Graveyards")
+# tracks_nin_nwc_hunters %>% 
+#   nesting_type_by_season_week_species() %>% 
+#   kable(caption = "Nesting by week at Section North West Cape - Hunters")
+# tracks_nin_nwc_tantabiddi %>% 
+#   nesting_type_by_season_week_species() %>% 
+#   kable(caption = "Nesting by week at Section North West Cape - Tantabiddi")
+# 
+# # TODO other sections
+```
+
+###  Subsections
+```{r}
+tracks_nin_week_subsection_summary %>% rt
 ```
 
 ## Nesting by day
@@ -393,11 +541,8 @@ General signs of disturbance or predator presence are recorded through form
 Predated nests as well as signs of predator presence on nesting beaches.
 
 ```{r predation}
-pred_nin %>% DT::datatable(caption="Predation at Ningaloo")
-
-pred_nests_nin_2018 <- tracks_nin %>% filter_2018() %>% 
-  filter(disturbance == "present")
-pred_nests_nin_2018 %>% map_tracks()
+pred_nin %>% rt
+pred_nin %>% wastdr::map_dist()
 ```
 
 
@@ -405,7 +550,8 @@ pred_nests_nin_2018 %>% map_tracks()
 Disturbed nests as well as disturbance on nesting beaches.
 
 ```{r disturbance}
-# TODO map, table
+dist_nin %>% rt
+dist_nin %>% wastdr::map_dist()
 ```
 
 
@@ -413,7 +559,9 @@ Disturbed nests as well as disturbance on nesting beaches.
 Turtle nests with recorded disturbance or predation.
 
 ```{r dist_nests_nin}
-disturbed_nests_nin_2018 <- tracks_nin %>% filter_2018() %>% filter(disturbance == "present")
+disturbed_nests_nin_2018 <- tracks_nin %>% 
+  filter_2018() %>% 
+  filter(disturbance == "present")
 disturbed_nests_nin_2018 %>% map_tracks()
 ```
 

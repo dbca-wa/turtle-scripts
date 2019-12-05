@@ -1,6 +1,6 @@
 dt <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE)
 dt0 <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE, options = list(paging = F))
-
+rt <- . %>% reactable::reactable(filterable = T, searchable = T)
 # Filters -----------------------------------------------------------------------------------------#
 #--------------------------------------------------------------------------------------------------#
 # Season filters
@@ -9,6 +9,16 @@ filter_2017 <- . %>% dplyr::filter(season == 2017)
 filter_2018 <- . %>% dplyr::filter(season == 2018)
 filter_2019 <- . %>% dplyr::filter(season == 2019)
 filter_2020 <- . %>% dplyr::filter(season == 2020)
+
+#' Filter a dataframe of tracks, disturbance, incidents, or surveys to season
+#'
+#' @param data A dataframe of tracks, disturbance, incidents, or surveys
+#'  containing a column "season" (int) with the season start year, e.g. 2019.
+#' @param season_start_year The desired season's start year, e.g. 2019.
+#' @return The dataframe filtered to rows from the desired season.
+wastd_season <- function(data, season_start_year){
+  dplyr::filter(data, season == season_start_year)
+}
 
 #--------------------------------------------------------------------------------------------------#
 # Site filters - depends on data inside WAStD
