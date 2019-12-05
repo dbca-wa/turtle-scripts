@@ -63,7 +63,7 @@ download_and_save_data <- function(){
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
   mwi_prod <- ft$url[[1]] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, parse=F)
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, parse=T)
   mwi_dmg <- ft$url[[2]] %>% 
     ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
   # dplyr::left_join(mwi, by = c("submissions_id" = "id"))
@@ -91,27 +91,28 @@ download_and_save_data <- function(){
   
   tracks_dist_prod <- ft$url[2] %>% 
     ruODK::odata_submission_get(table = ., verbose = T, wkt=T) %>% 
-    dplyr::left_join(tracks, by = c("submissions_id" = "id"))
+    dplyr::left_join(tracks_prod, by = c("submissions_id" = "id"))
   
+  # None of the following were captured in UAT, so we name them wihtout _prod:
   tracks_egg <- ft$url[3] %>%
     ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
   
   tracks_log <- ft$url[4] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
-  # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) %>%
+    dplyr::left_join(tracks_prod, by = c("submissions_id" = "id"))
   
   tracks_hatch <- ft$url[5] %>% 
     ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
   
   tracks_fan_outlier <- ft$url[6] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T) #%>%
-  # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
+    ruODK::odata_submission_get(table = ., verbose = T) %>%
+    dplyr::left_join(tracks_prod, by = c("submissions_id" = "id"))
   
   tracks_light <- ft$url[7] %>% 
     ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
-  # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
+  # dplyr::left_join(tracks_prod, by = c("submissions_id" = "id"))
   
   #----------------------------------------------------------------------------#
   # Fix error: PROD used UAT db for a week - what's in UAT but not in PROD?
@@ -138,7 +139,7 @@ download_and_save_data <- function(){
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
   mwi_uat <- ft$url[[1]] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, parse=F)
+    ruODK::odata_submission_get(table = ., verbose = T, parse=T)
   mwi_extra <- dplyr::anti_join(mwi_uat, mwi_prod, by="instance_id")
 
   # Dist
@@ -155,20 +156,14 @@ download_and_save_data <- function(){
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
   tracks_uat <- ft$url[1] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T) %>% 
-    dplyr::rename(
-      # Adjust coordinate colnames
-      longitude = x14,
-      latitude = x15,
-      altitude = x16
-    ) %>% 
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) %>% 
     wastdr::exclude_training_species() %>% 
     wastdr::add_nest_labels()
   tracks_extra <- dplyr::anti_join(tracks_uat, tracks_prod, by="instance_id")
 
   tracks_dist_uat <- ft$url[2] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T) %>% 
-    dplyr::left_join(tracks, by = c("submissions_id" = "id"))    
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) %>% 
+    dplyr::left_join(tracks_uat, by = c("submissions_id" = "id"))    
   tracks_dist_extra <- dplyr::anti_join(tracks_dist_uat, tracks_dist_prod, by="instance_id")
   
   save(svs_extra, sve_extra, mwi_extra, dist_extra, 
@@ -178,8 +173,8 @@ download_and_save_data <- function(){
   svs <- dplyr::bind_rows(svs_prod, svs_extra)
   sve <- dplyr::bind_rows(sve_prod, sve_extra)
   dist <- dplyr::bind_rows(dist_prod, dist_extra)
-  tracks <- dplyr::bind_rows(tracks, tracks_extra)
-  tracks_dist <- dplyr::bind_rows(tracks_dist, tracks_dist_extra)
+  tracks <- dplyr::bind_rows(tracks_prod, tracks_extra)
+  tracks_dist <- dplyr::bind_rows(tracks_dist_prod, tracks_dist_extra)
   
   save(mwi, mwi_dmg, mwi_tag, sve, svs, dist,
        tracks, tracks_dist_uat, tracks_egg, tracks_fan_outlier, 
@@ -290,13 +285,13 @@ Row
 #     ) %>% 
 #   wastdr::map_tracks(cluster = T)
 
-leaflet::leaflet(width = 800, height = 600) %>%
+leaflet::leaflet(width = "100%", height = "100%") %>%
   leaflet::addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
   leaflet::addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
   leaflet::clearBounds() %>%
   leaflet::addAwesomeMarkers(
     data = tracks,
-    lng = ~longitude, lat = ~latitude,
+    lng = ~observed_at_longitude, lat = ~observed_at_latitude,
     icon = leaflet::makeAwesomeIcon(
       text = ~ nest_type_text, 
       markerColor = ~ species_colours),
