@@ -14,18 +14,18 @@ output:
 
 ```{r global}
 library(flexdashboard)
-library(ckanr)
-library(dplyr)
+library(tidyverse)
+library(knitr)
 library(DT)
+library(reactable)
 library(fs)
 library(googledrive)
-library(knitr)
 library(leaflet)
-library(readr)
-# library(skimr)
+library(ckanr)
 library(wastdr)
 library(ruODK)
 
+source(here::here("wa-turtle-programs", "tracks_helpers.R"))
 load_saved_data()
 ```
 

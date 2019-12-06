@@ -16,14 +16,19 @@ output:
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 source("tracks_setup.R")
 source("tracks_helpers.R")
-source("load_data.R")
 ```
 
 
 # Data
 Eighy Mile Beach is surveyed at sites Anna Plains and Caravan Park.
 ```{r load_data}
-tracks_lgcs <- tracks_all %>% filter_lgcs() %>% exclude_training_species() %>% add_nest_labels()
+load_saved_data_tsc()
+
+tracks_lgcs <- tracks_all %>% 
+  filter_lgcs() %>% 
+  exclude_training_species() %>% 
+  add_nest_labels()
+
 dist_lgcs <- disturbance %>% filter_lgcs()
 surveys_lgcs <- surveys %>% filter_lgcs()
 surveys_lgcs_prod <- surveys_lgcs %>% exclude_training_surveys()

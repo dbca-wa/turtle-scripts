@@ -14,14 +14,15 @@ output:
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
-source("tracks_setup.R")
 source("tracks_helpers.R")
-source("load_data.R")
 ```
 
 
-```{r filter_data}
+```{r data}
+load_saved_data_tsc()
+
 animals_nin <- animals %>% filter_nin
+
 animals_nin_rescued <- animals_nin %>% 
   dplyr::filter(
     health %in% c("na", "other", "alive", "alive-injured"), 

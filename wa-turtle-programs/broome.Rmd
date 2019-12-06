@@ -16,13 +16,18 @@ output:
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 source("tracks_setup.R")
 source("tracks_helpers.R")
-source("load_data.R")
 ```
 
 # Data
 
 ```{r filter_data}
-tracks_bme <- tracks_all %>% filter_bme() %>% exclude_training_species() %>% add_nest_labels()
+load_saved_data_tsc()
+
+tracks_bme <- tracks_all %>% 
+  filter_bme() %>% 
+  exclude_training_species() %>% 
+  add_nest_labels()
+
 surveys_bme <- surveys %>% filter_bme()
 surveys_bme_prod <- surveys_bme %>% exclude_training_surveys()
 dist_bme <- disturbance %>% filter_bme()

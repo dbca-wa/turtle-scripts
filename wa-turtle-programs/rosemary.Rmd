@@ -16,7 +16,6 @@ output:
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 source("tracks_setup.R")
 source("tracks_helpers.R")
-source("load_data.R")
 ```
 
 # Caveat
@@ -24,7 +23,13 @@ Data from 2017/18 at Rosemary Islands was recovered from unfinalised forms on de
 
 # Data
 ```{r load_data}
-tracks_ros <- tracks_all %>% filter_ros() %>% exclude_training_species() %>% add_nest_labels()
+load_saved_data_tsc()
+
+tracks_ros <- tracks_all %>% 
+  filter_ros() %>% 
+  exclude_training_species() %>% 
+  add_nest_labels()
+
 surveys_ros <- surveys %>% filter_ros()
 surveys_ros_prod <- surveys_ros %>% exclude_training_surveys()
 dist_ros <- disturbance %>% filter_ros()

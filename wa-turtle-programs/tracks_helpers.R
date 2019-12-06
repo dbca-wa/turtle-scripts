@@ -1,3 +1,32 @@
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+# devtools::install_github('Ather-Energy/ggTimeSeries')
+library(here)
+library(wastdr)
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(magrittr)
+# library(skimr)
+library(leaflet)
+library(RColorBrewer)
+library(lubridate)
+library(listviewer)
+library(DT)
+library(ggplot2)
+library(ggTimeSeries)
+library(ckanr)
+library(googledrive)
+library(ggmap)
+library(gganimate)
+library(ggalt)
+library(ggTimeSeries)
+library(knitr)
+# Configure ckanr to data.dpaw.wa.gov.au with env vars from .Renviron
+ckanr::ckanr_setup(url = Sys.getenv("CKAN_URL"), key = Sys.getenv("CKAN_API_KEY"))
+
 dt <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE)
 dt0 <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE, options = list(paging = F))
 rt <- . %>% reactable::reactable(filterable = T, searchable = T)
@@ -108,121 +137,125 @@ gganimate_tracks <- function(data, placename=NULL, prefix=NULL, gm_apikey=NULL) 
     gganimate::anim_save(glue::glue("{pf}_nesting.gif"), .)
 }
 
-
-download_and_save_data <- function(datafile=here::here("wa-turtle-programs", "data.Rda")){
+#--------------------------------------------------------------------------------------------------#
+# Download data ODK Central (for previews)
+#
+download_and_save_odkc <- function(
+  datafile=here::here("wa-turtle-programs", "data.Rda")){
   suppressMessages(library(tidyverse))
+  library(wastdr)
   library(ruODK)
   prod <- "https://odkcentral.dbca.wa.gov.au"
   uat <- "https://odkcentral-uat.dbca.wa.gov.au"
   tz <- "Australia/Perth"
-  loc <- fs::path("media")
+  loc <- here::here("wa-turtle-programs", "media")
   fs::dir_create(loc)
   pl <- ruODK::project_list()
   pl
-  
+
   fl <- ruODK::form_list(pid = 1)
   fl
-  
+
   # SV start
   ruODK::ru_setup(pid=1, fid="build_Site-Visit-Start-0-3_1559789550", url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  svs_prod <- ft$url[[1]] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt = T)
-  
+  svs_prod <- ft$url[[1]] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt = T, local_dir = loc)
+
   # SV end
   ruODK::ru_setup(pid=1, fid="build_Site-Visit-End-0-2_1559789512", url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  sve_prod <- ft$url[[1]] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T)
-  
+  sve_prod <- ft$url[[1]] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, local_dir = loc)
+
   # MWI
   ruODK::ru_setup(
     pid=1, fid="build_Marine-Wildlife-Incident-0-6_1559789189", url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  mwi_prod <- ft$url[[1]] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, parse=T)
-  mwi_dmg <- ft$url[[2]] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
+  mwi_prod <- ft$url[[1]] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, , local_dir = loc)
+  mwi_dmg <- ft$url[[2]] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, local_dir = loc) #%>%
   # dplyr::left_join(mwi, by = c("submissions_id" = "id"))
-  mwi_tag <- ft$url[[3]] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T)  # %>%
+  mwi_tag <- ft$url[[3]] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, local_dir = loc)  # %>%
   # dplyr::left_join(mwi, by = c("submissions_id" = "id"))
-  
+
   # Dist
   ruODK::ru_setup(pid=1, fid="build_Predator-or-Disturbance-1-1_1559789410", url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  dist_prod <- ft$url[[1]] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T)
-  
+  dist_prod <- ft$url[[1]] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, local_dir = loc)
+
   # Tracks
   ruODK::ru_setup(pid=1, fid="build_Turtle-Track-or-Nest-1-0_1559789920", url=prod)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  tracks_prod <- ft$url[1] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) %>% 
-    wastdr::exclude_training_species() %>% 
+  tracks_prod <- ft$url[1] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, local_dir = loc) %>%
+    wastdr::exclude_training_species() %>%
     wastdr::add_nest_labels()
-  
-  tracks_dist_prod <- ft$url[2] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) %>% 
+
+  tracks_dist_prod <- ft$url[2] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, local_dir = loc) %>%
     dplyr::left_join(tracks_prod, by = c("submissions_id" = "id"))
-  
+
   # None of the following were captured in UAT, so we name them wihtout _prod:
   tracks_egg <- ft$url[3] %>%
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, local_dir = loc) #%>%
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
-  
-  tracks_log <- ft$url[4] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) %>%
+
+  tracks_log <- ft$url[4] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, local_dir = loc) %>%
     dplyr::left_join(tracks_prod, by = c("submissions_id" = "id"))
-  
-  tracks_hatch <- ft$url[5] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
+
+  tracks_hatch <- ft$url[5] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, local_dir = loc) #%>%
   # dplyr::left_join(tracks, by = c("submissions_id" = "id"))
-  
-  tracks_fan_outlier <- ft$url[6] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T) %>%
+
+  tracks_fan_outlier <- ft$url[6] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, local_dir = loc) %>%
     dplyr::left_join(tracks_prod, by = c("submissions_id" = "id"))
-  
-  tracks_light <- ft$url[7] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) #%>%
+
+  tracks_light <- ft$url[7] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, local_dir = loc) #%>%
   # dplyr::left_join(tracks_prod, by = c("submissions_id" = "id"))
-  
+
   #----------------------------------------------------------------------------#
   # Fix error: PROD used UAT db for a week - what's in UAT but not in PROD?
-  
+
   # SV start
   ruODK::ru_setup(pid=1, fid="build_Site-Visit-Start-0-3_1559789550", url=uat)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  svs_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+  svs_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T, local_dir = loc)
   svs_extra <- dplyr::anti_join(svs_uat, svs_prod, by="instance_id")
-  
+
   # SV end
   ruODK::ru_setup(pid=1, fid="build_Site-Visit-End-0-2_1559789512", url=uat)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  sve_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+  sve_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T, local_dir = loc)
   sve_extra <- dplyr::anti_join(sve_uat, sve_prod, by="instance_id")
-  
+
   # MWI
   ruODK::ru_setup(pid=1, fid="build_Marine-Wildlife-Incident-0-6_1559789189", url=uat)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  mwi_uat <- ft$url[[1]] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, parse=T)
+  mwi_uat <- ft$url[[1]] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, local_dir = loc)
   mwi_extra <- dplyr::anti_join(mwi_uat, mwi_prod, by="instance_id")
 
   # Dist
@@ -230,42 +263,154 @@ download_and_save_data <- function(datafile=here::here("wa-turtle-programs", "da
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  dist_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T)
+  dist_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T, local_dir = loc)
   dist_extra <- dplyr::anti_join(dist_uat, dist_prod, by="instance_id")
-  
+
   # Tracks
   ruODK::ru_setup(pid=1, fid="build_Turtle-Track-or-Nest-1-0_1559789920", url=uat)
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  tracks_uat <- ft$url[1] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) %>% 
-    wastdr::exclude_training_species() %>% 
+  tracks_uat <- ft$url[1] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, local_dir = loc) %>%
+    wastdr::exclude_training_species() %>%
     wastdr::add_nest_labels()
   tracks_extra <- dplyr::anti_join(tracks_uat, tracks_prod, by="instance_id")
 
-  tracks_dist_uat <- ft$url[2] %>% 
-    ruODK::odata_submission_get(table = ., verbose = T, wkt=T) %>% 
-    dplyr::left_join(tracks_uat, by = c("submissions_id" = "id"))    
+  tracks_dist_uat <- ft$url[2] %>%
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, local_dir = loc) %>%
+    dplyr::left_join(tracks_uat, by = c("submissions_id" = "id"))
   tracks_dist_extra <- dplyr::anti_join(tracks_dist_uat, tracks_dist_prod, by="instance_id")
-  
-  save(svs_extra, sve_extra, mwi_extra, dist_extra, 
+
+  save(svs_extra, sve_extra, mwi_extra, dist_extra,
        tracks_extra, tracks_dist_extra, file = "data_extra.Rda")
-  
-  mwi <- dplyr::bind_rows(mwi_prod, mwi_extra)
-  svs <- dplyr::bind_rows(svs_prod, svs_extra)
-  sve <- dplyr::bind_rows(sve_prod, sve_extra)
-  dist <- dplyr::bind_rows(dist_prod, dist_extra)
-  tracks <- dplyr::bind_rows(tracks_prod, tracks_extra)
-  tracks_dist <- dplyr::bind_rows(tracks_dist_prod, tracks_dist_extra)
-  
+
+  sites <- wastdr::wastd_GET("area") %>%
+    magrittr::extract2("features") %>%
+    geojsonio::as.json() %>%
+    geojsonsf::geojson_sf() %>%
+    dplyr::filter(area_type=="Site") %>%
+    dplyr::transmute(site_id = pk, site_name = name)
+
+  add_sites <- function(data, prefix="observed_at"){
+    data %>%
+    sf::st_as_sf(
+      coords = c(glue::glue("{prefix}_longitude"),
+                 glue::glue("{prefix}_latitude")),
+      crs = 4326,
+      agr = "constant"
+    ) %>% sf::st_join(sites)
+    }
+
+  mwi <- dplyr::bind_rows(mwi_prod, mwi_extra) %>% add_sites
+  svs <- dplyr::bind_rows(svs_prod, svs_extra) %>% add_sites(prefix="location")
+  sve <- dplyr::bind_rows(sve_prod, sve_extra) %>% add_sites(prefix="location")
+  dist <- dplyr::bind_rows(dist_prod, dist_extra) %>% add_sites(prefix="location")
+  tracks <- dplyr::bind_rows(tracks_prod, tracks_extra) %>% add_sites
+  tracks_dist <- dplyr::bind_rows(tracks_dist_prod, tracks_dist_extra) %>% add_sites
+  tracks_log <- tracks_log %>% add_sites
+  tracks_fan_outlier <- tracks_fan_outlier %>% add_sites
+
   save(mwi, mwi_dmg, mwi_tag, sve, svs, dist,
-       tracks, tracks_dist_uat, tracks_egg, tracks_fan_outlier, 
-       tracks_hatch, tracks_light, tracks_log, 
-       file = datafile)  
+       tracks, tracks_dist_uat, tracks_egg, tracks_fan_outlier,
+       tracks_hatch, tracks_light, tracks_log,
+       file = datafile)
 }
 
-load_saved_data <- function(datafile=here::here("wa-turtle-programs", "data.Rda")){
-  if (!fs::file_exists(datafile)){download_and_save_data(datafile=datafile)}
+load_saved_data_odkc <- function(
+  datafile=here::here("wa-turtle-programs", "data_odkc.Rda")
+  ){
+  if (!fs::file_exists(datafile)){download_and_save_odkc(datafile=datafile)}
   load(datafile, envir = .GlobalEnv)
-  }
+}
+
+#--------------------------------------------------------------------------------------------------#
+# Download data from TSC (reports)
+download_and_save_tsc <- function(
+  datafile=here::here("wa-turtle-programs", "data_tsc.Rda")
+){
+  library(magrittr)
+  wastd_url <- wastdr::get_wastd_url()
+  q <- list(taxon = "Cheloniidae", format = "json")
+  animal_records <- wastdr::wastd_GET("animal-encounters", query = q)
+  animals <- animal_records %>%
+    wastdr::parse_animal_encounters() %>%
+    dplyr::mutate(
+      calendar_date_awst = datetime %>%
+        lubridate::with_tz("Australia/Perth") %>%
+        lubridate::floor_date(unit = "day")
+    )
+  track_records <- wastdr::wastd_GET("turtle-nest-encounters")
+  tracks_all <- track_records %>%
+    wastdr::parse_turtle_nest_encounters() %>%
+    dplyr::mutate(
+      calendar_date_awst = datetime %>%
+        lubridate::with_tz("Australia/Perth") %>%
+        lubridate::floor_date(unit = "day")
+    )
+  disturbance_records <- wastdr::wastd_GET("disturbance-observations")
+  disturbance <- disturbance_records %>%
+    wastdr::parse_disturbance_observations() %>%
+    dplyr::mutate(
+      calendar_date_awst = datetime %>%
+        lubridate::with_tz("Australia/Perth") %>%
+        lubridate::floor_date(unit = "day")
+    )
+  survey_records <- wastdr::wastd_GET("surveys")
+  surveys <- survey_records %>%
+    wastdr::parse_surveys() %>%
+    dplyr::mutate(
+      calendar_date_awst = start_time %>%
+        lubridate::with_tz("Australia/Perth") %>%
+        lubridate::floor_date(unit = "day")
+    )
+  nest_records <- wastdr::wastd_GET("nesttag-observations")
+  nests_all <- nest_records %>%
+    wastdr::parse_nesttag_observations() %>%
+    dplyr::mutate(
+      calendar_date_awst = datetime %>%
+        lubridate::with_tz("Australia/Perth") %>%
+        lubridate::floor_date(unit = "day")
+    )
+  area_records <- wastdr::wastd_GET("area")
+  areas <- area_records$features %>% {
+    tibble::tibble(
+      pk = purrr::map_chr(., c("properties", "pk")),
+      area_type = purrr::map_chr(., c("properties", "area_type")),
+      name = purrr::map_chr(., c("properties", "name")),
+      northern_extent = purrr::map_dbl(., c("properties", "northern_extent")),
+      centroid = purrr::map(., c("properties", "centroid", "coordinates")),
+      length_surveyed_m = purrr::map_chr(., c("properties", "length_surveyed_m"), .default=NA),
+      length_survey_roundtrip_m = purrr::map_chr(., c("properties", "length_survey_roundtrip_m"), .default=NA)
+    )} %>%
+    tidyr::unnest_wider("centroid") %>%
+    dplyr::rename(longitude = `...1`, latitude = `...2`)
+  areas_sf <- geojsonio::as.json(area_records$features) %>% geojsonsf::geojson_sf()
+  save(
+    animal_records,
+    animals,
+    track_records,
+    tracks_all,
+    disturbance_records,
+    disturbance,
+    survey_records,
+    surveys,
+    nest_records,
+    nests_all,
+    area_records,
+    areas,
+    areas_sf,
+    file = datafile
+  )
+}
+
+load_saved_data_tsc <- function(
+  datafile=here::here("wa-turtle-programs", "data_tsc.Rda")
+){
+  if (!fs::file_exists(datafile)){download_and_save_tsc(datafile=datafile)}
+  load(datafile, envir = .GlobalEnv)
+}
+
+
+# areas_sf %>%
+#   dplyr::filter(area_type=="Site") %>% magrittr::extract("name") %>% plot(.)

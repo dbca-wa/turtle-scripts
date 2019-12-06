@@ -16,7 +16,6 @@ output:
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 source("tracks_setup.R")
 source("tracks_helpers.R")
-source("load_data.R")
 ```
 
 # Caveat
@@ -29,7 +28,13 @@ Data from Rosemary Islands was recovered from unfinalised forms on devices.
 
 # Data
 ```{r load_data}
-tracks_thv <- tracks_all %>% filter_thv() %>% exclude_training_species() %>% add_nest_labels()
+load_saved_data_tsc()
+
+tracks_thv <- tracks_all %>% 
+  filter_thv() %>% 
+  exclude_training_species() %>% 
+  add_nest_labels()
+
 surveys_thv <- surveys %>% filter_thv()
 # surveys prod: training is done in separate area and already excluded.
 dist_thv <- disturbance %>% filter_thv()

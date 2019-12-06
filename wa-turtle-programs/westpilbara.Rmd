@@ -16,7 +16,6 @@ output:
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 source("tracks_setup.R")
 source("tracks_helpers.R")
-source("load_data.R")
 ```
 
 # Caveat
@@ -45,7 +44,13 @@ Remaining QA tasks:
 
 # Data
 ```{r load_data, eval=T}
-tracks_wp <- tracks_all %>% filter_wp() %>% exclude_training_species() %>% add_nest_labels()
+load_saved_data_tsc()
+
+tracks_wp <- tracks_all %>% 
+  filter_wp() %>% 
+  exclude_training_species() %>% 
+  add_nest_labels()
+
 # tracks_cw <- tracks_wp %>% filter_wp_coolingwater() # none yet
 tracks_bb <- tracks_wp %>% filter_wp_bells()
 tracks_yc <- tracks_wp %>% filter_wp_yachtblub()

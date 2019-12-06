@@ -21,7 +21,6 @@ output:
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 source("tracks_setup.R")
 source("tracks_helpers.R")
-source("load_data.R")
 ```
 
 # Data
@@ -29,7 +28,13 @@ Data are loaded from DBCA's web portal for threatened species and communities [T
 The portal is accessible to DBCA staff.
 
 ```{r load_data}
-tracks_pth <- tracks_all %>% filter_pth() %>% exclude_training_species()%>% add_nest_labels()
+load_saved_data_tsc()
+
+tracks_pth <- tracks_all %>% 
+  filter_pth() %>% 
+  exclude_training_species()%>% 
+  add_nest_labels()
+
 tracks_pth_cem <- tracks_pth %>% filter_pth_cemetery()
 tracks_pth_ppo <- tracks_pth %>% filter_pth_prettypool()
 surveys_pth <- surveys %>% filter_pth()

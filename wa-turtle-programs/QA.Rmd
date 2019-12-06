@@ -17,7 +17,6 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 source("tracks_setup.R")
 source("tracks_helpers.R")
-source("load_data.R")
 ```
 
 # Turtle nesting census
@@ -33,6 +32,8 @@ The numbers combine unsuccessful (false crawls) and successful (nests) nesting
 attempts of female turtles.
 
 ```{r}
+load_saved_data_tsc()
+
 tracks_all %>%
   exclude_training_species() %>% 
   dplyr::group_by(season, species) %>%

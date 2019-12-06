@@ -18,7 +18,6 @@ output:
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 source("tracks_setup.R")
 source("tracks_helpers.R")
-source("load_data.R")
 ```
 
 
@@ -27,7 +26,13 @@ source("load_data.R")
 Data are downloaded from [WAStD](https://tsc.dbca.wa.gov.au/) and filtered to the report's location.
 
 ```{r load_data}
-tracks_del <- tracks_all %>% filter_del() %>% exclude_training_species() %>% add_nest_labels()
+load_saved_data_tsc()
+
+tracks_del <- tracks_all %>% 
+  filter_del() %>% 
+  exclude_training_species() %>% 
+  add_nest_labels()
+
 tags_del <- animals %>% filter_del() %>% exclude_training_species()
 tags_del_2017 <- tags_del %>% filter_2017()
 tags_del_2018 <- tags_del %>% filter_2018()
