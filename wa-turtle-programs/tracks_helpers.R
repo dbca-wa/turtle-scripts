@@ -141,7 +141,8 @@ gganimate_tracks <- function(data, placename=NULL, prefix=NULL, gm_apikey=NULL) 
 # Download data ODK Central (for previews)
 #
 download_and_save_odkc <- function(
-  datafile=here::here("wa-turtle-programs", "data.Rda")){
+  datafile=here::here("wa-turtle-programs", "data_odkc.Rda"),
+  extrafile=here::here("wa-turtle-programs", "data_odkc_extra.Rda")){
   suppressMessages(library(tidyverse))
   library(wastdr)
   library(ruODK)
@@ -238,7 +239,7 @@ download_and_save_odkc <- function(
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  svs_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T, local_dir = loc)
+  svs_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T, wkt=T, local_dir = loc)
   svs_extra <- dplyr::anti_join(svs_uat, svs_prod, by="instance_id")
 
   # SV end
@@ -246,7 +247,7 @@ download_and_save_odkc <- function(
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  sve_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T, local_dir = loc)
+  sve_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T, wkt=T, local_dir = loc)
   sve_extra <- dplyr::anti_join(sve_uat, sve_prod, by="instance_id")
 
   # MWI
@@ -255,7 +256,7 @@ download_and_save_odkc <- function(
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
   mwi_uat <- ft$url[[1]] %>%
-    ruODK::odata_submission_get(table = ., verbose = T, local_dir = loc)
+    ruODK::odata_submission_get(table = ., verbose = T, wkt=T, local_dir = loc)
   mwi_extra <- dplyr::anti_join(mwi_uat, mwi_prod, by="instance_id")
 
   # Dist
@@ -263,7 +264,7 @@ download_and_save_odkc <- function(
   message(glue::glue("Downloading {ruODK::get_default_fid()}"))
   ft <- ruODK::odata_service_get()
   ft %>% knitr::kable(.)
-  dist_uat <- ruODK::odata_submission_get(table = ft$url[[1]], verbose = T, local_dir = loc)
+  dist_uat <- ruODK::odata_submission_get(table = ft$url[[1]], wkt=T, verbose = T, local_dir = loc)
   dist_extra <- dplyr::anti_join(dist_uat, dist_prod, by="instance_id")
 
   # Tracks
@@ -283,7 +284,8 @@ download_and_save_odkc <- function(
   tracks_dist_extra <- dplyr::anti_join(tracks_dist_uat, tracks_dist_prod, by="instance_id")
 
   save(svs_extra, sve_extra, mwi_extra, dist_extra,
-       tracks_extra, tracks_dist_extra, file = "data_extra.Rda")
+       tracks_extra, tracks_dist_extra,
+       file = extrafile)
 
   sites <- wastdr::wastd_GET("area") %>%
     magrittr::extract2("features") %>%
@@ -293,14 +295,14 @@ download_and_save_odkc <- function(
     dplyr::transmute(site_id = pk, site_name = name)
 
   add_sites <- function(data, prefix="observed_at"){
+    lon <- glue::glue("{prefix}_longitude") %>% as.character()
+    lat <- glue::glue("{prefix}_latitude") %>% as.character()
     data %>%
-    sf::st_as_sf(
-      coords = c(glue::glue("{prefix}_longitude"),
-                 glue::glue("{prefix}_latitude")),
-      crs = 4326,
-      agr = "constant"
-    ) %>% sf::st_join(sites)
-    }
+      tidyr::drop_na(lon) %>%
+      tidyr::drop_na(lat) %>%
+      sf::st_as_sf(coords = c(lon, lat), crs = 4326, agr = "constant") %>%
+      sf::st_join(sites)
+  }
 
   mwi <- dplyr::bind_rows(mwi_prod, mwi_extra) %>% add_sites
   svs <- dplyr::bind_rows(svs_prod, svs_extra) %>% add_sites(prefix="location")
