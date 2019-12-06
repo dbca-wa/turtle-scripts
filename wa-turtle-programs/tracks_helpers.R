@@ -60,9 +60,11 @@ filter_emb <- . %>% dplyr::filter(site_id %in% c(36, 37))
 filter_emb_annaplains <- . %>% dplyr::filter(site_id == 37)
 filter_emb_caravanpark <- . %>% dplyr::filter(site_id == 36)
 
-filter_pth <- . %>% dplyr::filter(site_id %in% c(35, 45))
+filter_pth <- . %>% dplyr::filter(site_id %in% c(35, 45, 141))
 filter_pth_cemetery <- . %>% dplyr::filter(site_id == 35)
 filter_pth_prettypool <- . %>% dplyr::filter(site_id == 45)
+filter_pth_spoilbank <- . %>% dplyr::filter(site_id == 141)
+
 
 filter_wp <- . %>% dplyr::filter(site_id %in% c(25, 26, 27, 46, 47))
 filter_wp_coolingwater <- . %>% dplyr::filter(site_id == 26)
@@ -293,6 +295,13 @@ download_and_save_odkc <- function(
     geojsonsf::geojson_sf() %>%
     dplyr::filter(area_type=="Site") %>%
     dplyr::transmute(site_id = pk, site_name = name)
+  areas <- wastdr::wastd_GET("area") %>%
+    magrittr::extract2("features") %>%
+    geojsonio::as.json() %>%
+    geojsonsf::geojson_sf() %>%
+    dplyr::filter(area_type=="Locality") %>%
+    dplyr::transmute(area_id = pk, area_name = name)
+
 
   add_sites <- function(data, prefix="observed_at"){
     lon <- glue::glue("{prefix}_longitude") %>% as.character()
@@ -300,8 +309,12 @@ download_and_save_odkc <- function(
     data %>%
       tidyr::drop_na(lon) %>%
       tidyr::drop_na(lat) %>%
-      sf::st_as_sf(coords = c(lon, lat), crs = 4326, agr = "constant") %>%
-      sf::st_join(sites)
+      sf::st_as_sf(coords = c(lon, lat),
+                   crs = 4326,
+                   agr = "constant",
+                   remove = FALSE) %>%
+      sf::st_join(sites) %>%
+      sf::st_join(areas)
   }
 
   mwi <- dplyr::bind_rows(mwi_prod, mwi_extra) %>% add_sites
@@ -416,3 +429,100 @@ load_saved_data_tsc <- function(
 
 # areas_sf %>%
 #   dplyr::filter(area_type=="Site") %>% magrittr::extract("name") %>% plot(.)
+map_tracks_odkc <- function(tracks,
+         wastd_url = wastdr::get_wastd_url(),
+         fmt = "%d/%m/%Y %H:%M",
+         tz = "Australia/Perth",
+         cluster = FALSE) {
+  . <- NULL
+  layersControlOptions <- NULL
+  markerClusterOptions <- NULL
+
+  if (cluster == TRUE) {
+    co <- markerClusterOptions()
+  } else {
+    co <- NULL
+  }
+  l <- leaflet(width = 800, height = 600) %>%
+    addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+    addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+    clearBounds()
+
+  tracks.df <- tracks %>% split(tracks$species)
+
+
+  names(tracks.df) %>%
+    purrr::walk(function(df) {
+      l <<- l %>%
+        addAwesomeMarkers(
+          data = tracks.df[[df]],
+          lng = ~observed_at_longitude, lat = ~observed_at_latitude,
+          icon = leaflet::makeAwesomeIcon(
+            text = ~nest_type_text,
+            markerColor = ~species_colours
+          ),
+          label = ~ glue::glue(
+            '{lubridate::with_tz(observation_start_time, tz)} {humanize(nest_age)}',
+            " {humanize(species)} {humanize(nest_type)}"
+          ),
+          popup = ~ glue::glue(
+            "<h3>{humanize(nest_age)} {humanize(species)} {humanize(nest_type)}</h3>",
+            "<p>Seen on {lubridate::with_tz(observation_start_time, tz)} by {reporter}",
+          ),
+          group = df,
+          clusterOptions = co
+        )
+    })
+
+  l %>%
+    addLayersControl(
+      baseGroups = c("Aerial", "Place names"),
+      overlayGroups = names(tracks.df),
+      options = layersControlOptions(collapsed = FALSE)
+    )
+}
+
+map_mwi_odkc <- function(data,
+                         wastd_url = wastdr::get_wastd_url(),
+                         fmt = "%d/%m/%Y %H:%M",
+                         tz = "Australia/Perth",
+                         cluster = FALSE) {
+  . <- NULL
+  layersControlOptions <- NULL
+  markerClusterOptions <- NULL
+
+  if (cluster == TRUE) {
+    co <- markerClusterOptions()
+  } else {
+    co <- NULL
+  }
+  leaflet(width = 800, height = 600) %>%
+    addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
+    addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
+    clearBounds() %>%
+    addAwesomeMarkers(
+      data = data,
+      lng = ~observed_at_longitude, lat = ~observed_at_latitude,
+      icon = leaflet::makeAwesomeIcon(
+        text = "MWI",
+        markerColor = "red"
+      ),
+      label = ~ glue::glue(
+        '{lubridate::with_tz(observation_start_time, tz)} {humanize(health)}',
+        " {humanize(maturity)} {humanize(sex)} {humanize(species)}"
+      ),
+      popup = ~ glue::glue(
+        "<h3>{humanize(health)} {humanize(maturity)} ",
+        "{humanize(sex)} {humanize(species)}</h3>",
+        "<p>Seen on {lubridate::with_tz(observation_start_time, tz)} by {reporter}",
+        "<p>Cause of death: {humanize(cause_of_death)}</p>"
+      ),
+      group = df,
+      clusterOptions = co
+    ) %>%
+    addLayersControl(
+      baseGroups = c("Aerial", "Place names"),
+      overlayGroups = c("Marine Wildlife Incidents"),
+      options = layersControlOptions(collapsed = FALSE)
+    )
+}

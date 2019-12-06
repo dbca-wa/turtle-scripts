@@ -1,0 +1,46 @@
+---
+title: "Port Hedland Preview"
+author: "Care for Hedland with North West Shelf Flatbacks WA"
+date: "`r Sys.time()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fig_width: 10
+    fig_height: 6
+    code_folding: hide
+    theme: lumen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source(here::here("wa-turtle-programs/tracks_helpers.R"))
+load_saved_data_odkc(datafile=here::here("wa-turtle-programs", "data_odkc.Rda"))
+```
+
+# Maps
+## Turtle tracks and nests
+```{r}
+tracks %>% filter_pth_spoilbank() %>%  map_tracks_odkc()
+```
+
+## Marine Wildlife Incidents
+```{r}
+mwi %>% filter_pth_spoilbank() %>% map_mwi_odkc()
+```
+
+
+
+# Data
+
+## Turtle tracks and nests
+```{r}
+tracks %>% filter_pth_spoilbank() %>% DT::datatable()
+```
+
+## Marine Wildlife Incidents
+```{r}
+mwi %>% filter_pth_spoilbank() %>% DT::datatable()
+```
+
