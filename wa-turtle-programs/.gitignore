@@ -7,5 +7,4 @@ rsconnect
 *.csv
 *.gif
 .httr-oauth
-data_odkc.Rda
-data_odkc_extra.Rda
+*.rda
