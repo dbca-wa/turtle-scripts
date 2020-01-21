@@ -120,34 +120,6 @@ Row
 #     ) %>%
 #   wastdr::map_tracks(cluster = T)
 
-leaflet::leaflet(width = "100%", height = "100%") %>%
-  leaflet::addProviderTiles("OpenStreetMap.Mapnik", group = "Place names") %>%
-  leaflet::addProviderTiles("Esri.WorldImagery", group = "Aerial") %>%
-  leaflet::clearBounds() %>%
-  leaflet::addAwesomeMarkers(
-    data = tracks,
-    lng = ~observed_at_longitude, lat = ~observed_at_latitude,
-    icon = leaflet::makeAwesomeIcon(
-      text = ~ nest_type_text,
-      markerColor = ~ species_colours),
-    label = ~ glue::glue("[{observation_start_time}] {species} {nest_type}"),
-    popup = ~ glue::glue(
-      "<h4>{nest_age} {species} {nest_type}</h4>",
-      "Seen on {observation_start_time}</br>",
-      "Seen by {reporter}</br>",
-      "Device {device_id}</br>",
-      "<h5>Track</h5>",
-      '<div><img src="{photo_track_1}"',
-      ' height="150px" alt="Track photo 1"></img></div>',
-      '<div><img src="{photo_track_2}"',
-      ' height="150px" alt="Track photo 2"></img></div>'
-    ),
-    clusterOptions = leaflet::markerClusterOptions()
-  ) %>%
-  leaflet::addLayersControl(
-    baseGroups = c("Place names", "Aerial"),
-    options = leaflet::layersControlOptions(collapsed = FALSE)
-  )
 ```
 
 

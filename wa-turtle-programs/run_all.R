@@ -2,9 +2,9 @@
 source(here::here("wa-turtle-programs/tracks_helpers.R"))
 
 # Data: download and save
-download_and_save_odkc(datafile=here::here("wa-turtle-programs", "turtledata.rda"))
-fs::file_copy(here::here("wa-turtle-programs", "turtledata.rda"),
-              "../turtleviewer/data", overwrite = T)
+odkc_datafile <- here::here("wa-turtle-programs", "turtledata.rda")
+td <- wastdr::download_odkc_turtledata_2019(datafile=odkc_datafile)
+fs::file_copy(odkc_datafile, "../turtleviewer/data", overwrite = T)
 
 download_and_save_tsc(datafile=here::here("wa-turtle-programs", "data_tsc.Rda"))
 
