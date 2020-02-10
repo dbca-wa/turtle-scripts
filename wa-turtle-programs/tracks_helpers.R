@@ -26,7 +26,7 @@ library(ggTimeSeries)
 library(knitr)
 library(reactable)
 # Configure ckanr to data.dpaw.wa.gov.au with env vars from .Renviron
-ckanr::ckanr_setup(url = Sys.getenv("CKAN_URL"), key = Sys.getenv("CKAN_API_KEY"))
+# ckanr::ckanr_setup(url = Sys.getenv("CKAN_URL"), key = Sys.getenv("CKAN_API_KEY"))
 
 dt <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE)
 dt0 <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE, options = list(paging = F))
@@ -145,6 +145,10 @@ add_calendar_date_awst <- . %>%
       lubridate::floor_date(unit = "day")
   )
 
+dev <- "http://localhost:8220/api/1/"
+uat <- "https://tsc-uat.dbca.wa.gov.au/api/1/"
+prod <- "https://tsc.dbca.wa.gov.au/api/1/"
+
 download_and_save_tsc <- function(
   datafile=here::here("wa-turtle-programs", "data_tsc.rda")
 ){
@@ -158,6 +162,8 @@ download_and_save_tsc <- function(
     add_calendar_date_awst()
 
   track_records <- wastdr::wastd_GET("turtle-nest-encounters")
+                                     # query = list(limit=1000, offset=10300),
+                                     # api_url = prod)
   tracks_all <- track_records %>%
     wastdr::parse_turtle_nest_encounters() %>%
     add_calendar_date_awst()
@@ -181,22 +187,19 @@ download_and_save_tsc <- function(
     add_calendar_date_awst()
 
   fan_records <- "turtle-nest-hatchling-emergences" %>%
-    wastdr::wastd_GET("turtle-nest-hatchling-emergences")
+    wastdr::wastd_GET()
   nest_fans <- fan_records %>%
-    wastdr::wastd_parse() %>%
-    add_calendar_date_awst()
+    wastdr::parse_encounterobservations()
 
   fan_outlier_records <- "turtle-nest-hatchling-emergence-outliers" %>%
     wastdr::wastd_GET()
   nest_fan_outliers <- fan_outlier_records %>%
-    wastdr::wastd_parse() %>%
-    add_calendar_date_awst()
+    wastdr::parse_encounterobservations()
 
   lightsource_records <- "turtle-nest-hatchling-emergence-light-sources" %>%
     wastdr::wastd_GET()
   nest_lightsources <- lightsource_records %>%
-    wastdr::wastd_parse() %>%
-    add_calendar_date_awst()
+    wastdr::parse_encounterobservations()
 
   surveys <- "surveys" %>%
     wastdr::wastd_GET() %>%

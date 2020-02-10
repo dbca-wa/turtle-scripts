@@ -22,14 +22,18 @@ load_saved_data_odkc(datafile=here::here("wa-turtle-programs/turtledata.rda"))
 # Maps
 ## Turtle tracks and nests
 ```{r}
-turtledata$tracks %>% filter_pth_spoilbank() %>%  map_tracks_odkc() %T>% 
+turtledata$tracks %>% filter_pth_spoilbank() %>%  map_tracks_odkc(sites=turtledata$sites) %T>% 
   mapview::mapshot(file=here::here("wa-turtle-programs/PTH_spoilbank_tracks.png"))
 ```
 
 ## Marine Wildlife Incidents
 ```{r}
-turtledata$mwi %>% filter_pth_spoilbank() %>% map_mwi_odkc() %T>% 
-  mapview::mapshot(file=here::here("wa-turtle-programs/PTH_spoilbank_strandings.png"))
+turtledata$mwi %>% 
+  filter_pth_spoilbank() %>% 
+  map_mwi_odkc(sites=turtledata$sites) %T>% 
+  mapview::mapshot(
+    file=here::here("wa-turtle-programs/PTH_spoilbank_strandings.png")
+  )
 ```
 
 
@@ -40,24 +44,25 @@ turtledata$mwi %>% filter_pth_spoilbank() %>% map_mwi_odkc() %T>%
 ```{r}
 turtledata$tracks %>% 
   filter_pth_spoilbank() %>% 
-  DT::datatable()
+  wastdr::sf_as_tbl() %>% 
+  reactable::reactable()
 
 turtledata$tracks %>% 
   filter_pth_spoilbank() %>% 
   sf_as_tbl %>% 
-  dplyr::select(-starts_with("photo")) %>% 
   readr::write_csv(path=here::here("wa-turtle-programs/PTH_spoilbank_tracks.csv"))
 ```
 
 ## Marine Wildlife Incidents
 ```{r}
-turtledata$mwi %>% filter_pth_spoilbank() %>% DT::datatable()
+turtledata$mwi %>% 
+  filter_pth_spoilbank() %>% 
+  wastdr::sf_as_tbl() %>% 
+  reactable::reactable()
 
 turtledata$mwi %>% 
   filter_pth_spoilbank() %>% 
   sf_as_tbl %>% 
-  dplyr::select(-starts_with("photo")) %>% 
   readr::write_csv(path=here::here("wa-turtle-programs/PTH_spoilbank_strandings.csv"))
-
 ```
 
