@@ -26,7 +26,7 @@ library(ggTimeSeries)
 library(knitr)
 library(reactable)
 # Configure ckanr to data.dpaw.wa.gov.au with env vars from .Renviron
-# ckanr::ckanr_setup(url = Sys.getenv("CKAN_URL"), key = Sys.getenv("CKAN_API_KEY"))
+ckanr::ckanr_setup(url = Sys.getenv("CKAN_URL"), key = Sys.getenv("CKAN_API_KEY"))
 
 dt <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE)
 dt0 <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE, options = list(paging = F))
@@ -161,10 +161,12 @@ download_and_save_tsc <- function(
     wastdr::parse_animal_encounters() %>%
     add_calendar_date_awst()
 
+  # "turtle-morphometrics"
+
   track_records <- wastdr::wastd_GET("turtle-nest-encounters")
                                      # query = list(limit=1000, offset=10300),
                                      # api_url = prod)
-  tracks_all <- track_records %>%
+  tracks <- track_records %>%
     wastdr::parse_turtle_nest_encounters() %>%
     add_calendar_date_awst()
 
@@ -183,28 +185,41 @@ download_and_save_tsc <- function(
   nest_excavation_records <- "turtle-nest-excavations" %>%
     wastdr::wastd_GET()
   nest_excavations <- nest_excavation_records %>%
-    wastdr::wastd_parse() %>%
+    wastdr::parse_encounterobservations() %>%
+    add_calendar_date_awst()
+
+  hatchling_morph_records <- "turtle-nest-hatchling-morphometrics" %>%
+    wastdr::wastd_GET()
+  hatchling_morph <- hatchling_morph_records %>%
+    wastdr::parse_encounterobservations() %>%
     add_calendar_date_awst()
 
   fan_records <- "turtle-nest-hatchling-emergences" %>%
     wastdr::wastd_GET()
   nest_fans <- fan_records %>%
-    wastdr::parse_encounterobservations()
+    wastdr::parse_encounterobservations() %>%
+    add_calendar_date_awst()
 
   fan_outlier_records <- "turtle-nest-hatchling-emergence-outliers" %>%
     wastdr::wastd_GET()
   nest_fan_outliers <- fan_outlier_records %>%
-    wastdr::parse_encounterobservations()
+    wastdr::parse_encounterobservations() %>%
+    add_calendar_date_awst()
 
   lightsource_records <- "turtle-nest-hatchling-emergence-light-sources" %>%
     wastdr::wastd_GET()
   nest_lightsources <- lightsource_records %>%
-    wastdr::parse_encounterobservations()
+    wastdr::parse_encounterobservations() %>%
+    add_calendar_date_awst()
 
   surveys <- "surveys" %>%
     wastdr::wastd_GET() %>%
     wastdr::parse_surveys() %>%
-    add_calendar_date_awst()
+    dplyr::mutate(
+      calendar_date_awst = start_time %>%
+        lubridate::with_tz("Australia/Perth") %>%
+        lubridate::floor_date(unit = "day")
+    )
 
   areas_sf <- "area" %>%
     wastdr::wastd_GET() %>%

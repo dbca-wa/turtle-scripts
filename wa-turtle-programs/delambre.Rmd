@@ -16,7 +16,6 @@ output:
 <img src="https://i.imgur.com/pBaIuV2.jpg" style="width:100%" title="Photo: Florian Mayer, DBCA" />
 </a>
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
-source("tracks_setup.R")
 source("tracks_helpers.R")
 ```
 
@@ -38,8 +37,8 @@ tags_del_2017 <- tags_del %>% filter_2017()
 tags_del_2018 <- tags_del %>% filter_2018()
 surveys_del <- surveys %>% filter_del()
 surveys_del_prod <- surveys_del %>% exclude_training_surveys()
-dist_del <- disturbance %>% filter_del()
-nests_del <- nests_all %>% filter_del()
+dist_del <- nest_dist %>% filter_del()
+nests_del <- nest_tags %>% filter_del()
 prefix_del <- "DEL"
 placename_del <- "Delambre Is"
 ```
@@ -60,81 +59,88 @@ TODO Map with monitored area highlighted (tagging, nest census) and labels.
 The methodology, data collection protocols and hardware setup are described in detail in the [WAStD Manual](https://dbca-wa.github.io/wastd/index.html#document-data_collection/data_collection_training).
 
 ## Survey effort
-TODO linear  “calendar” with one box per day and colour one colour for tagging, one colour for morning surveys, one colour for marking nests and excavating . that will show start and end date of nesting season + number of days for each year +missed days
+TODO linear  “calendar” with one box per day and colour one colour for tagging, one colour for morning surveys, one colour for marking nests and excavating. 
+That will show start and end date of nesting season + number of days for each year +missed days
 
 # Turtle Nesting
-urtle Nesting
-replace “Turtle nesting” by “Results”
+Replace “Turtle nesting” by “Results”
 Replace “tagged animals” by “Tagging census results”
 This has to be updated once the full tagging database has been imported and problems fixed
 
 For each season:
+
     • show as text the total number of processed turtles and percentage of each species
 Flatback turtles
 Nesting abundance
 TABLE:
-    • Total, mean, SD and range number of processed turtles
-    • Total, mean, SD and range number of unique individuals
-    • Total, mean, SD and range number of new turtles
-    • Total, mean, SD and range number of remigrants
-    • Mean, SD, range of number of missed turtles per night, and percentage of missed turtles per night (compared to number of processed turtles)
-    • Total, mean, SD and range number of nests (need to discuss methodology to QA data to identify nests)
-    • Total, mean, SD and range number of false crawls
-    • mean, SD and range nesting success
-hide table “animals processed per day”
-hide table “ tags processed per day”
-keep figure “Number of processed turtles per day” but add number of missed turtles per day to the figure, staked histograms
-add figure “Number of new and remigrant turtles per day” : show the number of new turtles and remigrants each day (unique sighting, not observations)
-add figure “Nesting success”: show the number of false crawls and nests each day + dashed line showing the mean
+
+* Total, mean, SD and range number of processed turtles
+* Total, mean, SD and range number of unique individuals
+* Total, mean, SD and range number of new turtles
+* Total, mean, SD and range number of remigrants
+* Mean, SD, range of number of missed turtles per night, and percentage of missed turtles per night (compared to number of processed turtles)
+* Total, mean, SD and range number of nests (need to discuss methodology to QA data to identify nests)
+* Total, mean, SD and range number of false crawls
+* mean, SD and range nesting success
+* hide table “animals processed per day”
+* hide table “ tags processed per day”
+* keep figure “Number of processed turtles per day” but add number of missed turtles per day to the figure, staked histograms
+* add figure “Number of new and remigrant turtles per day” : show the number of new turtles and remigrants each day (unique sighting, not observations)
+* add figure “Nesting success”: show the number of false crawls and nests each day + dashed line showing the mean
 
 Inter-nesting interval and clutch frequency 
 TABLE:
+
 - mean, SD, range of inter-nesting interval in days + number of animals
 - mean, SD, range of clutch frequency
 
-hide figure “nesting intervals”
-add figure “Clutch Frequency”: show estimated number of turtles that lay 1 clutch, 2 clutches, 3 clutches, etc
+* hide figure “nesting intervals”
+* add figure “Clutch Frequency”: show estimated number of turtles that lay 1 clutch, 2 clutches, 3 clutches, etc
 
 Remigrants
-Add figure “remigration interval”: show the number of remigrants coming back after 1,2,3, 4+ years
-Add text about remigrant turtles coming for other rookeries
+
+* Add figure “remigration interval”: show the number of remigrants coming back after 1,2,3, 4+ years
+* Add text about remigrant turtles coming for other rookeries
 
 Morphometric
+
 TABLE with mean, SD, range for CCl, CCW and weight
 
 Track census results
-Add section “Track census results”
-TABLE “nesting abundance – All beaches” – should be in this section but no need to show raw numbers
-show Total, mean, SD, range tracks per day for each species (excluding olive ridley and loggehreads)
-show successful tracks, false crawls, unsure and not assessed, remove all other categories
-show only fresh tracks
-clearly separate years as not obvious as it is
-show mean, SD, range for nesting success for flatbacks
 
-keep maps : “tracks and nests”
-hide “animated map”
-Table “ Nesting by week – All beaches” : hide for report but should appear on website instead during the nesting season
-Figures “nesting by day”:
-remove figure : “nesting activity” as data shown in table + difficult to read the figure
-keep figure “nesting effort”  but add dashed line to show mean nesting success. All tracks should only be false crawls + successful (remove unsure and unchecked)
-remove figure “nesting success” for all species but flatbacks
+* Add section “Track census results”
+* TABLE “nesting abundance – All beaches” – should be in this section but no need to show raw numbers
+* show Total, mean, SD, range tracks per day for each species (excluding olive ridley and loggehreads)
+* show successful tracks, false crawls, unsure and not assessed, remove all other categories
+* show only fresh tracks
+* clearly separate years as not obvious as it is
+* show mean, SD, range for nesting success for flatbacks
+
+* keep maps : “tracks and nests”
+* hide “animated map”
+* Table “ Nesting by week – All beaches” : hide for report but should appear on website instead during the nesting season
+* Figures “nesting by day”:
+* remove figure : “nesting activity” as data shown in table + difficult to read the figure
+* keep figure “nesting effort”  but add dashed line to show mean nesting success. All tracks should only be false crawls + successful (remove unsure and unchecked)
+* remove figure “nesting success” for all species but flatbacks
 
 Add Heat maps under section “Nesting abundance and distribution -summary”
 For Thevenard: 
 heat map for the whole island combining track count, tagging data, missed turtles for both greens and flatbacks:
+    
     • one map showing total number of tracks per cell
     • one map showing successful tracks per cell
 For Delambre
-heat map for the whole island combining track count, tagging data, missed turtles for flatbacks:
-    • one map showing total number of tracks per cell
-    • one map showing successful tracks per cell
 
-Replace “Hatching and emergence success” by “Incubation success and hatchling production”
-make sure tables fit on landscape A4 format 
-keep table
-add map showing locations of hatched nests throughout the season
-add map showing location of excavated nests and their hatching success. Hatching success can be shown in categories
-add histogram showing proportion of nests in each hatching success categories
+* heat map for the whole island combining track count, tagging data, missed turtles for flatbacks:
+* one map showing total number of tracks per cell
+* one map showing successful tracks per cell
+* Replace “Hatching and emergence success” by “Incubation success and hatchling production”
+* make sure tables fit on landscape A4 format 
+* keep table
+* add map showing locations of hatched nests throughout the season
+* add map showing location of excavated nests and their hatching success. Hatching success can be shown in categories
+* add histogram showing proportion of nests in each hatching success categories
 
 Disturbance and predation
 remove text. if need add a paragraph about the methods in methodology section
@@ -143,13 +149,7 @@ If possible both types should appear on the same map
 Merge both tables 
 
 
-
-
-
-
-
-
-
+End of TODO list.
 
 ## Tagged animals
 
@@ -324,14 +324,14 @@ ggplot(tags_del_2018_resighted_records,
 ### Tracks and Nests 2017-18
 
 ```{r map_del_2017}
-tracks_del %>% filter_2017() %>% map_tracks()
+tracks_del %>% filter_2017() %>% map_tracks(sites=sites)
 ```
 
 ### Tracks and Nests 2018-19
 Android bug with GPS accuracy introduced spread of copordinates.
 
 ```{r map_del_2018}
-tracks_del %>% filter_2018() %>% map_tracks()
+tracks_del %>% filter_2018() %>% map_tracks(sites=sites)
 ```
 
 ### Animated map
@@ -408,13 +408,13 @@ Turtle nests with recorded disturbance or predation.
 #### Disturbance 2017-18
 ```{r dist_nests_del_2017}
 disturbed_nests_del_2017 <- tracks_del %>% filter_2017() %>% filter(disturbance == "present")
-disturbed_nests_del_2017 %>% map_tracks()
+disturbed_nests_del_2017 %>% map_tracks(sites=sites)
 ```
 
 #### Disturbance 2018-19
 ```{r dist_nests_del_2018}
 disturbed_nests_del_2018 <- tracks_del %>% filter_2018() %>% filter(disturbance == "present")
-disturbed_nests_del_2018 %>% map_tracks()
+disturbed_nests_del_2018 %>% map_tracks(sites=sites)
 ```
 
 There were **`r count(disturbed_nests_del_2017)` reports** of disturbed nests in 2017
@@ -558,8 +558,12 @@ zip(zipfile = products_fn_del, files = list.files(pattern = prefix_del))
 # r <- resource_create(package_id=d$id, name="Delambre outputs", upload=products_fn_del)
 
 # Update resources on data catalogue
-ckanr::resource_update("69d5585a-3307-41ee-980e-f829f7eef004", "delambre.html")
-ckanr::resource_update("fd1c15a4-4766-4039-b3a7-5a3dd7b403a2", products_fn_del)
+if (fs::file_exists("delambre.html")) {
+  ckanr::resource_update("69d5585a-3307-41ee-980e-f829f7eef004", "delambre.html")
+}
+if (fs::file_exists(products_fn_del)) {
+  ckanr::resource_update("fd1c15a4-4766-4039-b3a7-5a3dd7b403a2", products_fn_del)
+}
 ```
 
 ## Google Drive
@@ -574,12 +578,12 @@ Running the following chunk manually once per machine will cache the authenticat
 token locally for future use.
 
 ```{r google_drive_auth, eval=F}
-googledrive::drive_auth(reset=TRUE, use_oob = TRUE)
+googledrive::drive_auth(use_oob = TRUE)
 ```
 
 ```{r google_drive_upload, eval=F}
 googledrive::drive_ls("Delambre") %>% googledrive::drive_rm(.)
-googledrive::drive_upload("delambre.html", path=glue::glue("Delambre/delambre.html"))
+if (fs::file_exists("delambre.html")) {googledrive::drive_upload("delambre.html", path=glue::glue("Delambre/delambre.html"))}
 products <- list.files(pattern = prefix_del)
 products %>% purrr::map(googledrive::drive_upload, path=as_dribble("Delambre"))
 ```
