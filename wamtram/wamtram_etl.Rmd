@@ -13,10 +13,18 @@ output:
     theme: lumen
 ---
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
-source("tracks_setup.R")
-source("tracks_helpers.R")
-library(DBI)
+source(here::here("wa-turtle-programs/tracks_helpers.R"))
 ```
+
+```{r, eval=F}
+remotes::install_github(
+    "dbca-wa/wastdr",
+    dependencies = TRUE,
+    upgrade = "always",
+    build_vignettes = TRUE
+)
+```
+
 
 This document describes and executes the Extraction, Transformation and (up)Loading
 of data from the Turtle Tagging database WAMTRAM 2 to the data catalogue.
@@ -54,188 +62,7 @@ The list also contains a timestamp depicting the currency of the extracted
 database snapshot.
 
 ```{r extract_wamtram}
-con <- DBI::dbConnect(odbc::odbc(),
-                      Driver   = "/usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so",
-                      Server   = Sys.getenv("W2_SRV"),
-                      Database = Sys.getenv("W2_DB"),
-                      UID      = Sys.getenv("W2_UN"),
-                      PWD      = Sys.getenv("W2_PW"),
-                      Port     = Sys.getenv("W2_PT"))
-
-w2_tables <- DBI::dbListTables(con)
-
-# Read in all data from W2
-entry_batches <- DBI::dbReadTable(con, "TRT_ENTRY_BATCHES")
-data_entry <- DBI::dbReadTable(con, 'TRT_DATA_ENTRY')
-data_entry_operators <- DBI::dbReadTable(con, 'TRT_DATA_ENTRY_PERSONS')
-sites <- DBI::dbReadTable(con, 'TRT_PLACES') %>%
-  dplyr::rename(
-    prefix=LOCATION_CODE,
-    name=PLACE_CODE,
-    label=PLACE_NAME,
-    is_rookery=ROOKERY,
-    beach_approach=BEACH_APPROACH,
-    beach_aspect=ASPECT,
-    site_datum=DATUM_CODE,
-    site_latitude=LATITUDE,
-    site_longitude=LONGITUDE,
-    comments=COMMENTS
-  )
-tag_states <- DBI::dbReadTable(con, 'TRT_TAG_STATES')
-
-# Sensitive information!
-persons <- DBI::dbReadTable(con, 'TRT_PERSONS')
-person_names <- persons %>%
-    transmute(
-        PERSON_ID=PERSON_ID,
-        name=paste(FIRST_NAME, SURNAME) %>% 
-          str_replace_all("[<>()*=?]", "") %>% str_trim(),
-        email=EMAIL %>% str_replace("NA", "") %>% str_trim())
-person_details <- persons %>%
-    mutate(
-        name=paste(FIRST_NAME, SURNAME) %>% 
-          str_replace_all("[<>()*=?]", "") %>% str_trim(),
-        email=EMAIL %>% str_replace("NA", "") %>% str_trim())
-
-activities <- DBI::dbReadTable(con, 'TRT_ACTIVITIES') %>%
-  transmute(
-    activity_code=ACTIVITY_CODE,
-    activity_description=DESCRIPTION,
-    activity_is_nesting=NESTING,
-    activity_label=New_Code,
-    display_this_observation=Display_Observation)
-
-beach_positions <- DBI::dbReadTable(con, 'TRT_BEACH_POSITIONS') %>%
-  transmute(
-    beach_position_code=BEACH_POSITION_CODE,
-    beach_position_description=DESCRIPTION,
-    beach_position_label=New_Code)
-
-conditions <-  DBI::dbReadTable(con, 'TRT_CONDITION_CODES') %>%
-  transmute(
-    condition_code=CONDITION_CODE,
-    condition_label=DESCRIPTION)
-
-egg_count_methods <-  DBI::dbReadTable(con, 'TRT_EGG_COUNT_METHODS') %>%
-  transmute(
-    egg_count_method_code=EGG_COUNT_METHOD,
-    egg_count_method_label=DESCRIPTION)
-
-body_parts <- DBI::dbReadTable(con, 'TRT_BODY_PARTS') %>%
-  transmute(
-    body_part_code=BODY_PART,
-    body_part_label=DESCRIPTION,
-    is_flipper=FLIPPER)
-
-# use native datum conversion instead
-datum_codes <- DBI::dbReadTable(con, 'TRT_DATUM_CODES')
-
-# Tag types
-id_types <- DBI::dbReadTable(con, 'TRT_IDENTIFICATION_TYPES') %>%
-  transmute(
-    id_type_code=IDENTIFICATION_TYPE,
-    id_type_label=DESCRIPTION)
-
-# 220k+ records
-recorded_tags <- DBI::dbReadTable(con, 'TRT_RECORDED_TAGS') %>%
-  transmute(
-    recorded_tag_id=RECORDED_TAG_ID,
-    observation_id=OBSERVATION_ID,
-    tag_name=TAG_ID,
-    tag_label=OTHER_TAG_ID,
-    attached_on_side=SIDE,
-    tag_state=TAG_STATE,
-    tag_position=TAG_POSITION,
-    comments=COMMENTS
-  ) %>% 
-  arrange(desc(tag_name))
-
-# 55k+ inferred turtle identities, reconstructed from encounters.
-turtles <- DBI::dbReadTable(con, 'TRT_TURTLES')
-
-# Synthesised information about tags, reconstructed from recorded_tags and other tag asset management operations.
-tags <- DBI::dbReadTable(con, 'TRT_TAGS') %>% arrange(desc(TAG_ID))
-
-samples <- DBI::dbReadTable(con, 'TRT_SAMPLES')
-sample_tissue_type <- DBI::dbReadTable(con, 'TRT_TISSUE_TYPES')
-
-pit_tags <- DBI::dbReadTable(con, 'TRT_PIT_TAGS')
-recorded_pit_tags <- DBI::dbReadTable(con, 'TRT_RECORDED_PIT_TAGS')
-pit_tag_states <- DBI::dbReadTable(con, 'TRT_PIP_TAG_STATES')
-
-measurement_types <- DBI::dbReadTable(con, 'TRT_MEASUREMENT_TYPES') %>%
-  transmute(
-    measurement_type_code=MEASUREMENT_TYPE,
-    measurement_type_label=DESCRIPTION,
-    physical_unit=MEASUREMENT_UNITS,
-    min_value=MINIMUM_VALUE,
-    max_value=MAXIMUM_VALUE,
-    comments=COMMENTS)
-
-measurements <- DBI::dbReadTable(con, 'TRT_MEASUREMENTS') %>%
-  transmute(
-    observation_id=OBSERVATION_ID,
-    measurement_type_code=MEASUREMENT_TYPE,
-    value=MEASUREMENT_VALUE,
-    comments=COMMENTS)
-
-
-damage_codes <- DBI::dbReadTable(con, 'TRT_DAMAGE_CODES')
-damage_causes <- DBI::dbReadTable(con, 'TRT_DAMAGE_CAUSE_CODES')
-damages <- DBI::dbReadTable(con, 'TRT_DAMAGE')
-
-# 149k+
-obs <- DBI::dbReadTable(con, 'TRT_OBSERVATIONS')
-
-ord <- c("YmdHMS", "Ymd")
-utc <- "UTC"
-gmt08 <- "Australia/Perth"
-
-o <- obs %>%
-    dplyr::mutate(
-        o_date=parse_date_time(CORRECTED_DATE, orders=ord, tz=gmt08),
-        o_time=parse_date_time(OBSERVATION_TIME, orders=ord, tz=gmt08),
-        observation_datetime_gmt08=o_date - days(1) + hours(hour(o_time)) + minutes(minute(o_time)),
-        observation_datetime_utc=with_tz(observation_datetime_gmt08, tz=utc)
-    ) %>%
-    dplyr::select(
-        -OBSERVATION_DATE, -OBSERVATION_DATE_OLD, -DATE_CONVENTION,
-        -CORRECTED_DATE, -OBSERVATION_TIME, -o_date, -o_time
-    ) %>%
-    dplyr::rename(
-        activity_code=ACTIVITY_CODE
-    ) %>%
-    dplyr::left_join(activities, by="activity_code") %>%
-    # left_join(person_names, by=c("MEASURER_PERSON_ID" = "PERSON_ID")) %>%
-    # rename(measured_by=name) %>%
-    # left_join(person_names, by=c("MEASURER_REPORTER_PERSON_ID" = "PERSON_ID")) %>%
-    # rename(measurements_reported_by=name) %>%
-    # left_join(person_names, by=c("TAGGER_PERSON_ID" = "PERSON_ID")) %>%
-    # rename(tagged_by=name) %>%
-    # left_join(person_names, by=c("REPORTER_PERSON_ID" = "PERSON_ID")) %>%
-    # rename(reported_by=name) %>%
-    left_join(sites, by=c("PLACE_CODE" = "name")) %>%
-    left_join(turtles, by="TURTLE_ID") %>%
-    mutate(
-      LATITUDE = ifelse(is.na(LATITUDE), site_latitude, LATITUDE),
-      LONGITUDE = ifelse(is.na(LONGITUDE), site_longitude, LONGITUDE)
-      )
-
-# save(o, file="data/encounters.Rda")
-# load("data/encounters.Rda")
-
-# TODO reconstruct empty DD from DMS or UTM or site coords
-
-encounters <- o %>% 
-  filter(!is.na(LONGITUDE)) %>% 
-  filter(!is.na(LATITUDE)) %>% 
-  filter(!is.na(observation_datetime_utc)) %>%
-  arrange(desc(observation_datetime_utc))
-
-encounters_missing <- o %>% 
-  filter(is.na(LONGITUDE) | is.na(LATITUDE) | is.na(observation_datetime_utc)) %>%
-  arrange(desc(observation_datetime_utc))
-
+w2 <- wastdr::download_w2_data()
 ```
 
 # Field data ingestion
