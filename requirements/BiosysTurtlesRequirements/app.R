@@ -10,7 +10,7 @@ library(networkD3)
 #------------------------------------------------------------------------------#
 # Settings - change as appropriate
 #
-Sys.setenv(GH_OWNER = "parksandwildlife")
+Sys.setenv(GH_OWNER = "dbca-wa")
 Sys.setenv(GH_REPO = "biosys-turtles")
 # Sys.setenv(GITHUB_PAT="my-GH-personal-access-token")
 
@@ -114,17 +114,15 @@ make_issues <- function(ii) {
   # untangle labels, loses a few columns, hard-codes existing tags
   # This will blow up on multiple "... Requirements"
   i2 <- i1 %>%
-    separate_rows(labels) %>%
-    mutate(tagslog = TRUE) %>%
-    spread(labels, tagslog, fill = FALSE) %>%
-    select(id, Business, Stakeholder, Functional, Internal, must, should) %>%
-    mutate(
-      Business = Business %>% bool2yn(),
-      Stakeholder = Stakeholder %>% bool2yn(),
-      Functional = Functional %>% bool2yn(),
-      Internal = Internal %>% bool2yn(),
-      must = must %>% bool2yn(),
-      should = should %>% bool2yn()
+    dplyr::transmute(
+      id = id,
+      Business = ifelse(stringr::str_detect(labels_chr, "Business Requirement"), TRUE, FALSE),
+      Stakeholder = ifelse(stringr::str_detect(labels_chr, "Stakeholder Requirement"), TRUE, FALSE),
+      Functional = ifelse(stringr::str_detect(labels_chr, "Functional Requirement"), TRUE, FALSE),
+      Internal = ifelse(stringr::str_detect(labels_chr, "Internal Requirement"), TRUE, FALSE),
+      must = ifelse(stringr::str_detect(labels_chr, "must"), TRUE, FALSE),
+      should = ifelse(stringr::str_detect(labels_chr, "should"), TRUE, FALSE),
+      done = ifelse(stringr::str_detect(labels_chr, "Implemented"), TRUE, FALSE)
     )
 
   iss <- left_join(i1, i2, by = "id")
@@ -245,6 +243,7 @@ make_requirements <- function(ii) {
       Internal_Req = Internal,
       Must_have = must,
       Should_have = should,
+      Done = done,
       # could_have = could,
       # wont_have = wont
       Categories = labels_chr
