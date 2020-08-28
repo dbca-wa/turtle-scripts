@@ -1,7 +1,5 @@
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
-)
+knitr::opts_chunk$set(collapse = TRUE,
+                      comment = "#>")
 # devtools::install_github('Ather-Energy/ggTimeSeries')
 library(here)
 library(wastdr)
@@ -25,11 +23,16 @@ library(ggalt)
 library(ggTimeSeries)
 library(knitr)
 library(reactable)
+library(DBI)
 # Configure ckanr to data.dpaw.wa.gov.au with env vars from .Renviron
 ckanr::ckanr_setup(url = Sys.getenv("CKAN_URL"), key = Sys.getenv("CKAN_API_KEY"))
 
 dt <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE)
-dt0 <- . %>% DT::datatable(., escape = FALSE, rownames = FALSE, options = list(paging = F))
+dt0 <-
+  . %>% DT::datatable(.,
+                      escape = FALSE,
+                      rownames = FALSE,
+                      options = list(paging = F))
 rt <- . %>% reactable::reactable(filterable = T, searchable = T)
 # Filters -----------------------------------------------------------------------------------------#
 #--------------------------------------------------------------------------------------------------#
@@ -94,45 +97,52 @@ filter_nin_gn <- . %>% dplyr::filter(site_id == 114)
 
 
 
-gganimate_tracks <- function(data, placename=NULL, prefix=NULL, gm_apikey=NULL) {
-  require(purrr)
+gganimate_tracks <-
+  function(data,
+           placename = NULL,
+           prefix = NULL,
+           gm_apikey = NULL) {
+    require(purrr)
 
-  pl <- placename %||% "Western Australia"
-  pf <- prefix %||% "WA"
+    pl <- placename %||% "Western Australia"
+    pf <- prefix %||% "WA"
 
-  # Basemap: Google Maps
-  apikey <- gm_apikey %||%
-    Sys.getenv("GOOGLE_MAPS_APIKEY") %||%
-    stop("Need a Google Maps API key as system variable GOOGLE_MAPS_APIKEY")
-  ggmap::register_google(key = apikey)
-  bbx <- ggmap::make_bbox(longitude, latitude, data, f = 0.05)
-  ctr <- c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
-  # basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
-  basemap <- ggmap::get_googlemap(ctr, zoom = 15, scale = 2, maptype = "hybrid") %>%
-    ggmap::ggmap()
+    # Basemap: Google Maps
+    apikey <- gm_apikey %||%
+      Sys.getenv("GOOGLE_MAPS_APIKEY") %||%
+      stop("Need a Google Maps API key as system variable GOOGLE_MAPS_APIKEY")
+    ggmap::register_google(key = apikey)
+    bbx <- ggmap::make_bbox(longitude, latitude, data, f = 0.05)
+    ctr <-
+      c(mean(bbx["left"], bbx["right"]), mean(bbx["top"], bbx["bottom"]))
+    # basemap <- ggmap::get_map(ctr, zoom=17) %>% ggmap::ggmap()
+    basemap <-
+      ggmap::get_googlemap(ctr,
+                           zoom = 15,
+                           scale = 2,
+                           maptype = "hybrid") %>%
+      ggmap::ggmap()
 
-  # Add turtle tracks to basemap, discard warnings
-  tracks_map <- suppressWarnings(
-    basemap + ggplot2::geom_point(aes(longitude, latitude, colour = nest_type), data = data)
-  ) +
-    ggplot2::ggtitle(glue::glue("Turtle Nesting at {pl}"), subtitle = "Turtle date: {frame_time}") +
-    gganimate::transition_time(turtle_date) +
-    gganimate::ease_aes("elastic-in") +
-    gganimate::exit_fade()
+    # Add turtle tracks to basemap, discard warnings
+    tracks_map <- suppressWarnings(basemap + ggplot2::geom_point(aes(longitude, latitude, colour = nest_type), data = data)) +
+      ggplot2::ggtitle(glue::glue("Turtle Nesting at {pl}"), subtitle = "Turtle date: {frame_time}") +
+      gganimate::transition_time(turtle_date) +
+      gganimate::ease_aes("elastic-in") +
+      gganimate::exit_fade()
 
-  gganimate::animate(tracks_map, fps = 2, detail = 10) %T>%
-    gganimate::anim_save(glue::glue("{pf}_nesting.gif"), .)
-}
+    gganimate::animate(tracks_map, fps = 2, detail = 10) %T>%
+      gganimate::anim_save(glue::glue("{pf}_nesting.gif"), .)
+  }
 
 #--------------------------------------------------------------------------------------------------#
 # Download data ODK Central (for previews)
 #
 
 
-load_saved_data_odkc <- function(
-  datafile=here::here("wa-turtle-programs", "turtleviewer.rda")
-  ){
-  if (!fs::file_exists(datafile)){download_and_save_odkc(datafile=datafile)}
+load_saved_data_odkc <- function(datafile = here::here("wa-turtle-programs", "turtleviewer.rda")) {
+  if (!fs::file_exists(datafile)) {
+    download_and_save_odkc(datafile = datafile)
+  }
   load(datafile, envir = .GlobalEnv)
 }
 
@@ -149,14 +159,13 @@ dev <- "http://localhost:8220/api/1/"
 uat <- "https://tsc-uat.dbca.wa.gov.au/api/1/"
 prod <- "https://tsc.dbca.wa.gov.au/api/1/"
 
-download_and_save_tsc <- function(
-  datafile=here::here("wa-turtle-programs", "data_tsc.rda")
-){
+download_and_save_tsc <- function(datafile = here::here("wa-turtle-programs", "data_tsc.rda")) {
   library(magrittr)
   wastd_url <- wastdr::get_wastd_url()
   q <- list(taxon = "Cheloniidae", format = "json")
 
-  animal_records <- wastdr::wastd_GET("animal-encounters", query = q)
+  animal_records <-
+    wastdr::wastd_GET("animal-encounters", query = q)
   animals <- animal_records %>%
     wastdr::parse_animal_encounters() %>%
     add_calendar_date_awst()
@@ -164,8 +173,8 @@ download_and_save_tsc <- function(
   # "turtle-morphometrics"
 
   track_records <- wastdr::wastd_GET("turtle-nest-encounters")
-                                     # query = list(limit=1000, offset=10300),
-                                     # api_url = prod)
+  # query = list(limit=1000, offset=10300),
+  # api_url = prod)
   tracks <- track_records %>%
     wastdr::parse_turtle_nest_encounters() %>%
     add_calendar_date_awst()
@@ -188,7 +197,8 @@ download_and_save_tsc <- function(
     wastdr::parse_encounterobservations() %>%
     add_calendar_date_awst()
 
-  hatchling_morph_records <- "turtle-nest-hatchling-morphometrics" %>%
+  hatchling_morph_records <-
+    "turtle-nest-hatchling-morphometrics" %>%
     wastdr::wastd_GET()
   hatchling_morph <- hatchling_morph_records %>%
     wastdr::parse_encounterobservations() %>%
@@ -200,13 +210,15 @@ download_and_save_tsc <- function(
     wastdr::parse_encounterobservations() %>%
     add_calendar_date_awst()
 
-  fan_outlier_records <- "turtle-nest-hatchling-emergence-outliers" %>%
+  fan_outlier_records <-
+    "turtle-nest-hatchling-emergence-outliers" %>%
     wastdr::wastd_GET()
   nest_fan_outliers <- fan_outlier_records %>%
     wastdr::parse_encounterobservations() %>%
     add_calendar_date_awst()
 
-  lightsource_records <- "turtle-nest-hatchling-emergence-light-sources" %>%
+  lightsource_records <-
+    "turtle-nest-hatchling-emergence-light-sources" %>%
     wastdr::wastd_GET()
   nest_lightsources <- lightsource_records %>%
     wastdr::parse_encounterobservations() %>%
@@ -237,24 +249,34 @@ download_and_save_tsc <- function(
     sf::st_join(areas)
 
   save(
-    animal_records, animals,
-    track_records, tracks_all,
-    disturbance_records, nest_dist,
-    nest_records, nest_tags,
-    nest_excavation_records, nest_excavations,
-    fan_records, nest_fans,
-    fan_outlier_records, nest_fan_outliers,
-    lightsource_records, nest_lightsources,
+    animal_records,
+    animals,
+    track_records,
+    tracks_all,
+    disturbance_records,
+    nest_dist,
+    nest_records,
+    nest_tags,
+    nest_excavation_records,
+    nest_excavations,
+    fan_records,
+    nest_fans,
+    fan_outlier_records,
+    nest_fan_outliers,
+    lightsource_records,
+    nest_lightsources,
     surveys,
-    areas_sf, areas, sites,
+    areas_sf,
+    areas,
+    sites,
     file = datafile
   )
 }
 
-load_saved_data_tsc <- function(
-  datafile=here::here("wa-turtle-programs", "data_tsc.rda")
-){
-  if (!fs::file_exists(datafile)){download_and_save_tsc(datafile=datafile)}
+load_saved_data_tsc <- function(datafile = here::here("wa-turtle-programs", "data_tsc.rda")) {
+  if (!fs::file_exists(datafile)) {
+    download_and_save_tsc(datafile = datafile)
+  }
   load(datafile, envir = .GlobalEnv)
 }
 
@@ -262,4 +284,8 @@ load_saved_data_tsc <- function(
 # areas_sf %>%
 #   dplyr::filter(area_type=="Site") %>% magrittr::extract("name") %>% plot(.)
 
+
+#------------------------------------------------------------------------------#
+# Turtle Tagging
+#------------------------------------------------------------------------------#
 

@@ -12,44 +12,19 @@ output:
     code_folding: hide
     theme: lumen
 ---
-```{r r setup, include=FALSE, message=FALSE, warning=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-
-library(ckanr)
-
-# Spatial analysis
-library(rgdal)
-library(sp)
-library(maptools)
-
-# Data management goes last to mask shared functions
-library(Hmisc)
-library(htmlTable)
-library(httr)
-library(plyr)
-library(dplyr)
-library(lubridate)
-library(stringr)
-library(tidyjson)
-library(jsonlite)
-library(tibble)
-library(rvest)
-
-library(tidyverse)
-library(magrittr)
-
-# Visualisation
-library(DT)
-# library(mapview)
-library(leaflet)
-require(leaflet.extras)
-# library(trelliscope)
-library(RColorBrewer)
-
-library(RODBC)
-if (file.exists("~/.Rprofile")) source("~/.Rprofile")
-if (file.exists(here::here("config", "setup.R"))) source(here::here("config", "setup.R"))
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+source(here::here("wa-turtle-programs/tracks_helpers.R"))
 ```
+
+```{r, eval=F}
+remotes::install_github(
+    "dbca-wa/wastdr",
+    dependencies = TRUE,
+    upgrade = "always",
+    build_vignettes = TRUE
+)
+```
+
 
 This document describes and executes the Extraction, Transformation and (up)Loading
 of data from the Turtle Tagging database WAMTRAM 2 to the data catalogue.
@@ -57,22 +32,18 @@ of data from the Turtle Tagging database WAMTRAM 2 to the data catalogue.
 It is based on technical documentation provided by WAMTRAM 1 developer Simon Woodman.
 
 # Installation
-Setup RODBC as per
-[the instructions](http://itsalocke.com/install-sql-server-odbc-drivers-travis-ci/)
-and configure an ODBC data source for the tagging database, e.g.
-
-* in Windows: Control Panel > ODBC Data Sources,
-* Linux: create `~/.odbc.ini`:
+DBCA's RStudio Server comes with FreeTDS drivers installed.
+This was added to the base RStudio Server image with 
 
 ```{r, eval=F}
-[turtle_tagging]
-Driver = FreeTDS
-Server = kensmssql001pro.corporateict.domain
-Port = 1433
+apt install -y freetds-common libct4 libsybdb5 freetds-bin freetds-common \
+freetds-dev libct4 libsybdb5 tdsodbc unixodbc
 ```
 
-See also the
-[RODBC vigette](https://cran.r-project.org/web/packages/RODBC/vignettes/RODBC.pdf).
+Sources: 
+
+* [db.rstudio.com](https://db.rstudio.com/best-practices/drivers/)
+* [R package DBI](https://db.rstudio.com/dbi/)
 
 # Purpose
 The purpose of this document is to outline the code contained within the
@@ -81,17 +52,20 @@ of Turtle observation records captured using the Microsoft Access application
 developed by Pendoley Environmental. Originally the main Turtle database
 application had a "flat-file" base data entry process, but this was subsequently
 replaced by the Pendoley Environmental application.
-Problems with the transfer of data from the data entry program into the main d
-atabase prompted a re-development of the process, which is described in this document.
+Problems with the transfer of data from the data entry program into the main 
+database prompted a re-development of the process, which is described in this document.
+
+# Data extraction
+In this section, data is extracted from the turtle tagging database WAMTRAM2
+and returned as a named list of tables.
+The list also contains a timestamp depicting the currency of the extracted 
+database snapshot.
+
+```{r extract_wamtram}
+w2 <- wastdr::download_w2_data()
+```
 
 # Field data ingestion
-
-```{r}
-con <- odbcConnect("turtle_tagging", uid=Sys.getenv("W2_UN"), pwd=Sys.getenv("W2_PW"))
-entry_batches <- sqlQuery(con, 'select * from dbo.TRT_ENTRY_BATCHES')
-data_entry <- sqlQuery(con, 'select * from dbo.TRT_DATA_ENTRY')
-data_entry_operators <- sqlQuery(con, 'select * from TRT_DATA_ENTRY_PERSONS')
-```
 
 Data is transferred from the data entry file into holding tables in the
 SQL Server database for processing via the main WA Marine Turtles application.
@@ -109,6 +83,11 @@ about the batch such as the filename from where the records were loaded,
 and whether the observation date uses the PR (Pendoley Rawcliffe) Date Convention.
 **Note** For nesting turtles observed after midnight, the Pendoley Rawcliffe
 date convention uses the previous day’s date.
+
+```{r, fig.width=9}
+w2$data_entry_batches %>% reactable::reactable(filterable=T, sortable=T)
+```
+
 
 ## `TRT_DATA_ENTRY`
 This table contains the records of turtle observations.
@@ -130,9 +109,9 @@ The records in this table are partially populated by the main WA Marine Turtles
 application, and interactively by the user performing the processing of the batch.
 
 ## Data entry summary
-There are `r nrow(entry_batches)` batches of data presently loaded,
-providing `r nrow(data_entry)` records for ingestion from
-`r nrow(data_entry_operators)` field data entry operators.
+There are `r nrow(w2$data_entry_batches)` batches of data presently loaded,
+providing `r nrow(w2$data_entry)` records for ingestion from
+`r nrow(w2$data_entry_operators)` field data entry operators.
 
 # Business logic
 This section describes the "Stored Procedures" of the tagging database.
@@ -269,21 +248,7 @@ There exists duplication of records between the two sets of tables.
 ## Sites
 Nesting beaches are stored in table `TRT_PLACES`.
 ```{r}
-sites <- sqlQuery(con, "select * from dbo.TRT_PLACES;") %>%
-  dplyr::rename(
-    prefix=LOCATION_CODE,
-    name=PLACE_CODE,
-    label=PLACE_NAME,
-    is_rookery=ROOKERY,
-    beach_approach=BEACH_APPROACH,
-    beach_aspect=ASPECT,
-    site_datum=DATUM_CODE,
-    site_latitude=LATITUDE,
-    site_longitude=LONGITUDE,
-    comments=COMMENTS
-  )
-
-sites_with_coordinates <- sites %>% dplyr::filter(!is.na(site_latitude))
+sites_with_coordinates <- w2$sites %>% dplyr::filter(!is.na(site_latitude))
 ico <- makeAwesomeIcon(icon="cog", library="glyphicon")
 leaflet(sites_with_coordinates) %>%
   addProviderTiles("Esri.WorldImagery") %>%
@@ -294,14 +259,14 @@ leaflet(sites_with_coordinates) %>%
 Some sites are missing coordinates and need to be fixed in `TRT_PLACES`:
 
 ```{r}
-badsites <- sites %>% filter(is.na(site_latitude) | is.na(site_longitude))
-DT::datatable(badsites)
+badsites <- w2$sites %>% filter(is.na(site_latitude) | is.na(site_longitude))
+reactable::reactable(badsites)
 ```
 
 Most of these are offshore, in-water captures/releases.
 
 **TODO** The database custodian (BP) needs to sit with a GIS analyst to
-digitise all `r nrow(sites)` sites as polygons. 
+digitise all `r nrow(w2$sites)` sites as polygons. 
 The site polygons shall be delineated by:
 
 * The exact extent of the location as a segment of the high water mark.
@@ -314,193 +279,16 @@ The site polygons shall be delineated by:
 TODO: Review and update WAMTRAM to WAStD stag status mapping.
 
 ```{r}
-ts <- sqlQuery(con, "select * from dbo.TRT_TAG_STATES;")
-ts %>% kable()
+w2$lookup_tag_states %>% kable()
 ```
 
 ## Observations
 Ancillary lookup tables are sanitised and joined to the observations.
 
-```{r}
-# Sensitive information!
-persons <- sqlQuery(con, "select * from dbo.TRT_PERSONS;")
-# save(persons, file = "data/persons.Rda")
-# load("data/persons.Rda")
-person_names <- persons %>%
-    transmute(
-        PERSON_ID=PERSON_ID,
-        name=paste(FIRST_NAME, SURNAME) %>% 
-          str_replace_all("[<>()*=?]", "") %>% str_trim(),
-        email=EMAIL %>% str_replace("NA", "") %>% str_trim())
-person_details <- persons %>%
-    mutate(
-        name=paste(FIRST_NAME, SURNAME) %>% 
-          str_replace_all("[<>()*=?]", "") %>% str_trim(),
-        email=EMAIL %>% str_replace("NA", "") %>% str_trim())
-
-activities <- sqlQuery(
-    con, "select * from dbo.TRT_ACTIVITIES;") %>%
-  transmute(
-    activity_code=ACTIVITY_CODE,
-    activity_description=DESCRIPTION,
-    activity_is_nesting=NESTING,
-    activity_label=New_Code,
-    display_this_observation=Display_Observation)
-
-beach_positions <- sqlQuery(
-    con, "select * from dbo.TRT_BEACH_POSITIONS;") %>%
-  transmute(
-    beach_position_code=BEACH_POSITION_CODE,
-    beach_position_description=DESCRIPTION,
-    beach_position_label=New_Code)
-
-conditions <-  sqlQuery(
-    con, "select * from dbo.TRT_CONDITION_CODES;") %>%
-  transmute(
-    condition_code=CONDITION_CODE,
-    condition_label=DESCRIPTION)
-
-egg_count_methods <-  sqlQuery(
-    con, "select * from dbo.TRT_EGG_COUNT_METHODS;") %>%
-  transmute(
-    egg_count_method_code=EGG_COUNT_METHOD,
-    egg_count_method_label=DESCRIPTION)
-
-body_parts <- sqlQuery(
-    con, "select * from dbo.TRT_BODY_PARTS;") %>%
-  transmute(
-    body_part_code=BODY_PART,
-    body_part_label=DESCRIPTION,
-    is_flipper=FLIPPER)
-
-# use native datum conversion instead
-datum_codes <- sqlQuery(con, "select * from dbo.TRT_DATUM_CODES;")
-
-# Tag types
-id_types <- sqlQuery(
-    con, "select * from dbo.TRT_IDENTIFICATION_TYPES;") %>%
-  transmute(
-    id_type_code=IDENTIFICATION_TYPE,
-    id_type_label=DESCRIPTION)
-
-# 220k+ records
-recorded_tags <- sqlQuery(
-    con, "select * from dbo.TRT_RECORDED_TAGS;") %>%
-  transmute(
-    recorded_tag_id=RECORDED_TAG_ID,
-    observation_id=OBSERVATION_ID,
-    tag_name=TAG_ID,
-    tag_label=OTHER_TAG_ID,
-    attached_on_side=SIDE,
-    tag_state=TAG_STATE,
-    tag_position=TAG_POSITION,
-    comments=COMMENTS
-  ) %>% 
-  arrange(desc(tag_name))
-
-# save(recorded_tags, file="data/tag_observations.Rda")
-# load("data/tag_observations.Rda")
-
-
-# 55k+ inferred turtle identities, reconstructed from encounters.
-turtles <- sqlQuery(con, "select * from dbo.TRT_TURTLES;")
-summary(turtles)
-
-# Synthesised information about tags, reconstructed from recorded_tags and other tag asset management operations.
-tags <- sqlQuery(con, "select * from dbo.TRT_TAGS;") %>% arrange(desc(TAG_ID))
-
-samples <- sqlQuery(con, "select * from dbo.TRT_SAMPLES;")
-sample_tissue_type <- sqlQuery(con, "select * from dbo.TRT_TISSUE_TYPES;")
-
-pit_tags <- sqlQuery(con, "select * from dbo.TRT_PIT_TAGS;")
-recorded_pit_tags <- sqlQuery(con, "select * from dbo.TRT_RECORDED_PIT_TAGS;")
-pit_tag_states <- sqlQuery(con, "select * from dbo.TRT_PIP_TAG_STATES;")
-```
 
 Observations.
 ```{r}
-measurement_types <- sqlQuery(
-    con, "select * from dbo.TRT_MEASUREMENT_TYPES;") %>%
-  transmute(
-    measurement_type_code=MEASUREMENT_TYPE,
-    measurement_type_label=DESCRIPTION,
-    physical_unit=MEASUREMENT_UNITS,
-    min_value=MINIMUM_VALUE,
-    max_value=MAXIMUM_VALUE,
-    comments=COMMENTS)
-
-measurements <- sqlQuery(
-    con, "select * from dbo.TRT_MEASUREMENTS;") %>%
-  transmute(
-    observation_id=OBSERVATION_ID,
-    measurement_type_code=MEASUREMENT_TYPE,
-    value=MEASUREMENT_VALUE,
-    comments=COMMENTS)
-
-
-damage_codes <- sqlQuery(con, "select * from dbo.TRT_DAMAGE_CODES;")
-damage_causes <- sqlQuery(con, "select * from dbo.TRT_DAMAGE_CAUSE_CODES;")
-damages <- sqlQuery(con, "select * from dbo.TRT_DAMAGE;")
-
-# 149k+
-obs <- sqlQuery(con, "select * from dbo.TRT_OBSERVATIONS;")
-
-# save all objects
-# save.image("data/wamtram_all.RData")
-# resume
-# load("data/wamtram_all.RData")
-
-ord <- c("YmdHMS", "Ymd")
-utc <- "UTC"
-gmt08 <- "Australia/Perth"
-
-o <- obs %>%
-    dplyr::mutate(
-        o_date=parse_date_time(CORRECTED_DATE, orders=ord, tz=gmt08),
-        o_time=parse_date_time(OBSERVATION_TIME, orders=ord, tz=gmt08),
-        observation_datetime_gmt08=o_date - days(1) + hours(hour(o_time)) + minutes(minute(o_time)),
-        observation_datetime_utc=with_tz(observation_datetime_gmt08, tz=utc)
-    ) %>%
-    dplyr::select(
-        -OBSERVATION_DATE, -OBSERVATION_DATE_OLD, -DATE_CONVENTION,
-        -CORRECTED_DATE, -OBSERVATION_TIME, -o_date, -o_time
-    ) %>%
-    dplyr::rename(
-        activity_code=ACTIVITY_CODE
-    ) %>%
-    dplyr::left_join(activities, by="activity_code") %>%
-    # left_join(person_names, by=c("MEASURER_PERSON_ID" = "PERSON_ID")) %>%
-    # rename(measured_by=name) %>%
-    # left_join(person_names, by=c("MEASURER_REPORTER_PERSON_ID" = "PERSON_ID")) %>%
-    # rename(measurements_reported_by=name) %>%
-    # left_join(person_names, by=c("TAGGER_PERSON_ID" = "PERSON_ID")) %>%
-    # rename(tagged_by=name) %>%
-    # left_join(person_names, by=c("REPORTER_PERSON_ID" = "PERSON_ID")) %>%
-    # rename(reported_by=name) %>%
-    left_join(sites, by=c("PLACE_CODE" = "name")) %>%
-    left_join(turtles, by="TURTLE_ID") %>%
-    mutate(
-      LATITUDE = ifelse(is.na(LATITUDE), site_latitude, LATITUDE),
-      LONGITUDE = ifelse(is.na(LONGITUDE), site_longitude, LONGITUDE)
-      )
-
-# save(o, file="data/encounters.Rda")
-# load("data/encounters.Rda")
-
-# TODO reconstruct empty DD from DMS or UTM or site coords
-
-encounters <- o %>% 
-  filter(!is.na(LONGITUDE)) %>% 
-  filter(!is.na(LATITUDE)) %>% 
-  filter(!is.na(observation_datetime_utc)) %>%
-  arrange(desc(observation_datetime_utc))
-
-encounters_missing <- o %>% 
-  filter(is.na(LONGITUDE) | is.na(LATITUDE) | is.na(observation_datetime_utc)) %>%
-  arrange(desc(observation_datetime_utc))
-
-encounters_missing %>% skimr::skim()
-
+w2$enc_qa %>% skimr::skim()
 ```
 
 
@@ -508,33 +296,33 @@ encounters_missing %>% skimr::skim()
 * TRT_IDENTIFICATION_TYPES = TAG_TYPE
 
 ```{r}
-DT::datatable(sites)
+w2$sites %>% reactable::reactable(filterable = T, sortable = T)
 ```
 
 
 # Upload data
 
 ```{r upload_data}
-d <- package_show("wa-marine-turtle-tagging-database-wamtram-2")
-# write.csv(enc2, file = here::here("wamtram", "data", "wamtram_encounters_incomplete.csv"), row.names = F)
-# write.csv(o, file = here::here("wamtram", "data", "wamtram_encounters.csv"), row.names = F)
+d <- ckanr::package_show("wa-marine-turtle-tagging-database-wamtram-2")
+# write.csv(w2$enc_qa, file = here::here("wamtram", "data", "wamtram_encounters_incomplete.csv"), row.names = F)
+# write.csv(w2$enc, file = here::here("wamtram", "data", "wamtram_encounters.csv"), row.names = F)
 # ckanr::resource_update(Sys.getenv("W2_ENC_CSV_RID"), here::here("wamtram", "data", "wamtram_encounters.csv"))
 
 # Users
 users_fn <- here::here("wamtram", "data", "wamtram_users.csv")
-readr::write_csv(person_details, users_fn)
+readr::write_csv(w2$persons, users_fn)
 # r <- resource_create(package_id=d$id, name="WAMTRAM Users", upload=users_fn)
 ckanr::resource_update("ca523326-623f-460e-a617-77d403918b81", users_fn)
 
 # Encounters
 enc_fn <- here::here("wamtram", "data", "wamtram_encounters.csv")
-readr::write_csv(encounters, enc_fn)
+readr::write_csv(w2$enc, enc_fn)
 # r <- resource_create(package_id=d$id, name="WAMTRAM Encounters", upload=enc_fn)
 ckanr::resource_update("f7e30448-de1c-4061-8a85-887632934961", enc_fn)
 
 # Tags
 tag_fn <- here::here("wamtram", "data", "wamtram_tagobservations.csv")
-readr::write_csv(recorded_tags, tag_fn)
+readr::write_csv(w2$obs_flipper_tags, tag_fn)
 # r <- resource_create(package_id=d$id, name="WAMTRAM Tags", upload=tag_fn)
 ckanr::resource_update("6d2e2c24-7d10-4a73-8711-12bc03120fa1", tag_fn)
 ```
